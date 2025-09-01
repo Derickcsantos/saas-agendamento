@@ -1,0 +1,10 @@
+salao-beleza/
+├── public/
+│   ├── index.html
+│   ├── admin.html
+│   └── js/
+│       ├── app.js
+│       └── admin.js
+├── .env
+├── package.json
+└── server.js

@@ -1,0 +1,520 @@
+:root {
+--bg-color: #f8f9fa;
+--text-color: #212529;
+--sidebar-bg: #f8f9fa;
+--card-bg: #ffffff;
+--table-bg: #ffffff;
+--border-color: #dee2e6;
+}
+
+[data-theme="dark"] {
+--bg-color: #2d3436;
+--text-color: #f0ebeb;
+--sidebar-bg: #3a4142;
+--card-bg: #3a4142;
+--table-bg: #3a4142;
+--border-color: #4e5557;
+}
+
+body {
+background-color: var(--bg-color);
+color: var(--text-color);
+}
+
+.nav-pills li{
+  margin: 2px;
+}
+
+.sidebar {
+min-height: 100vh;
+background-color: var(--sidebar-bg) !important;
+}
+
+.nav-link { 
+color: #ffff; 
+background-color: rgb(134, 125, 219);
+font-size: 0.9rem;
+}
+
+#iconCategoria,
+#iconServico,
+#iconFuncionario,
+#iconData, 
+#iconHorario,
+#iconCupom,
+#iconConfirmacao{
+  color: #ffff; 
+  background-color: #7c3aed;
+}
+
+
+.nav-link:hover { 
+color: #ffff; 
+background-color: rgb(146, 139, 210);
+font-size: 0.9rem;
+}
+
+
+.nav-link .active { 
+color: #ffff; 
+font-weight: bold; 
+}
+
+.nav-item{
+  background-color: #fff;
+}
+
+.tab-content { 
+padding: 20px; 
+background-color: var(--bg-color); 
+border-radius: 0 0 5px 5px; 
+}
+
+.form-section { 
+margin-bottom: 30px; 
+}
+
+.card {
+background-color: var(--card-bg);
+border-color: var(--border-color);
+}
+
+#currentDateTime {
+text-align: center;
+}
+
+.date-display {
+font-size: 1.2rem;
+font-weight: bold;
+margin-bottom: 0.5rem;
+}
+
+.time-display {
+font-size: 1.5rem;
+font-family: 'Courier New', monospace;
+color: var(--primary-color);
+}
+
+.cardConfig {
+padding: 1.5rem;
+}
+
+.table {
+color: var(--text-color);
+background-color: var(--table-bg);
+}
+
+.table-striped>tbody>tr:nth-of-type(odd)>* {
+--bs-table-accent-bg: var(--table-bg);
+color: var(--text-color);
+}
+
+.table-hover>tbody>tr:hover>* {
+--bs-table-accent-bg: rgba(13, 110, 253, 0.1);
+color: var(--text-color);
+}
+
+.form-control, .form-select {
+background-color: var(--card-bg);
+color: var(--text-color);
+border-color: var(--border-color);
+}
+
+.theme-toggle-btn {
+cursor: pointer;
+border: none;
+background: none;
+color: var(--text-color);
+font-size: 1.2rem;
+}
+
+.user-profile-form {
+max-width: 500px;
+margin: 0 auto;
+}
+
+.toggle-password {
+border-top-left-radius: 0;
+border-bottom-left-radius: 0;
+}
+
+.toggle-password i {
+transition: all 0.3s;
+}
+
+.toggle-password:hover {
+background-color: #e9ecef;
+}
+
+/* Estilos para a seção de usuários */
+.form-section {
+background-color: #f8f9fa;
+padding: 20px;
+border-radius: 5px;
+margin-bottom: 20px;
+border: 1px solid #dee2e6;
+}
+
+.table-responsive {
+margin-top: 20px;
+}
+
+.table th {
+font-weight: 600;
+}
+
+.btn-sm {
+padding: 0.25rem 0.5rem;
+font-size: 0.875rem;
+}
+
+.action-buttons {
+white-space: nowrap;
+}
+
+.badge-admin {
+background-color: #c04edf;
+}
+
+.badge-comum {
+background-color: #6c757d;
+}
+
+.step { display: none; }
+.step.active { display: block; }
+.time-slot {
+  cursor: pointer;
+  padding: 10px;
+  margin: 5px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  text-align: center;
+}
+.time-slot:hover { background-color: #f8f9fa; }
+.time-slot.selected { background-color: #7c3aed; color: white; }
+.time-slot.unavailable { background-color: #842029; color: #ffffff; cursor: not-allowed; }
+
+.btn-group {
+  gap: 5px;
+}
+
+.btn-group button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.modal-footer {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 576px) {
+  .btn-group {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  
+  .btn-group button {
+    flex: 1;
+  }
+}
+
+/* Adicione no seu arquivo CSS */
+.modal-header {
+  border-bottom: none;
+}
+.modal-footer {
+  border-top: none;
+  justify-content: center;
+}
+.modal-content {
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* Adicione ao seu arquivo style.css */
+select option {
+  font-family: monospace; /* Para alinhar melhor os preços */
+}
+
+#confirmService, #confirmPrice {
+  font-weight: bold;
+  color: #7c3aed;
+}
+
+/* Adicione ao seu arquivo style.css */
+#confirmService, #confirmPrice {
+  font-weight: bold;
+  color: #7c3aed;
+}
+
+#appointmentDetails li strong {
+  display: inline-block;
+  min-width: 70px;
+}
+
+.schedule-day {
+  background-color: #f8f9fa;
+  border-radius: 5px;
+  padding: 15px;
+  margin-bottom: 10px;
+  position: relative;
+}
+.remove-schedule {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  cursor: pointer;
+  color: #dc3545;
+}
+.status-badge {
+  font-size: 0.875em;
+  padding: 0.35em 0.65em;
+}
+.schedule-badge {
+  font-size: 0.75em;
+  margin-right: 5px;
+  margin-bottom: 5px;
+  display: inline-block;
+}
+
+/* Estilos para a seção de cupons */
+#couponsTable td {
+  vertical-align: middle;
+}
+
+#couponsTable .badge {
+  font-size: 0.85em;
+}
+
+/* Estilo para o formulário de cupom */
+#couponForm .form-control, 
+#couponForm .form-select {
+  margin-bottom: 0.5rem;
+}
+
+/* Feedback */
+.alert {
+  margin-top: 1rem;
+}
+
+/* Estilos para o modal de serviços */
+.service-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+}
+
+.service-item .service-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.service-item .btn-action {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .service-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .service-item .service-actions {
+    align-self: flex-end;
+  }
+}
+
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .schedule-item .row > div {
+    margin-bottom: 1rem;
+  }
+  
+  .schedule-item .row > div:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.user-photo{
+  border-radius: 50%;
+}
+
+/* Estilos para a seção de receitas */
+.card-border {
+  border-left: 4px solid;
+}
+
+.card-border-primary {
+  border-left-color: #c04edf;
+}
+
+.card-border-success {
+  border-left-color: #1cc88a;
+}
+
+.card-border-info {
+  border-left-color: #7c3aed;
+}
+
+#revenueDetails tr:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.table th {
+  white-space: nowrap;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .card-body h2 {
+    font-size: 1.5rem;
+  }
+  
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #iconCategoria,
+  #iconServico,
+  #iconFuncionario,
+  #iconData, 
+  #iconHorario,
+  #iconCupom,
+  #iconConfirmacao{
+    color: #ffff; 
+    font-size: 0.6rem;
+  }
+}
+
+/* Adicione isso ao seu arquivo CSS ou dentro de uma tag <style> */
+select option {
+  padding: 8px 12px;
+  height: auto;
+}
+
+select option img {
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+select option small {
+  display: block;
+  font-size: 0.8em;
+  color: #666;
+}
+
+.choices__list--dropdown .choices__item--selectable,
+  .choices__list[aria-expanded] .choices__item--selectable {
+    padding-right: 10px;
+  }
+  
+  .choice-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+  }
+  
+  .choice-item-img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #f5f5f5;
+  }
+  
+  .choice-item-details {
+    flex: 1;
+  }
+  
+  .choice-item-price {
+    font-size: 0.8em;
+    color: #666;
+  }
+
+  /* No seu arquivo CSS principal */
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.add-to-calendar {
+  padding: 0.25rem;
+}
+
+.bi-calendar-plus {
+  font-size: 1rem;
+}
+
+/* Estilos para os botões de ação */
+.complete-appointment {
+  color: white;
+  padding: 0.25rem 0.5rem;
+}
+
+.complete-appointment:hover {
+  background-color: #198754;
+  border-color: #198754;
+}
+
+/* Espaçamento entre botões */
+td .btn {
+  margin-right: 0.3rem;
+}
+
+.btn-login{
+  background-color: #7c3aed;
+  color: white;
+  border: none;
+  font-size: 1rem;
+  border-radius: 5px;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+}
+
+.btn-login:hover{
+  background-color: #7c3aed;
+  color: white;
+}
+
+.icon-home{
+    font-size: 1.8rem;
+    position: absolute;
+    top: 1px;
+    left: 5px;
+}
+
+@media (max-width: 380px){
+  .share-btn{
+    display: none;
+  }
+  #whatsappBtn,
+  #emailBtn,
+  #calendarBtn{
+    justify-content: center;
+  }
+
+  #iconCategoria,
+  #iconServico,
+  #iconFuncionario,
+  #iconData, 
+  #iconHorario,
+  #iconCupom,
+  #iconConfirmacao{
+    color: #ffff; 
+    font-size: 0.7rem;
+    padding: 7px;
+  }
+}

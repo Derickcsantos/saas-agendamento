@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content=" Dérick campos santos, Derick, Dking">
+    <meta name="language" content="pt-BR">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="generator" content="Visual studio code">
+    <meta name="description" content="Salão de beleza especializado em tranças e alongamentos.">
+    <meta name="keywords" content="Paula, Paula Tranças, Tranças, Agenda, Agendar trança, Salão, Sistema de agendamento, Me conheça, Derick Campos, Derick, Derick Campos Santos">
+    <meta name="keyword" content="Paula, Paula Tranças, Tranças, Agenda, Agendar trança, Salão, Sistema de agendamento, Me conheça, Derick Campos, Derick, Derick Campos Santos">
+
+    <meta name="country" content="Brazil">
+    <meta name="language" content="Portuguese, PT-BR">
+    <meta name="geography" content="São Paulo, SP">
+    <meta name="copyright" content="https://agendaagora.onrender.com/home">
+
+    <meta name="google-site-verification" content="ygBvn69LM73T3rI5Fe8LUUrlqCqr3ggeqVjrwf85rug" />
+    <meta name="googlebot" content="index, follow">
+    <meta name="baidubot" content="index, follow">
+    <meta name="slurp" content="index, follow">
+    <meta name="yahoobot" content="index, follow">
+    <meta name="unknownbot" content="index, follow">
+    <meta name="msnbot" content="index, follow">
+    <meta name="robots" content="index,follow">
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"> 
+    <meta http-equiv="Pragma" content="public">
+    <meta http-equiv="Expires" content="0">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+    <meta property="og:title" content="Paula Tranças e Alongamentos | Salão de Beleza">
+    <meta property="og:site_name" content="Paula Tranças e Alongamentos | Salão de Beleza">
+    <meta property="og:description" content="Salão de beleza">
+    <meta property="og:image" content="img/LogoPaulaTrancas.png">
+    <meta property="og:url" content="https://agendaagora.onrender.com/home">
+    <meta property="og:image:width" content="700">
+    <meta property="og:image:height" content="366">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt-BR">
+    <meta property="og:locale:alternate" content="en-US">
+    <meta property="og:locale:alternate" content="es-ES">
+    <meta property="og:locale:alternate" content="fr-FR">
+    <meta property="og:locale:alternate" content="de-DE">
+    <meta property="og:locale:alternate" content="it-IT">
+    <meta property="og:locale:alternate" content="ja-JP">
+    <meta property="og:locale:alternate" content="ko-KR">
+    <meta property="og:locale:alternate" content="zh-CN">
+    <meta property="og:locale:alternate" content="zh-TW">
+    <meta property="og:locale:alternate" content="ru-RU">
+    <meta property="og:locale:alternate" content="ar-SA">
+    <meta property="og:locale:alternate" content="pt-PT">
+    <meta property="og:locale:alternate" content="pt-AO">
+    <meta property="og:locale:alternate" content="pt-MZ">
+
+    <title>Galeria - Paula Tranças</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/galeria.css">
+    <link rel="icon" style="border-radius: 50%;" href="img/LogoPaulaTrancas.png" type="image/png">
+</head>
+<body>
+
+    <a href="https://wa.me/5511952801212" target="_blank" class="botao-whatsapp">
+        <!-- <img src="/img/whatsapp.7f3687b9-847d-4f86-bb5c-c73259e2b38e" alt="WhatsApp"> -->
+        <i class="fab fa-whatsapp"></i>
+    </a>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="logo-container">
+            <div class="logo">
+                <img src="img/LogoPaulaTrancas.png" alt="Paula Tranças">
+            </div>
+            <span class="brand-name">Paula Tranças</span>
+        </div>
+        
+        <ul class="nav-links">
+            <li><a onclick="window.location.href='/home'">Home</a></li>
+            <li><a onclick="window.location.href='/home#services'">Serviços</a></li>
+            <li><a onclick="window.location.href='/home#about'">Sobre</a></li>
+            <li><a onclick="window.location.href='/home#faq'">Dúvidas</a></li>
+            <li><a onclick="window.location.href='/galeria'">Galeria</a></li>
+            <li><a onclick="window.location.href='/login'">Login</a></li>
+            <li><a onclick="window.location.href='/'">Agendar</a></li>
+            <button id="themeToggle" class="theme-toggle">
+                <i class="fas fa-moon"></i>
+            </button>
+        </ul>
+        
+        <div class="menu-toggle" id="menuToggle" onclick="toggleSidebar()">
+            <i class="fas fa-bars" ></i>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="close-btn" id="closeBtn" onclick="toggleSidebar()">
+            <i class="fas fa-times"></i>
+        </div>
+        <ul class="sidebar-links">
+            <li><a onclick="window.location.href='/home'">Home</a></li>
+            <li><a onclick="window.location.href='/home#services'">Serviços</a></li>
+            <li><a onclick="window.location.href='/home#about'">Sobre</a></li>
+            <li><a onclick="window.location.href='/home#faq'">Dúvidas</a></li>
+            <li><a onclick="window.location.href='/home#faq'" class="active">Galeria</a></li>
+            <li><a onclick="window.location.href='/'">Agendar</a></li>
+            <li><a onclick="window.location.href='/login'">Login</a></li>
+            <button id="themeToggleSidebar" class="theme-toggle">
+                <i class="fas fa-moon"></i>
+            </button>
+        </ul>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Main Content -->
+    <main class="gallery-container">
+        <h1 class="gallery-title">Nossa Galeria</h1>
+        
+        <!-- Search Bar -->
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Buscar por título...">
+            <i class="fas fa-search"></i>
+        </div>
+        
+        <!-- Gallery Grid -->
+        <div class="gallery-grid" id="galleryGrid">
+            <!-- Images will be loaded here via JavaScript -->
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div class="loading" id="loading">
+            <i class="fas fa-spinner fa-spin"></i> Carregando...
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="logo-container">
+            <div class="logo">
+                <img src="img/LogoPaulaTrancas.png" alt="">
+            </div>
+            <span class="brand-name">Paula Tranças</span>
+        </div>
+        <div class="social-links">
+            <a href="https://instagram.com/paulatrancasealongamentos"><i class="fab fa-instagram"></i></a>
+            <a href="galeria.html"><i class="far fa-images"></i></a>
+            <a href="https://wa.me/5511952801212"><i class="fab fa-whatsapp"></i></a>
+        </div>
+        <p>© 2023 Paula Tranças e Alongamentos. Todos os direitos reservados.</p>
+        <p>Rua mucugê, 127 - Jardim maracanã, São Paulo/SP</p>
+        <p>paulaserapiao1@gmail.com.br | (11) 95280-1212</p>
+    </footer>
+
+    <script src="js/galeria.js"></script>
+</body>
+</html>

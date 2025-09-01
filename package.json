@@ -1,0 +1,61 @@
+{
+  "name": "salao-beleza",
+  "version": "1.0.0",
+  "description": "Sistema de agendamento para salão de beleza",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "bot": "node whatsapp-bot.js",
+    "postinstall": "echo 'Skipping Chrome install'",
+    "build": "echo 'Build não necessário para Node.js'",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "@wppconnect-team/wppconnect": "^1.37.1",
+    "bcrypt": "^5.1.1",
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.15.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.2",
+    "node-cron": "^4.1.0",
+    "node-schedule": "^2.1.1",
+    "nodemailer": "^6.10.1",
+    "puppeteer": "^24.8.2",
+    "sharp": "^0.34.3",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "nodemon": "^3.0.2",
+    "prettier": "^3.2.4"
+  },
+  "keywords": [
+    "salao",
+    "beleza",
+    "agendamento",
+    "nodejs",
+    "express"
+  ],
+  "author": "Dérick",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Derickcsantos/Sistema-agendamento.git"
+  }
+}

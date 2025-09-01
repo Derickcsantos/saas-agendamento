@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+ <!-- Metadados para SEO e configuração da página -->
+ <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content=" Dérick campos santos, Derick, Dking">
+  <meta name="language" content="pt-BR">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="generator" content="Visual studio code">
+  <meta name="description" content="Salão de beleza especializado em tranças e alongamentos.">
+  <meta name="keywords" content="Paula, Paula Tranças, Tranças, Agenda, Agendar trança, Salão, Sistema de agendamento, Me conheça, Derick Campos, Derick, Derick Campos Santos">
+  <meta name="keyword" content="Paula, Paula Tranças, Tranças, Agenda, Agendar trança, Salão, Sistema de agendamento, Me conheça, Derick Campos, Derick, Derick Campos Santos">
+
+  <meta name="country" content="Brazil">
+  <meta name="language" content="Portuguese, PT-BR">
+  <meta name="geography" content="São Paulo, SP">
+  <meta name="copyright" content="https://agendaagora.onrender.com/home">
+
+  <meta name="google-site-verification" content="ygBvn69LM73T3rI5Fe8LUUrlqCqr3ggeqVjrwf85rug" />
+  <meta name="googlebot" content="index, follow">
+  <meta name="baidubot" content="index, follow">
+  <meta name="slurp" content="index, follow">
+  <meta name="yahoobot" content="index, follow">
+  <meta name="unknownbot" content="index, follow">
+  <meta name="msnbot" content="index, follow">
+  <meta name="robots" content="index,follow">
+
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"> 
+  <meta http-equiv="Pragma" content="public">
+  <meta http-equiv="Expires" content="0">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+  <meta property="og:title" content="Paula Tranças e Alongamentos | Salão de Beleza">
+  <meta property="og:site_name" content="Paula Tranças e Alongamentos | Salão de Beleza">
+  <meta property="og:description" content="Salão de beleza">
+  <meta property="og:image" content="img/LogoPaulaTrancas.png">
+  <meta property="og:url" content="https://agendaagora.onrender.com/home">
+  <meta property="og:image:width" content="700">
+  <meta property="og:image:height" content="366">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt-BR">
+  <meta property="og:locale:alternate" content="en-US">
+  <meta property="og:locale:alternate" content="es-ES">
+  <meta property="og:locale:alternate" content="fr-FR">
+  <meta property="og:locale:alternate" content="de-DE">
+  <meta property="og:locale:alternate" content="it-IT">
+  <meta property="og:locale:alternate" content="ja-JP">
+  <meta property="og:locale:alternate" content="ko-KR">
+  <meta property="og:locale:alternate" content="zh-CN">
+  <meta property="og:locale:alternate" content="zh-TW">
+  <meta property="og:locale:alternate" content="ru-RU">
+  <meta property="og:locale:alternate" content="ar-SA">
+  <meta property="og:locale:alternate" content="pt-PT">
+  <meta property="og:locale:alternate" content="pt-AO">
+  <meta property="og:locale:alternate" content="pt-MZ">
+
+  <!-- Ícone da página -->
+  <link rel="icon" style="border-radius: 50%;" href="img/LogoPaulaTrancas.png" type="image/png">
+  <title>Login - Salão de Beleza</title>
+  <!-- Bootstrap CSS e ícones -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <!-- CSS personalizado -->
+  <link rel="stylesheet" href="css/login.css">
+  <!-- Google reCAPTCHA -->
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+</head>
+<body>
+
+  <!-- Ícone para voltar à página inicial -->
+  <i onclick="window.location.href='/home'" class="bi bi-house-door icon-home"></i>
+  <i onclick="window.location.href='/'" class="bi bi-stopwatch icon-agendar"></i>
+  <div class="container">
+    <!-- Container do formulário de login -->
+    <div class="login-container" id="loginContainer">
+      <div class="logo">
+        <h2>Login</h2>
+      </div>
+      
+      <!-- Formulário de login -->
+      <form id="loginForm">
+        <div class="mb-3">
+          <label for="username" class="form-label">Usuário</label>
+           <input type="text" class="form-control" id="login" required placeholder="Digite seu usuário ou e-mail">
+        </div>
+        <div class="mb-3">
+          <label for="password" class="form-label">Senha</label>
+          <div class="input-group">
+            <input type="password" class="form-control password-input" id="password" required placeholder="Digite sua senha">
+            <!-- Botão para mostrar/ocultar senha -->
+            <button class="btn btn-outline-secondary toggle-password" type="button">
+              <i class="bi bi-eye-slash-fill"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn w-100"  style="background-color: #7c3aed; color: white;">Entrar</button>
+        
+        <!-- Link para recuperação de senha -->
+        <div class="forgot-password">
+          <p>Esqueceu a senha?<a href="#" id="forgotPasswordLink"> Clique aqui</a></p>
+        </div>
+      </form>
+      
+      <!-- Mensagem de erro/sucesso do login -->
+      <div id="loginMessage" class="mt-3 alert alert-danger d-none"></div>
+      
+      <!-- Link para alternar para cadastro -->
+      <div class="form-switch">
+        Ainda não tem conta? <a href="#" id="switchToCadastro">Cadastre agora</a>
+      </div>
+    </div>
+
+       <!-- Modal para recuperação de senha -->
+       <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Recuperar Senha</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <!-- Formulário de recuperação de senha -->
+              <form id="forgotPasswordForm">
+                <div class="mb-3">
+                  <label for="recoveryEmail" class="form-label">Digite seu email cadastrado</label>
+                  <input type="email" class="form-control" id="recoveryEmail" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Enviar nova senha</button>
+              </form>
+              <!-- Mensagem de recuperação de senha -->
+              <div id="recoveryMessage" class="mt-3 alert d-none"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    <!-- Container do formulário de cadastro -->
+    <div class="login-container cadastro-container" id="cadastroContainer">
+      <div class="logo">
+        <h2>Criar nova conta</h2>
+      </div>
+      
+      <!-- Formulário de cadastro -->
+      <form id="cadastroForm">
+        <div class="mb-3">
+          <label for="cadastroUsername" class="form-label">Usuário</label>
+          <input type="text" class="form-control" id="cadastroUsername" required placeholder="Digite seu nome completo">
+        </div>
+        <div class="mb-3">
+          <label for="cadastroEmail" class="form-label">Email</label>
+          <input type="email" class="form-control" id="cadastroEmail" required placeholder="Digite seu email">
+        </div>
+        <div class="mb-3">
+          <label for="cadastroPhone" class="form-label">Telefone</label>
+          <input type="phone" class="form-control" id="cadastroPhone" required placeholder="Digite seu telefone">
+        </div>
+        <div class="mb-3">
+          <label for="cadastroAniversario" class="form-label">Data de nascimento</label>
+          <input type="date" class="form-control" id="cadastroAniversario" required>
+        </div>
+        <div class="mb-3">
+          <label for="cadastroPassword" class="form-label">Senha</label>
+          <div class="input-group">
+            <input type="password" class="form-control password-input" id="cadastroPassword" required placeholder="Digite sua senha">
+            <!-- Botão para mostrar/ocultar senha -->
+            <button class="btn btn-outline-secondary toggle-password" type="button">
+              <i class="bi bi-eye-slash-fill"></i>
+            </button>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="confirmPassword" class="form-label">Confirmar Senha</label>
+          <div class="input-group">
+            <input type="password" class="form-control password-input" id="confirmPassword" required placeholder="Confirme a senha">
+            <button class="btn btn-outline-secondary toggle-password" type="button">
+              <i class="bi bi-eye-slash-fill"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn w-100" style="background-color: #7c3aed; color: white;">Cadastrar</button>
+      </form>
+      
+      <!-- Mensagem de erro/sucesso do cadastro -->
+      <div id="cadastroMessage" class="mt-3 alert d-none"></div>
+      
+      <!-- Link para alternar para login -->
+      <div class="form-switch">
+        Já tem uma conta? <a href="#" id="switchToLogin">Faça login</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts do Bootstrap, reCAPTCHA e JS personalizado -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://www.google.com/recaptcha/enterprise.js?render=6LcvfVIrAAAAAAHGhj-5Q7yR2-ohel0VKn0xAC3n"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>

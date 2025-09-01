@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administração - Salão de Beleza</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+        <div class="position-sticky pt-3">
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link " href="#" data-bs-toggle="tab" data-bs-target="#home">
+                <i class="bi bi-house-door me-2"></i>Home
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="#" data-bs-toggle="tab" data-bs-target="#categories">
+                <i class="bi bi-tags me-2"></i>Categorias
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-bs-toggle="tab" data-bs-target="#services">
+                <i class="bi bi-scissors me-2"></i>Serviços
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-bs-toggle="tab" data-bs-target="#employees">
+                <i class="bi bi-people me-2"></i>Funcionários
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-bs-toggle="tab" data-bs-target="#appointments">
+                <i class="bi bi-calendar-check me-2"></i>Agendamentos
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-bs-toggle="tab" data-bs-target="#users">
+                <i class="bi bi-person-plus me-2"></i>Usuários
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-bs-toggle="tab" data-bs-target="#coupons">
+                <i class="bi bi-percent me-2"></i>Cupons
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-bs-toggle="tab" data-bs-target="#settings">
+                <i class="bi-gear me-2"></i>Configurações
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-bs-toggle="tab" onclick="logout()">
+                <i class="bi bi-door-open me-2"></i>Sair
+              </a>
+            </li>
+            <!-- <li>
+              <button onclick="logout()" class="btn btn-danger">Sair</button>
+            </li> -->
+          </ul>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="col-md-9 col-lg-10 ms-sm-auto px-md-4 py-4">
+        <div class="tab-content">
+
+          <!-- Home -->
+          <div class="tab-pane fade" id="home">
+            <h2>Visão Geral</h2>
+            <div class="row">
+              
+              <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h5 class="card-title">Total de Funcionários</h5>
+                    <div class="chart-container">
+                      <div class="chart-loading">
+                        <div class="spinner-border text-primary" role="status">
+                          <span class="visually-hidden">Carregando...</span>
+                        </div>
+                      </div>
+                      <canvas id="employeesChart"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h5 class="card-title">Total de Categorias</h5>
+                    <div class="chart-container">
+                      <div class="chart-loading">
+                        <div class="spinner-border text-primary" role="status">
+                          <span class="visually-hidden">Carregando...</span>
+                        </div>
+                      </div>
+                      <canvas id="categoriesChart"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h5 class="card-title">Total de Serviços</h5>
+                    <div class="chart-container">
+                      <div class="chart-loading">
+                        <div class="spinner-border text-primary" role="status">
+                          <span class="visually-hidden">Carregando...</span>
+                        </div>
+                      </div>
+                      <canvas id="servicesChart"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h5 class="card-title">Total de Agendamentos</h5>
+                    <div class="chart-container">
+                      <div class="chart-loading">
+                        <div class="spinner-border text-primary" role="status">
+                          <span class="visually-hidden">Carregando...</span>
+                        </div>
+                      </div>
+                      <canvas id="appointmentsChart"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Categorias -->
+          <div class="tab-pane fade show active" id="categories">
+            <h2>Categorias de Serviços</h2>
+            <div class="form-section">
+              <h4>Adicionar/Editar Categoria</h4>
+              <form id="categoryForm">
+                <input type="hidden" id="categoryId">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="categoryName" class="form-label">Nome da Categoria</label>
+                    <input type="text" class="form-control" id="categoryName" required>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+                <button type="button" class="btn btn-secondary" id="cancelCategoryEdit">Cancelar</button>
+              </form>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="categoriesTable"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Serviços -->
+          <div class="tab-pane fade" id="services">
+            <h2>Serviços</h2>
+            <div class="form-section">
+              <h4>Adicionar/Editar Serviço</h4>
+              <form id="serviceForm">
+                <input type="hidden" id="serviceId">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="serviceCategory" class="form-label">Categoria</label>
+                    <select class="form-select" id="serviceCategory" required></select>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="serviceName" class="form-label">Nome do Serviço</label>
+                    <input type="text" class="form-control" id="serviceName" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="servicePrice" class="form-label">Preço (R$)</label>
+                    <input type="number" step="0.01" class="form-control" id="servicePrice">
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="serviceDuration" class="form-label">Duração (minutos)</label>
+                    <input type="number" class="form-control" id="serviceDuration" required>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-12">
+                    <label for="serviceDescription" class="form-label">Descrição</label>
+                    <textarea class="form-control" id="serviceDescription" rows="3"></textarea>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+                <button type="button" class="btn btn-secondary" id="cancelServiceEdit">Cancelar</button>
+              </form>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Categoria</th>
+                    <th>Duração</th>
+                    <th>Preço</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="servicesTable"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Funcionários -->
+          <div class="tab-pane fade" id="employees">
+            <h2>Funcionários</h2>
+            <div class="form-section">
+              <h4>Adicionar/Editar Funcionário</h4>
+              <form id="employeeForm">
+                <input type="hidden" id="employeeId">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="employeeName" class="form-label">Nome</label>
+                    <input type="text" class="form-control" id="employeeName" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="employeeEmail" class="form-label">E-mail</label>
+                    <input type="email" class="form-control" id="employeeEmail" required>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="employeePhone" class="form-label">Telefone</label>
+                    <input type="tel" class="form-control" id="employeePhone">
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Status</label>
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="employeeStatus" checked>
+                      <label class="form-check-label" for="employeeStatus">Ativo</label>
+                    </div>
+                  </div>
+                </div>
+
+                 <h5 class="mt-4">Horário de Trabalho</h5>
+                <div id="workSchedulesContainer">
+                  
+                  <!-- Os horários serão adicionados dinamicamente aqui -->
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="addScheduleBtn">
+                  <i class="bi bi-plus"></i> Adicionar Dia
+                </button>
+                
+                <div class="mt-4">
+                  <button type="submit" class="btn btn-primary">Salvar</button>
+                  <button type="button" class="btn btn-secondary" id="cancelEmployeeEdit">Cancelar</button>
+                </div>
+              </form>
+            </div>
+            
+            <div class="table-responsive mt-4">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Cargo</th>
+                    <th>Status</th>
+                    <th>Horários</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="employeesTable"></tbody>
+              </table>
+            </div>
+          </div>
+          
+          <!-- Modal para confirmar exclusão -->
+          <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Confirmar Exclusão</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  Tem certeza que deseja excluir este funcionário?
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                  <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Excluir</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+
+          <!-- Agendamentos -->
+          <div class="tab-pane fade" id="appointments">
+            <h2>Agendamentos</h2>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <div class="input-group">
+                  <input type="text" class="form-control" id="appointmentSearch" placeholder="Pesquisar...">
+                  <button class="btn btn-outline-secondary" type="button" id="searchAppointments">
+                    <i class="bi bi-search"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="input-group">
+                  <input type="date" class="form-control" id="appointmentDateFilter">
+                  <button class="btn btn-outline-secondary" type="button" id="filterByDate">
+                    Filtrar por Data
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Cliente</th>
+                    <th>Serviço</th>
+                    <th>Profissional</th>
+                    <th>Data</th>
+                    <th>Horário</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="appointmentsTable"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Usuários -->
+          <div class="tab-pane fade" id="users">
+            <h2>Gerenciamento de Usuários</h2>
+            
+            <div class="form-section mb-4">
+              <h4>Adicionar/Editar Usuário</h4>
+              <form id="userForm">
+                <input type="hidden" id="userId">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="userUsername" class="form-label">Usuário</label>
+                    <input type="text" class="form-control" id="userUsername" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="userEmail" class="form-label">E-mail</label>
+                    <input type="email" class="form-control" id="userEmail" required>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="userPassword" class="form-label">Senha</label>
+                    <div class="input-group">
+                      <input type="password" class="form-control password-input" id="userPassword">
+                      <button class="btn btn-outline-secondary toggle-password" type="button">
+                        <i class="bi bi-eye-slash-fill"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="userType" class="form-label">Tipo de Usuário</label>
+                    <select class="form-select" id="userType" required>
+                      <option value="comum">Comum</option>
+                      <option value="admin">Administrador</option>
+                    </select>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+                <button type="button" class="btn btn-secondary" id="cancelUserEdit">Cancelar</button>
+              </form>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Usuário</th>
+                    <th>E-mail</th>
+                    <th>Tipo</th>
+                    <th>Data de Criação</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTable"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Cupons -->
+          <div class="tab-pane fade" id="coupons">
+            <h2>Gerenciamento de Cupons</h2>
+            <div class="form-section mb-4">
+              <h4>Adicionar/Editar Cupom</h4>
+              <form id="couponForm">
+                <input type="hidden" id="couponId">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="couponName" class="form-label">Nome do Cupom</label>
+                    <input type="text" class="form-control" id="couponName" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="couponCode" class="form-label">Código</label>
+                    <input type="text" class="form-control" id="couponCode" required>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="couponDiscountType" class="form-label">Tipo de Desconto</label>
+                    <select class="form-select" id="couponDiscountType" required>
+                      <option value="percentage">Porcentagem</option>
+                      <option value="fixed">Valor Fixo</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="couponDiscountValue" class="form-label">Valor do Desconto</label>
+                    <input type="number" step="0.01" class="form-control" id="couponDiscountValue" required>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="couponValidFrom" class="form-label">Válido de</label>
+                    <input type="datetime-local" class="form-control" id="couponValidFrom">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="couponValidUntil" class="form-label">Válido até</label>
+                    <input type="datetime-local" class="form-control" id="couponValidUntil">
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="couponMaxUses" class="form-label">Máximo de Usos (0 = ilimitado)</label>
+                    <input type="number" class="form-control" id="couponMaxUses" min="0" value="0">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="couponMinValue" class="form-label">Valor Mínimo do Serviço</label>
+                    <input type="number" step="0.01" class="form-control" id="couponMinValue" min="0" value="0">
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-12">
+                    <label for="couponDescription" class="form-label">Descrição</label>
+                    <textarea class="form-control" id="couponDescription" rows="2"></textarea>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Status</label>
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="couponStatus" checked>
+                      <label class="form-check-label" for="couponStatus">Ativo</label>
+                    </div>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+                <button type="button" class="btn btn-secondary" id="cancelCouponEdit">Cancelar</button>
+              </form>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Nome</th>
+                    <th>Desconto</th>
+                    <th>Válido até</th>
+                    <th>Usos</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="couponsTable"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Configurações -->
+          <div class="tab-pane fade" id="settings">
+            <h2>Configurações</h2>
+            
+            <div class="row mb-4 align-items-stretch">
+              <div class="col-md-6 d-flex">
+                <div class="card w-100">
+                  <div class="card-body cardConfig">
+                    <h5 class="card-title">Tema</h5>
+                    <button id="themeToggle" class="theme-toggle-btn">
+                      <i class="bi bi-moon-fill"></i> Alternar para Modo Escuro
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card">
+                  <div class="card-body cardConfig">
+                    <h5 class="card-title">Data e Hora</h5>
+                    <div id="currentDateTime">
+                      <div class="date-display" id="dataAtual">--/--/----</div>
+                      <div class="time-display" id="tempoAtual">--:--:--</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="card-body">
+                <h5 class="card-title">Meu Perfil</h5>
+                
+                <div class="mb-4 p-3 border rounded" id="userInfo">
+                  <!-- As informações do usuário serão carregadas aqui -->
+                  <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p>Carregando dados do usuário...</p>
+                  </div>
+                </div>
+                
+                <!-- <form id="userProfileForm" class="user-profile-form">
+                  <input type="hidden" id="userId">
+                  
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label for="userUsername" class="form-label">Nome de Usuário</label>
+                      <input type="text" class="form-control" id="userUsername" required>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="userEmail" class="form-label">E-mail</label>
+                      <input type="email" class="form-control" id="userEmail" required>
+                    </div>
+                  </div>
+                  
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label for="userPassword" class="form-label">Senha</label>
+                      <div class="input-group">
+                        <input type="password" class="form-control password-input" id="userPassword">
+                        <button class="btn btn-outline-secondary toggle-password" type="button">
+                          <i class="bi bi-eye-fill"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                
+                  <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </form> -->
+                
+              </div>
+            </div>
+          </div>
+        <!-- Modal de Confirmação -->
+        <div class="modal fade" id="confirmationModal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Confirmar Ação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body" id="modalBody">
+                Tem certeza que deseja excluir este item?
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmAction">Confirmar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!--modal de feedback-->
+        <div id="userFeedback" class="mb-3"></div>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/users.js"></script>
+   <script src="js/cupom.js"></script>
+  <script src="js/horarioFuncionario.js"></script>
+</body>
+</html>

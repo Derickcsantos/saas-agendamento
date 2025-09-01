@@ -1,0 +1,102 @@
+.chart-loading {
+position: absolute;
+top: 0;
+left: 0;
+right: 0;
+bottom: 0;
+background: rgba(255, 255, 255, 0.8);
+display: flex;
+align-items: center;
+justify-content: center;
+z-index: 10;
+border-radius: 5px;
+}
+
+.chart-container {
+position: relative;
+min-height: 300px;
+height: 300px; /* Altura fixa */
+width: 100%;
+overflow: hidden; /* Impede vazamento */
+}
+
+/* Canvas dos gráficos */
+.chart-container canvas {
+display: block;
+width: 100% !important;
+height: 100% !important;
+object-fit: contain;
+}
+
+/* Garantir que os gráficos tenham altura adequada */
+
+/* Ajustes para cards */
+.card {
+display: flex;
+flex-direction: column;
+height: 100%;
+}
+
+.card-body {
+flex: 1;
+display: flex;
+flex-direction: column;
+padding-bottom: 0; /* Remove padding extra */
+}
+
+.card-title {
+margin-bottom: 1rem;
+}
+/* Estilo para gráficos horizontais */
+#popularServicesChart {
+    min-height: 400px;
+}
+
+/* Melhorar legibilidade dos tooltips */
+.chartjs-tooltip {
+    background-color: rgba(0, 0, 0, 0.8) !important;
+    border-radius: 4px;
+    color: white;
+    padding: 8px;
+}
+
+/* Ajustes para os novos gráficos */
+.card-title {
+font-size: 1.1rem;
+margin-bottom: 1rem;
+text-align: center;
+}
+
+.chart-container {
+position: relative;
+min-height: 250px;
+height: 250px;
+}
+
+.chart-error {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 5px;
+    padding: 10px;
+    width: 80%;
+  }
+
+  /* Ajustes específicos para o novo gráfico */
+#appointmentsByEmployeeChart {
+  min-height: 300px;
+}
+
+/* Ajustes responsivos */
+@media (max-width: 768px) {
+    .chart-container {
+      min-height: 250px;
+      height: 250px;
+    }
+    #appointmentsByEmployeeChart {
+    min-height: 250px;
+  }
+  }
