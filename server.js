@@ -135,6 +135,17 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 
+const extractOrganizationId = (req, res, next) => {
+  const organizationId = req.headers['organization-id'] || req.query.organization_id || (req.body && req.body.organization_id);
+  
+  if (!organizationId) {
+    return res.status(400).json({ error: 'Organization ID é obrigatório' });
+  }
+  
+  req.organizationId = organizationId;
+  next();
+};
+
 const checkAuth = (req, res, next) => {
   const userData = req.cookies.userData;  // Obtendo os dados do usuário do cookie
 
@@ -146,6 +157,7 @@ const checkAuth = (req, res, next) => {
 
   // Verificando se o tipo do usuário é 'admin' ou 'funcionario'
   if (parsedUser.tipo === 'admin' || parsedUser.tipo === 'funcionario') {
+    req.organizationId = parsedUser.organization_id;
     next();  // Usuário autorizado, segue para a rota
   } else {
     return res.status(403).send('Acesso negado');
@@ -694,11 +706,12 @@ async function startWhatsappBot() {
  *       500:
  *         description: Erro interno do servidor
  */
-app.get('/api/users', async (req, res) => {
+app.get('/api/users', extractOrganizationId, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('users')
-      .select('*')
+      .select('id, username, email, tipo, created_at')
+      .eq('organization_id', req.organizationId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -734,7 +747,7 @@ app.get('/api/users', async (req, res) => {
  *       500:
  *         description: Erro interno do servidor
  */
-app.get('/api/users/:id', async (req, res) => {
+app.get('/api/users/:id', extractOrganizationId, async (req, res) => {
   try {
     const { id } = req.params;
     const { data, error } = await supabase
@@ -777,7 +790,7 @@ app.get('/api/users/:id', async (req, res) => {
  *       500:
  *         description: Erro interno do servidor
  */
-app.post('/api/users', async (req, res) => {
+app.post('/api/users', extractOrganizationId, async (req, res) => {
   const { username, email, password_plaintext, tipo = 'comum', id_employee } = req.body;
 
   try {
@@ -849,7 +862,7 @@ app.post('/api/users', async (req, res) => {
  *       500:
  *         description: Erro interno do servidor
  */
-app.put('/api/users/:id', async (req, res) => {
+app.put('/api/users/:id', extractOrganizationId, async (req, res) => {
   try {
     const { id } = req.params;
     const { username, email, password_plaintext, phone, aniversario, tipo, id_employee } = req.body;
@@ -913,7 +926,7 @@ app.put('/api/users/:id', async (req, res) => {
  *       500:
  *         description: Erro interno do servidor
  */
-app.delete('/api/users/:id', async (req, res) => {
+app.delete('/api/users/:id', extractOrganizationId, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1107,7 +1120,7 @@ app.delete('/api/users/:id', async (req, res) => {
  */
 
 // Rota de cadastro
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', extractOrganizationId, async (req, res) => {
   const { username, email, aniversario, phone, password_plaintext } = req.body;
 
   try {
@@ -1115,6 +1128,7 @@ app.post('/api/register', async (req, res) => {
     const { data: existingUsers, error: userError } = await supabase
       .from('users')
       .select('id')
+      .eq('organization_id', req.organizationId)
       .or(`username.eq.${username},email.eq.${email}`);
 
     if (userError) {
@@ -1137,9 +1151,11 @@ app.post('/api/register', async (req, res) => {
         phone,
         password_plaintext, // Em produção: criptografar
         tipo: 'comum',
+        organization_id: req.organizationId,
         created_at: new Date().toISOString()
       }])
       .select('id, username, email, aniversario, phone, created_at')
+      .eq('organization_id', req.organizationId)
       .single();
 
     if (insertError) {
@@ -1227,13 +1243,14 @@ app.post('/api/register', async (req, res) => {
  *       500:
  *         description: Erro interno do servidor
  */
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', extractOrganizationId, async (req, res) => {
   const { login, password } = req.body;
 
   try {
     const { data: user, error } = await supabase
       .from('users')
       .select('id, username, email, aniversario, password_plaintext, phone, tipo')
+      .eq('organization_id', req.organizationId)
       .or(`username.eq.${login},email.eq.${login}`)
       .single();
 
@@ -1318,7 +1335,7 @@ app.post('/api/login', async (req, res) => {
  *                   description: Mensagem de erro (apenas em modo de desenvolvimento)
  *                   example: "Erro ao acessar o banco de dados"
  */
-app.post('/api/verifica-usuario', async (req, res) => {
+app.post('/api/verifica-usuario', extractOrganizationId, async (req, res) => {
   const { username } = req.body;
 
   try {
@@ -1352,9 +1369,24 @@ app.post('/api/verifica-usuario', async (req, res) => {
  * @swagger
  * /api/categories:
  *   get:
- *     summary: Lista todas as categorias de serviços disponíveis
- *     description: Retorna todas as categorias cadastradas no sistema com suas imagens convertidas para formato base64
+ *     summary: Lista todas as categorias de serviços disponíveis para uma organização
+ *     description: Retorna todas as categorias cadastradas no sistema para a organização especificada com suas imagens convertidas para formato base64
  *     tags: [Agendamento]
+ *     parameters:
+ *       - in: header
+ *         name: organization-id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID da organização
+ *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *       - in: query
+ *         name: organization_id
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: ID da organização (alternativa ao header)
+ *         example: "123e4567-e89b-12d3-a456-426614174000"
  *     responses:
  *       200:
  *         description: Lista de categorias retornada com sucesso
@@ -1375,6 +1407,20 @@ app.post('/api/verifica-usuario', async (req, res) => {
  *                     type: string
  *                     description: Imagem em formato data URL (base64) ou null
  *                     example: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ..."
+ *                   organization_id:
+ *                     type: string
+ *                     description: ID da organização à qual a categoria pertence
+ *                     example: "123e4567-e89b-12d3-a456-426614174000"
+ *       400:
+ *         description: ID da organização não fornecido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Organization ID é obrigatório"
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -1387,11 +1433,12 @@ app.post('/api/verifica-usuario', async (req, res) => {
  *                   example: "Internal server error"
  */
 
-app.get('/api/categories', async (req, res) => {
+app.get('/api/categories', extractOrganizationId, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('categories')
       .select('id, name, imagem_category')
+      .eq('organization_id', req.organizationId)
       .not('name', 'eq', 'Interno')
       .order('name', { ascending: true });
 
@@ -1462,7 +1509,7 @@ app.get('/api/categories', async (req, res) => {
  *         description: Erro interno do servidor
  */
 
-app.get('/api/services/:categoryId', async (req, res) => {
+app.get('/api/services/:categoryId', extractOrganizationId, async (req, res) => {
   try {
     const { categoryId } = req.params;
     const { data, error } = await supabase
@@ -1533,7 +1580,7 @@ app.get('/api/services/:categoryId', async (req, res) => {
  *       500:
  *         description: Erro interno do servidor
  */
-app.get('/api/employees/:serviceId', async (req, res) => {
+app.get('/api/employees/:serviceId', extractOrganizationId, async (req, res) => {
   try {
     const { serviceId } = req.params;
     const { data, error } = await supabase
@@ -2043,6 +2090,7 @@ app.get('/api/admin/appointments', async (req, res) => {
         services:service_id (name, price),
         employees:employee_id (name)
       `)
+      .eq('organization_id', req.organizationId)
       .order('appointment_date', { ascending: true })
       .order('start_time', { ascending: true });
 
@@ -2191,13 +2239,16 @@ app.get('/api/admin/appointments/:id', async (req, res) => {
  *         description: Erro interno do servidor
  */
 // Rota para marcar agendamento como concluído
-app.put('/api/admin/appointments/:id/complete', async (req, res) => {
+app.put('/api/admin/appointments/:id/complete', extractOrganizationId, async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Verificar se o agendamento existe E pertence à organização correta
     const { data: appointmentData, error: fetchError } = await supabase
       .from('appointments')
       .select('status')
       .eq('id', id)
+      .eq('organization_id', req.organizationId) // Filtro por organization_id
       .single();
 
     if (fetchError) throw fetchError;
@@ -2211,12 +2262,14 @@ app.put('/api/admin/appointments/:id/complete', async (req, res) => {
       return res.status(400).json({ error: 'Agendamento cancelado não pode ser concluído' });
     }
 
+    // Ao atualizar, também garantimos que só atualizamos da organização correta
     const { data, error } = await supabase
       .from('appointments')
-      .update({ 
+      .update({
         status: 'completed'
       })
       .eq('id', id)
+      .eq('organization_id', req.organizationId) // Filtro por organization_id
       .select();
 
     if (error) {
@@ -2231,9 +2284,9 @@ app.put('/api/admin/appointments/:id/complete', async (req, res) => {
     res.json(data[0]);
   } catch (error) {
     console.error('Error in API:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -2373,6 +2426,7 @@ app.put('/api/admin/appointments/:id/cancel', async (req, res) => {
       .from('appointments')
       .select('*')
       .eq('id', id)
+      .eq('organization_id', req.organizationId)
       .single();
 
     if (fetchError) throw fetchError;
@@ -2576,6 +2630,7 @@ app.get('/api/admin/categories', async (req, res) => {
     const { data, error } = await supabase
       .from('categories')
       .select('id, name') // Adicione aqui apenas os campos que você quer retornar
+      .eq('organization_id', req.organizationId)
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -2619,6 +2674,7 @@ app.get('/api/admin/categories/:id', async (req, res) => {
       .from('categories')
       .select('*')
       .eq('id', id)
+      .eq('organization_id', req.organizationId)
       .single();
 
     if (error) throw error;
@@ -2922,6 +2978,7 @@ app.get('/api/services', async (req, res) => {
     const { data, error } = await supabase
       .from('services')
       .select('id, name, category_id, duration, price, imagem_service')
+      .eq('organization_id', req.organizationId)
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -2960,6 +3017,7 @@ app.get('/api/admin/services', async (req, res) => {
     let query = supabase
       .from('services')
       .select('id, name, category_id, duration, price, categories(name)')
+      .eq('organization_id', req.organizationId)
       .order('name', { ascending: true });
 
     // Se o parâmetro `name` for fornecido, aplica o filtro
@@ -3125,6 +3183,7 @@ app.get('/api/admin/services/:id', async (req, res) => {
       .from('services')
       .select('*, categories(name)')
       .eq('id', id)
+      .eq('organization_id', req.organizationId)
       .single();
 
     if (error) throw error;
@@ -3361,6 +3420,7 @@ app.get('/api/admin/employees', async (req, res) => {
     const { data: employees, error: employeesError } = await supabase
       .from('employees')
       .select('name, email, phone, comissao, is_active, id')
+      .eq('organization_id', req.organizationId)
       .order('created_at', { ascending: false });
 
     if (employeesError) throw employeesError;
@@ -3436,6 +3496,7 @@ app.get('/api/admin/employees/:id', async (req, res) => {
       .from('employees')
       .select('*')
       .eq('id', id)
+      .eq('organization_id', req.organizationId)
       .single();
 
     if (error) throw error;
@@ -3817,7 +3878,8 @@ app.get('/api/employee-services/:employeeId', async (req, res) => {
     const { data, error } = await supabase
       .from('employee_services')
       .select('service_id')
-      .eq('employee_id', employeeId);
+      .eq('employee_id', employeeId)
+      .eq('organization_id', req.organizationId);
 
     if (error) throw error;
     res.json(data);
@@ -3988,7 +4050,9 @@ app.get("/schedules", async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("work_schedules")
-      .select("*, employees(name, email)");
+      .select("*, employees(name, email)")
+      .eq('organization_id', req.organizationId);
+
 
     if (error) throw error;
     res.json(data);
@@ -4177,7 +4241,8 @@ app.get("/schedules/:employee_id", async (req, res) => {
     const { data, error } = await supabase
       .from("work_schedules")
       .select("*")
-      .eq("employee_id", employee_id);
+      .eq("employee_id", employee_id)
+      .eq('organization_id', req.organizationId);
 
     if (error) throw error;
     
@@ -4569,7 +4634,7 @@ app.delete("/schedules/:id", async (req, res) => {
  *                   type: string
  */
 // Rota para dados do dashboard
-app.get('/api/admin/dashboard', async (req, res) => {
+app.get('/api/admin/dashboard', extractOrganizationId, async (req, res) => {
   try {
     // 1. Contagem básica de funcionários, categorias, serviços e agendamentos
     const [
@@ -4578,10 +4643,10 @@ app.get('/api/admin/dashboard', async (req, res) => {
       { count: servicesCount },
       { count: appointmentsCount }
     ] = await Promise.all([
-      supabase.from('employees').select('*', { count: 'exact', head: true }),
-      supabase.from('categories').select('*', { count: 'exact', head: true }),
-      supabase.from('services').select('*', { count: 'exact', head: true }),
-      supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'confirmed')
+      supabase.from('employees').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId), 
+      supabase.from('categories').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId), 
+      supabase.from('services').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId), 
+      supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId).eq('status', 'confirmed') 
     ]);
 
     // 2. Dados detalhados para os gráficos
@@ -4591,10 +4656,10 @@ app.get('/api/admin/dashboard', async (req, res) => {
       { data: couponsData, error: couponsError },
       { data: appointmentsData, error: appointmentsError }
     ] = await Promise.all([
-      supabase.from('employees').select('is_active'),
-      supabase.from('users').select('tipo'),
-      supabase.from('coupons').select('is_active'),
-      supabase.from('appointments').select('appointment_date').eq('status', 'confirmed')
+      supabase.from('employees').select('is_active').eq('organization_id', req.organizationId), 
+      supabase.from('users').select('tipo').eq('organization_id', req.organizationId), 
+      supabase.from('coupons').select('is_active').eq('organization_id', req.organizationId), 
+      supabase.from('appointments').select('appointment_date').eq('organization_id', req.organizationId).eq('status', 'confirmed') 
     ]);
 
     // Verificar erros nas consultas
@@ -4694,6 +4759,7 @@ app.get('/api/coupons', async (req, res) => {
     const { data, error } = await supabase
       .from('coupons')
       .select('*')
+      .eq('organization_id', req.organizationId)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -4735,6 +4801,7 @@ app.get('/api/coupons/:id', async (req, res) => {
       .from('coupons')
       .select('*')
       .eq('id', req.params.id)
+      .eq('organization_id', req.organizationId)
       .single();
     
     if (error) throw error;
@@ -4939,6 +5006,7 @@ app.get('/api/validate-coupon', async (req, res) => {
       .select('*')
       .eq('code', cleanCode)
       .eq('is_active', true)
+      .eq('organization_id', req.organizationId)
       .single();
 
     if (couponError || !coupon) {
@@ -5190,7 +5258,8 @@ app.get('/api/admin/revenue', async (req, res) => {
     let appointmentsQuery = supabase
       .from('appointments')
       .select('id, final_price, appointment_date, employee_id, employees(id, name, comissao)')
-      .eq('status', 'completed'); // Considerar apenas agendamentos confirmados
+      .eq('status', 'completed')
+      .eq('organization_id', req.organizationId);; // Considerar apenas agendamentos confirmados
     
     // Aplicar filtro de datas se existir (corrigido para usar appointment_date)
     if (start_date && end_date) {
@@ -5205,7 +5274,8 @@ app.get('/api/admin/revenue', async (req, res) => {
     // 2. Buscar todos os funcionários para garantir que apareçam mesmo sem agendamentos
     const { data: employees, error: employeesError } = await supabase
       .from('employees')
-      .select('id, name, comissao');
+      .select('id, name, comissao')
+      .eq('organization_id', req.organizationId);
     
     if (employeesError) throw employeesError;
     
@@ -5318,7 +5388,8 @@ app.get('/api/admin/revenue/export', async (req, res) => {
     let appointmentsQuery = supabase
       .from('appointments')
       .select('id, final_price, appointment_date, employees(id, name, comissao)')
-      .eq('status', 'completed');
+      .eq('status', 'completed')
+      .eq('organization_id', req.organizationId);
     
     if (start_date && end_date) {
       appointmentsQuery = appointmentsQuery
