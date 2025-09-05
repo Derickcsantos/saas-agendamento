@@ -1343,6 +1343,7 @@ app.post('/api/verifica-usuario', extractOrganizationId, async (req, res) => {
       .from('users')
       .select('id')
       .eq('username', username)
+      .eq('organization_id', req.organizationId)
       .single();
 
     if (error || !user) {
@@ -1516,6 +1517,7 @@ app.get('/api/services/:categoryId', extractOrganizationId, async (req, res) => 
       .from('services')
       .select('id, name, price, duration, imagem_service')
       .eq('category_id', categoryId)
+      .eq('organization_id', req.organizationId)
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -1593,7 +1595,8 @@ app.get('/api/employees/:serviceId', extractOrganizationId, async (req, res) => 
           is_active
         )
       `)
-      .eq('service_id', serviceId);
+      .eq('service_id', serviceId)
+      .eq('organization_id', req.organizationId);
 
     if (error) throw error;
     
@@ -1673,10 +1676,11 @@ app.get('/api/employees/:serviceId', extractOrganizationId, async (req, res) => 
  *         description: Erro interno do servidor
  */
 
-app.get('/api/available-times', async (req, res) => {
+app.get('/api/available-times', extractOrganizationId, async (req, res) => {
   try {
     const { employeeId, date, duration } = req.query;
-    console.log('Parâmetros recebidos:', { employeeId, date, duration });
+    const organizationId = req.organizationId;
+    console.log('Parâmetros recebidos:', { employeeId, date, duration, organizationId });
     
     const dateObj = new Date(date);
     const dayOfWeek = dateObj.getDay(); // 0=Domingo, 1=Segunda, 2=Terça, ..., 6=Sábado
@@ -1687,6 +1691,7 @@ app.get('/api/available-times', async (req, res) => {
       .select('*')
       .eq('employee_id', employeeId)
       .eq('day_of_week', dayOfWeek)
+      .eq('organization_id', req.organizationId)
       .single();
 
     if (scheduleError || !schedule || !schedule.is_available) {
@@ -1698,6 +1703,7 @@ app.get('/api/available-times', async (req, res) => {
       .select('*')
       .eq('employee_id', employeeId)
       .eq('appointment_date', date)
+      .eq('organization_id', req.organizationId)
       .order('start_time', { ascending: true });
 
     if (appointmentsError) throw appointmentsError;
@@ -1764,6 +1770,7 @@ app.get('/api/available-times', async (req, res) => {
  *           schema:
  *             type: object
  *             required:
+ *               - organization_id
  *               - client_name
  *               - client_email
  *               - client_phone
@@ -1775,40 +1782,53 @@ app.get('/api/available-times', async (req, res) => {
  *             properties:
  *               client_name:
  *                 type: string
- *                 example: "João Silva"
+ *                 description: Nome do cliente
+ *                 example: João Silva
  *               client_email:
  *                 type: string
  *                 format: email
- *                 example: "joao@exemplo.com"
+ *                 description: Email do cliente
+ *                 example: joao@exemplo.com
  *               client_phone:
  *                 type: string
+ *                 description: Telefone do cliente
  *                 example: "11999998888"
  *               service_id:
  *                 type: integer
+ *                 description: ID do serviço
  *                 example: 1
  *               employee_id:
  *                 type: integer
+ *                 description: ID do funcionário
  *                 example: 2
  *               date:
  *                 type: string
  *                 format: date
+ *                 description: Data do agendamento (YYYY-MM-DD)
  *                 example: "2023-12-25"
  *               start_time:
  *                 type: string
  *                 format: time
+ *                 description: Hora de início (HH:mm)
  *                 example: "14:30"
  *               end_time:
  *                 type: string
  *                 format: time
+ *                 description: Hora de término (HH:mm)
  *                 example: "15:00"
  *               final_price:
  *                 type: number
+ *                 format: float
+ *                 description: Preço final com desconto (se aplicável)
  *                 example: 80.50
  *               coupon_code:
  *                 type: string
- *                 example: "DESCONTO10"
+ *                 description: Código do cupom de desconto
+ *                 example: DESCONTO10
  *               original_price:
  *                 type: number
+ *                 format: float
+ *                 description: Preço original antes do desconto
  *                 example: 90.00
  *     responses:
  *       201:
@@ -1821,14 +1841,14 @@ app.get('/api/available-times', async (req, res) => {
  *         description: Erro interno do servidor
  */
 
-
-app.post('/api/appointments', async (req, res) => {
+app.post('/api/appointments', extractOrganizationId, async (req, res) => {
   try {
     const { client_name, client_email, client_phone, service_id, employee_id, date, start_time, end_time , final_price , coupon_code , original_price } = req.body;
     
     const { data, error } = await supabase
       .from('appointments')
       .insert([{
+        organization_id: req.organizationId,
         client_name,
         client_email,
         client_phone,

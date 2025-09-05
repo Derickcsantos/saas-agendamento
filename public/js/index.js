@@ -43,6 +43,15 @@ document.addEventListener('DOMContentLoaded', function() {
       ]
     });
   }
+
+  function getOrganizationIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("organization_id");
+}
+
+const organizationId = getOrganizationIdFromUrl();
+console.log(organizationId);
+
   
   // Navegação entre passos
   function navigateToStep(stepNumber) {
@@ -201,7 +210,7 @@ async function loadCategories() {
     
     container.innerHTML = '<div class="loading">Carregando categorias...</div>';
     
-    const response = await fetch('/api/categories');
+    const response = await fetch(`/api/categories?organization_id=${organizationId}`);
     if (!response.ok) throw new Error('Erro ao carregar categorias');
     
     let categories = await response.json();
@@ -269,7 +278,7 @@ async function loadCategories() {
       
       container.innerHTML = '<div class="loading">Carregando serviços...</div>';
       
-      const response = await fetch(`/api/services/${categoryId}`);
+      const response = await fetch(`/api/services/${categoryId}?organization_id=${organizationId}`);
       if (!response.ok) throw new Error('Erro ao carregar serviços');
       
       const services = await response.json();
@@ -334,7 +343,7 @@ async function loadEmployees(serviceId) {
     
     container.innerHTML = '<div class="loading">Carregando profissionais...</div>';
     
-    const response = await fetch(`/api/employees/${serviceId}`);
+    const response = await fetch(`/api/employees/${serviceId}?organization_id=${organizationId}`);
     if (!response.ok) throw new Error('Erro ao carregar profissionais');
     
     const allEmployees = await response.json();
@@ -390,11 +399,24 @@ async function loadEmployees(serviceId) {
 }
   
   // Carregar horários disponíveis
-  async function loadAvailableTimes(employeeId, date, duration) {
+  async function loadAvailableTimes(employeeId, date, duration, organizationId) {
     try {
       if (!timeSlotsContainer) return;
+
+      if (!organizationId) {
+      organizationId = getOrganizationIdFromUrl();
+      console.log('Organization ID obtido da URL:', organizationId);
+    }
+    
+    // Verificar se temos um organization_id válido
+    if (!organizationId) {
+      console.error('Erro: organization_id não disponível');
+      timeSlotsContainer.innerHTML = '<p>Erro ao carregar horários disponíveis: ID da organização não disponível</p>';
+      return;
+    }
+    
       
-      const response = await fetch(`/api/available-times?employeeId=${employeeId}&date=${date}&duration=${duration}`);
+      const response = await fetch(`/api/available-times?employeeId=${employeeId}&date=${date}&duration=${duration}&organization_id=${organizationId}`);
       if (!response.ok) throw new Error('Erro ao carregar horários disponíveis');
       
       const timeSlots = await response.json();
@@ -498,9 +520,10 @@ async function loadEmployees(serviceId) {
       if (this.value && selectedService && selectedEmployee) {
         const [day, month, year] = this.value.split('/');
         const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        const organizationId = getOrganizationIdFromUrl();
         
         selectedDate = formattedDate;
-        loadAvailableTimes(selectedEmployee.id, formattedDate, selectedService.duration);
+        loadAvailableTimes(selectedEmployee.id, formattedDate, selectedService.duration, organizationId);
       }
     });
   }
@@ -525,7 +548,7 @@ async function loadEmployees(serviceId) {
         finalPrice = Math.max(0, finalPrice); // Garante que não fique negativo
       }
 
-      const response = await fetch('/api/appointments', {
+    const response = await fetch(`/api/appointments?organization_id=${organizationId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
