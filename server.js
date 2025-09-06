@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require('@supabase/supabase-js');  // Cliente para interagir com o Banco de Dados
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 const bodyParser = require('body-parser');
@@ -11,13 +11,13 @@ const ExcelJS = require('exceljs');
 const multer = require('multer');
 const fs = require('fs');
 const mongoose = require('mongoose');
-const swaggerJsdoc = require('swagger-jsdoc');
-const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');  
+const swaggerUi = require('swagger-ui-express');  // Cria um ainterface para testarmos a API
 const upload = multer();
 const schedule = require('node-schedule');
 const cron = require('node-cron');
 const sharp = require('sharp');
-const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require('uuid'); // Gera ids unicos
 
 
 // Configuração do Swagger personalizada
@@ -62,6 +62,8 @@ const swaggerUiOptions = {
 let whatsappClient = null;
 const SESSION_DIR = path.join(__dirname, 'tokens');
 const SESSION_FILE = path.join(SESSION_DIR, 'salon-bot.json');
+
+// A pasta TOKEN serve para guardar onde os arquivos serão guardados
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -108,7 +110,7 @@ const ImagemSchema = new mongoose.Schema({
     type: String,
     required: true
   }
-}, { _id: false });
+}, { _id: false });;
 
 const GaleriaSchema = new mongoose.Schema({
   titulo: {
@@ -135,6 +137,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 
+// TODAS AS ROTAS QUE PRECISAM DO ID DA ORGANIZAÇÃO
 const extractOrganizationId = (req, res, next) => {
   const organizationId = req.headers['organization-id'] || req.query.organization_id || (req.body && req.body.organization_id);
   
@@ -692,8 +695,16 @@ async function startWhatsappBot() {
  * @swagger
  * /api/users:
  *   get:
- *     summary: Retorna todos os usuários
+ *     summary: Retorna todos os usuários em uma organização
  *     tags: [Users]
+ *     parameters:
+ *       - in: query
+ *         name: organization_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: ID da organização
  *     responses:
  *       200:
  *         description: Lista de todos os usuários
@@ -726,7 +737,7 @@ app.get('/api/users', extractOrganizationId, async (req, res) => {
  * @swagger
  * /api/users/{id}:
  *   get:
- *     summary: Retorna um usuário específico
+ *     summary: Retorna um usuário específico em uma organização
  *     tags: [Users]
  *     parameters:
  *       - in: path
@@ -735,6 +746,13 @@ app.get('/api/users', extractOrganizationId, async (req, res) => {
  *           type: string
  *         required: true
  *         description: ID do usuário
+ *       - in: query
+ *         name: organization_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: ID da organização
  *     responses:
  *       200:
  *         description: Dados do usuário
@@ -754,12 +772,13 @@ app.get('/api/users/:id', extractOrganizationId, async (req, res) => {
       .from('users')
       .select('*')
       .eq('id', id)
-      .single();
+      .eq('organization_id', req.organizationId)  // ALTERADO
+      // .single();
 
     if (error) throw error;
-    if (!data) return res.status(404).json({ error: 'Usuário não encontrado' });
+    if (data.length === 0) return res.status(404).json({ error: 'Usuário não encontrado nessa organização' });
     
-    res.json(data);
+    res.json(data[0]);
   } catch (error) {
     console.error('Error fetching user:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -770,7 +789,7 @@ app.get('/api/users/:id', extractOrganizationId, async (req, res) => {
  * @swagger
  * /api/users:
  *   post:
- *     summary: Cria um novo usuário
+ *     summary: Cria um novo usuário em uma organização
  *     tags: [Users]
  *     requestBody:
  *       required: true
@@ -793,10 +812,14 @@ app.get('/api/users/:id', extractOrganizationId, async (req, res) => {
 app.post('/api/users', extractOrganizationId, async (req, res) => {
   const { username, email, password_plaintext, tipo = 'comum', id_employee } = req.body;
 
+  // console.log("EU SOU O REQ ORGANIZATIONID: ",req.organizationId)
+  // console.log("EU SOU O REQ BODY ORGANIZATIONID: ",req.body.organizationId)
+
   try {
     const { data: existingUsers, error: userError } = await supabase
       .from('users')
       .select('id')
+      .eq('organization_id', req.organizationId)    // ALTERADO
       .or(`username.eq.${username},email.eq.${email}`);
 
     if (userError) throw userError;
@@ -810,6 +833,7 @@ app.post('/api/users', extractOrganizationId, async (req, res) => {
     const { data: newUser, error: insertError } = await supabase
       .from('users')
       .insert([{
+        organization_id: req.organizationId,  // ALTERADO
         username,
         email,
         password_plaintext,
@@ -833,7 +857,7 @@ app.post('/api/users', extractOrganizationId, async (req, res) => {
  * @swagger
  * /api/users/{id}:
  *   put:
- *     summary: Atualiza um usuário existente
+ *     summary: Atualiza um usuário existente em uma organização
  *     tags: [Users]
  *     parameters:
  *       - in: path
@@ -866,6 +890,7 @@ app.put('/api/users/:id', extractOrganizationId, async (req, res) => {
   try {
     const { id } = req.params;
     const { username, email, password_plaintext, phone, aniversario, tipo, id_employee } = req.body;
+    const organization_id = req.organizationId
 
     if (!username || !email) {
       return res.status(400).json({ error: 'Nome de usuário e e-mail são obrigatórios' });
@@ -886,6 +911,7 @@ app.put('/api/users/:id', extractOrganizationId, async (req, res) => {
       .from('users')
       .update(updateData)
       .eq('id', id)
+      .eq('organization_id', organization_id)
       .select('*')
       .single();
 
@@ -901,7 +927,7 @@ app.put('/api/users/:id', extractOrganizationId, async (req, res) => {
  * @swagger
  * /api/users/{id}:
  *   delete:
- *     summary: Remove um usuário
+ *     summary: Remove um usuário em uma organização
  *     tags: [Users]
  *     parameters:
  *       - in: path
@@ -910,6 +936,13 @@ app.put('/api/users/:id', extractOrganizationId, async (req, res) => {
  *           type: string
  *         required: true
  *         description: ID do usuário
+ *       - in: query
+ *         name: organization_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: false
+ *         description: Organização do usuário
  *     responses:
  *       200:
  *         description: Usuário removido com sucesso
@@ -929,21 +962,24 @@ app.put('/api/users/:id', extractOrganizationId, async (req, res) => {
 app.delete('/api/users/:id', extractOrganizationId, async (req, res) => {
   try {
     const { id } = req.params;
+    const organization_id = req.organizationId
 
     const { data: existingUser, error: userError } = await supabase
       .from('users')
       .select('id')
       .eq('id', id)
+      .eq('organization_id', organization_id)
       .single();
 
     if (userError || !existingUser) {
-      return res.status(404).json({ error: 'Usuário não encontrado' });
+      return res.status(404).json({ error: 'Usuário não encontrado nessa organização' });
     }
 
     const { error: deleteError } = await supabase
       .from('users')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('organization_id', organization_id);
 
     if (deleteError) throw deleteError;
 
@@ -1015,6 +1051,7 @@ app.delete('/api/users/:id', extractOrganizationId, async (req, res) => {
  *         email: "john@example.com"
  *         password_plaintext: "senha123"
  *         tipo: "comum"
+ *         organization_id: "11111111-1111-1111-1111-111111111111"
  * 
  *     UserUpdate:
  *       type: object
@@ -1034,6 +1071,7 @@ app.delete('/api/users/:id', extractOrganizationId, async (req, res) => {
  *         email: "john.updated@example.com"
  *         password_plaintext: "nova_senha123"
  *         tipo: "admin"
+ *         organization_id: "11111111-1111-1111-1111-111111111111"
  */
 
 //-------------------------------------------------------------------------------------------
@@ -1343,7 +1381,6 @@ app.post('/api/verifica-usuario', extractOrganizationId, async (req, res) => {
       .from('users')
       .select('id')
       .eq('username', username)
-      .eq('organization_id', req.organizationId)
       .single();
 
     if (error || !user) {
@@ -1517,7 +1554,6 @@ app.get('/api/services/:categoryId', extractOrganizationId, async (req, res) => 
       .from('services')
       .select('id, name, price, duration, imagem_service')
       .eq('category_id', categoryId)
-      .eq('organization_id', req.organizationId)
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -1595,8 +1631,7 @@ app.get('/api/employees/:serviceId', extractOrganizationId, async (req, res) => 
           is_active
         )
       `)
-      .eq('service_id', serviceId)
-      .eq('organization_id', req.organizationId);
+      .eq('service_id', serviceId);
 
     if (error) throw error;
     
@@ -1676,11 +1711,10 @@ app.get('/api/employees/:serviceId', extractOrganizationId, async (req, res) => 
  *         description: Erro interno do servidor
  */
 
-app.get('/api/available-times', extractOrganizationId, async (req, res) => {
+app.get('/api/available-times', async (req, res) => {
   try {
     const { employeeId, date, duration } = req.query;
-    const organizationId = req.organizationId;
-    console.log('Parâmetros recebidos:', { employeeId, date, duration, organizationId });
+    console.log('Parâmetros recebidos:', { employeeId, date, duration });
     
     const dateObj = new Date(date);
     const dayOfWeek = dateObj.getDay(); // 0=Domingo, 1=Segunda, 2=Terça, ..., 6=Sábado
@@ -1691,7 +1725,6 @@ app.get('/api/available-times', extractOrganizationId, async (req, res) => {
       .select('*')
       .eq('employee_id', employeeId)
       .eq('day_of_week', dayOfWeek)
-      .eq('organization_id', req.organizationId)
       .single();
 
     if (scheduleError || !schedule || !schedule.is_available) {
@@ -1703,7 +1736,6 @@ app.get('/api/available-times', extractOrganizationId, async (req, res) => {
       .select('*')
       .eq('employee_id', employeeId)
       .eq('appointment_date', date)
-      .eq('organization_id', req.organizationId)
       .order('start_time', { ascending: true });
 
     if (appointmentsError) throw appointmentsError;
@@ -1770,7 +1802,6 @@ app.get('/api/available-times', extractOrganizationId, async (req, res) => {
  *           schema:
  *             type: object
  *             required:
- *               - organization_id
  *               - client_name
  *               - client_email
  *               - client_phone
@@ -1782,53 +1813,40 @@ app.get('/api/available-times', extractOrganizationId, async (req, res) => {
  *             properties:
  *               client_name:
  *                 type: string
- *                 description: Nome do cliente
- *                 example: João Silva
+ *                 example: "João Silva"
  *               client_email:
  *                 type: string
  *                 format: email
- *                 description: Email do cliente
- *                 example: joao@exemplo.com
+ *                 example: "joao@exemplo.com"
  *               client_phone:
  *                 type: string
- *                 description: Telefone do cliente
  *                 example: "11999998888"
  *               service_id:
  *                 type: integer
- *                 description: ID do serviço
  *                 example: 1
  *               employee_id:
  *                 type: integer
- *                 description: ID do funcionário
  *                 example: 2
  *               date:
  *                 type: string
  *                 format: date
- *                 description: Data do agendamento (YYYY-MM-DD)
  *                 example: "2023-12-25"
  *               start_time:
  *                 type: string
  *                 format: time
- *                 description: Hora de início (HH:mm)
  *                 example: "14:30"
  *               end_time:
  *                 type: string
  *                 format: time
- *                 description: Hora de término (HH:mm)
  *                 example: "15:00"
  *               final_price:
  *                 type: number
- *                 format: float
- *                 description: Preço final com desconto (se aplicável)
  *                 example: 80.50
  *               coupon_code:
  *                 type: string
- *                 description: Código do cupom de desconto
- *                 example: DESCONTO10
+ *                 example: "DESCONTO10"
  *               original_price:
  *                 type: number
- *                 format: float
- *                 description: Preço original antes do desconto
  *                 example: 90.00
  *     responses:
  *       201:
@@ -1841,14 +1859,14 @@ app.get('/api/available-times', extractOrganizationId, async (req, res) => {
  *         description: Erro interno do servidor
  */
 
-app.post('/api/appointments', extractOrganizationId, async (req, res) => {
+
+app.post('/api/appointments', async (req, res) => {
   try {
     const { client_name, client_email, client_phone, service_id, employee_id, date, start_time, end_time , final_price , coupon_code , original_price } = req.body;
     
     const { data, error } = await supabase
       .from('appointments')
       .insert([{
-        organization_id: req.organizationId,
         client_name,
         client_email,
         client_phone,
