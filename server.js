@@ -1381,6 +1381,7 @@ app.post('/api/verifica-usuario', extractOrganizationId, async (req, res) => {
       .from('users')
       .select('id')
       .eq('username', username)
+      .eq('organization_id', req.organizationId)
       .single();
 
     if (error || !user) {
@@ -1554,6 +1555,7 @@ app.get('/api/services/:categoryId', extractOrganizationId, async (req, res) => 
       .from('services')
       .select('id, name, price, duration, imagem_service')
       .eq('category_id', categoryId)
+      .eq('organization_id', req.organizationId)
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -1631,7 +1633,8 @@ app.get('/api/employees/:serviceId', extractOrganizationId, async (req, res) => 
           is_active
         )
       `)
-      .eq('service_id', serviceId);
+      .eq('service_id', serviceId)
+      .eq('organization_id', req.organizationId);
 
     if (error) throw error;
     
@@ -1711,10 +1714,11 @@ app.get('/api/employees/:serviceId', extractOrganizationId, async (req, res) => 
  *         description: Erro interno do servidor
  */
 
-app.get('/api/available-times', async (req, res) => {
+app.get('/api/available-times', extractOrganizationId, async (req, res) => {
   try {
     const { employeeId, date, duration } = req.query;
-    console.log('Parâmetros recebidos:', { employeeId, date, duration });
+    const organizationId = req.organizationId;
+    console.log('Parâmetros recebidos:', { employeeId, date, duration, organizationId });
     
     const dateObj = new Date(date);
     const dayOfWeek = dateObj.getDay(); // 0=Domingo, 1=Segunda, 2=Terça, ..., 6=Sábado
@@ -1725,6 +1729,7 @@ app.get('/api/available-times', async (req, res) => {
       .select('*')
       .eq('employee_id', employeeId)
       .eq('day_of_week', dayOfWeek)
+      .eq('organization_id', req.organizationId)
       .single();
 
     if (scheduleError || !schedule || !schedule.is_available) {
@@ -1736,6 +1741,7 @@ app.get('/api/available-times', async (req, res) => {
       .select('*')
       .eq('employee_id', employeeId)
       .eq('appointment_date', date)
+      .eq('organization_id', req.organizationId)
       .order('start_time', { ascending: true });
 
     if (appointmentsError) throw appointmentsError;
@@ -1860,13 +1866,14 @@ app.get('/api/available-times', async (req, res) => {
  */
 
 
-app.post('/api/appointments', async (req, res) => {
+app.post('/api/appointments', extractOrganizationId, async (req, res) => {
   try {
     const { client_name, client_email, client_phone, service_id, employee_id, date, start_time, end_time , final_price , coupon_code , original_price } = req.body;
     
     const { data, error } = await supabase
       .from('appointments')
       .insert([{
+        organization_id: req.organizationId,
         client_name,
         client_email,
         client_phone,
@@ -5873,3 +5880,4 @@ app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
   //startWhatsappBot();
 });
+
