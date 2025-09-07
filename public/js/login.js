@@ -14,6 +14,14 @@ document.addEventListener('DOMContentLoaded', function() {
   // Instancia o modal de recuperação de senha do Bootstrap
   const forgotPasswordModal = new bootstrap.Modal(document.getElementById('forgotPasswordModal'));
 
+  function getOrganizationIdFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("organization_id");
+  }
+
+  const organizationId = getOrganizationIdFromUrl();
+  console.log(organizationId);
+
   // Alterna entre as telas de login e cadastro
   switchToCadastro.addEventListener('click', function(e) {
     e.preventDefault();
@@ -37,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     try {
       // Faz requisição para a rota de login
-      const response = await fetch('/api/login', {
+      const response = await fetch(`/api/login?organization_id=${organizationId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ login, password }),
@@ -72,11 +80,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // Redireciona conforme o tipo de usuário
       if (result.user.tipo === 'admin') {
-        window.location.href = '/admin';
+        window.location.href = `/admin?organization_id=${organizationId}`;
       } else if (result.user.tipo === 'funcionario') {
-        window.location.href = '/funcionario';
+        window.location.href = `/funcionario?organization_id=${organizationId}`;
       } else {
-        window.location.href = '/logado';
+        window.location.href = `/logado?organization_id=${organizationId}`;
       }
 
     } catch (error) {
@@ -109,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     try {
       // Faz requisição para a rota de cadastro
-      const response = await fetch('/api/register', {
+      const response = await fetch(`/api/register?organization_id=${organizationId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -117,6 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
           email, 
           aniversario,
           phone,
+          organization_id: organizationId,
           password_plaintext: password
         })
       });
