@@ -17,6 +17,9 @@ const upload = multer();
 const schedule = require('node-schedule');
 const cron = require('node-cron');
 const sharp = require('sharp');
+const session = require('express-session');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { v4: uuidv4 } = require('uuid'); // Gera ids unicos
 
 
@@ -135,6 +138,14 @@ app.use(cors(corsOptions));
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'secretao',
+  resave: false,
+  saveUninitialized: true
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 
 // TODAS AS ROTAS QUE PRECISAM DO ID DA ORGANIZAÇÃO
@@ -1211,8 +1222,6 @@ app.post('/api/register', extractOrganizationId, async (req, res) => {
   }
 });
 
-
-
 /**
  * @swagger
  * /api/login:
@@ -1323,6 +1332,118 @@ app.post('/api/login', extractOrganizationId, async (req, res) => {
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
+
+
+// Login com o Google
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_SECRET_KEY,
+    callbackURL: "http://localhost:3000/auth/google/callback",
+    passReqToCallback: true
+  },
+  async (req, accessToken, refreshToken, profile, done) => {
+    try {
+      // o Passport coloca o state em req.query.state
+      const organizationId = req.query.state;
+      console.log('State recebido:', req.query.state);
+
+
+      const email = profile.emails[0].value;
+      const username = profile.displayName;
+
+      // Verifica se usuário já existe
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id, username, email, aniversario, phone, tipo, organization_id')
+        .eq('organization_id', organizationId)
+        .eq('email', email)
+        .single();
+
+      if (existingUser) {
+        return done(null, existingUser);
+      }
+
+      // Cria novo usuário
+      const { data: newUser, error: insertError } = await supabase
+        .from('users')
+        .insert([{
+          username,
+          email,
+          password_plaintext: null,
+          tipo: 'comum',
+          organization_id: organizationId,
+          created_at: new Date().toISOString()
+        }])
+        .select('id, username, email, aniversario, phone, tipo, organization_id')
+        .single();
+
+      if (insertError) throw insertError;
+
+      return done(null, newUser);
+    } catch (err) {
+      return done(err, null);
+    }
+  }
+));
+
+passport.serializeUser((user, done) => {
+  done(null, user); // salva o objeto todo
+});
+
+passport.deserializeUser((obj, done) => {
+  done(null, obj); // devolve o objeto direto
+});
+
+
+// Inicia o login com Google
+app.get('/auth/google', (req, res, next) => {
+  const organizationId = req.query.organization_id;
+
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    state: organizationId // aqui vai junto no fluxo
+  })(req, res, next);
+});
+
+// Callback do Google
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  (req, res) => {
+    const userData = {
+      id: req.user.id,
+      username: req.user.username,
+      email: req.user.email,
+      aniversario: req.user.aniversario,
+      phone: req.user.phone,
+      organization_id: req.user.organization_id,
+      tipo: req.user.tipo
+    };
+
+    res.cookie('userData', JSON.stringify(userData), {
+      httpOnly: false,
+      secure: false,
+      maxAge: 60 * 60 * 1000,
+    });
+
+    // redireciona de acordo com o tipo do usuário
+    let redirectUrl = `/logado?organization_id=${userData.organization_id}`;
+    if (userData.tipo === 'admin') {
+      redirectUrl = `/admin?organization_id=${userData.organization_id}`;
+    } else if (userData.tipo === 'funcionario') {
+      redirectUrl = `/funcionario?organization_id=${userData.organization_id}`;
+    } else {
+      redirectUrl = `/logado?organization_id=${userData.organization_id}`;
+    }
+
+    res.send(`
+      <script>
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('currentUser', '${JSON.stringify(userData)}');
+        window.location.href = '${redirectUrl}';
+      </script>
+    `);
+  }
+);
 
 /**
  * @swagger
