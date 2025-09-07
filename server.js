@@ -1303,6 +1303,7 @@ app.post('/api/login', extractOrganizationId, async (req, res) => {
       aniversario: user.aniversario,
       email: user.email,
       phone: user.phone,
+      organization_id: req.organizationId,
       tipo: user.tipo
     };
 
