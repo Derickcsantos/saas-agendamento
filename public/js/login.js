@@ -92,6 +92,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  // Login com o GOOGLE: 
+  document.getElementById('googleLoginBtn').addEventListener('click', () => {
+    window.location.href = `/auth/google?organization_id=${organizationId}`;
+  });
+
+
   // --- CADASTRO ---
   // Envia o formulário de cadastro para a API
   cadastroForm.addEventListener('submit', async function(e) {
