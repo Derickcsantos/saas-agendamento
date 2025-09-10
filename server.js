@@ -1338,7 +1338,7 @@ app.post('/api/login', extractOrganizationId, async (req, res) => {
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_SECRET_KEY,
-    callbackURL: "http://localhost:3000/auth/google/callback",
+    callbackURL: process.env.CALLBACK_URL,
     passReqToCallback: true
   },
   async (req, accessToken, refreshToken, profile, done) => {
@@ -6002,4 +6002,5 @@ app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
   //startWhatsappBot();
 });
+
 
