@@ -34,7 +34,13 @@ let allServices = [];
 let employeeServices = [];
 let workSchedules = [];
 
+function getOrganizationIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("organization_id");
+}
 
+const organizationId = getOrganizationIdFromUrl();
+console.log(organizationId);
 
 
 function logout() {
@@ -68,7 +74,7 @@ async function loadCategories() {
   if (!await checkAuth()) return;
   
   try {
-    const response = await fetch('/api/admin/categories', {
+    const response = await fetch(`/api/admin/categories?organization_id${organizationId}`, {
       credentials: 'include'
     });
     // ... resto do código

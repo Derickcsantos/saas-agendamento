@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minha Página EJS</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+    <link rel="stylesheet" href="style.css"> 
+    <link rel="stylesheet" href="agenda.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    
+    <div class="step active" id="step1">
+        <h3>Selecione a Categoria</h3>
+        <div class="mb-3">
+            <label class="form-label">Categoria</label>
+            <div id="categories-container" class="items-container">
+                <% if (categories && categories.length > 0) { %>
+                    <% categories.forEach(category=> { %>
+                        <div class="item-card" data-id="<%= category.id %>">
+                            
+                            <% if (category.imagem_category) { %>
+                                <img src="/img/<%= category.imagem_category.startsWith('/') ? category.imagem_category : '/' + category.imagem_category %>" alt="<%= category.name %>">
+                            <% } else { %>
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: #eee;"></div>
+                            <% } %>
+                            
+                            <div class="item-info">
+                                <h5><%= category.name %></h5>
+                            </div>
+                        </div>
+                    <% }); %>
+                <% } else { %>
+                    <div class="empty-message">Nenhuma categoria disponível</div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+    <div class="step" id="step2">
+        <h3>Selecione o Serviço</h3>
+        <div class="mb-3">
+            <label class="form-label">Serviços disponiveis</label>
+            <div id="services-container" class="items-container"></div>
+        </div>
+        <div class="d-flex justify-content-between">
+            <button type="button" class="btn btn-secondary prev-step" data-prev="1">Voltar</button>
+        </div>
+    </div>
+    <div class="step" id="step3">
+        <h3>Escolha o Profissional</h3>
+        <div class="mb-3">
+            <label class="form-label">Profissionais disponíveis</label>
+            <div id="employees-container" class="items-container"></div>
+        </div>
+        <div class="d-flex justify-content-between">
+            <button type="button" class="btn btn-secondary prev-step" data-prev="2">Voltar</button>
+        </div>
+    </div>
+    <div class="step" id="step4">
+        <h3>Selecione a Data</h3>
+        <div class="mb-3">
+            <label for="appointmentDate" class="form-label">Data</label>
+            <input type="text" class="form-control" id="appointmentDate" required>
+        </div>
+        <div class="d-flex justify-content-between">
+            <button type="button" class="btn btn-secondary prev-step" data-prev="3">Voltar</button>
+            <button type="button" class="btn btn-light next-step" data-next="5" style="background-color: #7c3aed; color: white;">Próximo</button>
+        </div>
+    </div>
+    <div class="step" id="step5">
+        <h3>Escolha o Horário</h3>
+        <div class="mb-3">
+            <label class="form-label">Horários Disponíveis</label>
+            
+            <div id="time-slots-container" class="items-container d-flex flex-wrap gap-2"></div>
+        </div>
+
+        <input type="hidden" id="selectedTimeInput" required>
+        
+        <div class="d-flex justify-content-between">
+            <button type="button" class="btn btn-secondary prev-step" data-prev="4">Voltar</button>
+            <button type="button" class="btn btn-light next-step" data-next="6" style="background-color: #7c3aed; color: white;" disabled id="confirmTimeBtn">Próximo</button>
+        </div>
+    </div>
+    <div class="step" id="step6">
+        <h3>Confirme seus Dados e Agendamento</h3>
+
+        <div class="card p-3 mb-4" style="border-left: 5px solid #7c3aed;">
+            <h5>Resumo do Agendamento</h5>
+            <p><strong>Serviço:</strong><span id="summaryService"></span></p>
+            <p><strong>Profissional:</strong><span id="summaryEmployee"></span></p>
+            <p><strong>Data:</strong><span id="summaryDate"></span></p>
+            <p><strong>Horário:</strong><span id="summaryTime"></span></p>
+        </div>
+
+        <div class="mb-3">
+            <label for="clientName" class="form-label">Nome Completo</label>
+            <input type="text" class="form-control" id="clientName" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="clientEmail" class="form-label">E-mail</label>
+            <input type="email" class="form-control" id="clientEmail" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="clientPhone" class="form-label">Telefone (WhatsApp)</label>
+            <input type="tel" class="form-control" id="clientPhone" required>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <button type="button" class="btn btn-secondary prev-step" data-prev="5">Voltar</button>
+
+            <button
+                type="button"
+                class="btn btn-success"
+                id="finishBookingBtn"
+                style="background-color: #10b981; border-color: #10b981;">
+                Finalizar Agendamento
+            </button>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="index.js"></script>
+</body>
+</html>
