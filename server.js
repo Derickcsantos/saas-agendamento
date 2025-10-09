@@ -11,7 +11,7 @@ const ExcelJS = require('exceljs');
 const multer = require('multer');
 const fs = require('fs');
 const mongoose = require('mongoose');
-const swaggerJsdoc = require('swagger-jsdoc');  
+const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');  // Cria um ainterface para testarmos a API
 const upload = multer();
 const schedule = require('node-schedule');
@@ -19,7 +19,12 @@ const cron = require('node-cron');
 const sharp = require('sharp');
 const { v4: uuidv4 } = require('uuid'); // Gera ids unicos
 
+const app = express();
 
+
+
+// Adicione isto imediatamente após app.set('views', path.join(__dirname, 'views'));
+console.log('Express está procurando views em:', path.join(__dirname, 'views'));
 // Configuração do Swagger personalizada
 const swaggerOptions = {
   definition: {
@@ -63,9 +68,7 @@ let whatsappClient = null;
 const SESSION_DIR = path.join(__dirname, 'tokens');
 const SESSION_FILE = path.join(SESSION_DIR, 'salon-bot.json');
 
-// A pasta TOKEN serve para guardar onde os arquivos serão guardados
 
-const app = express();
 const port = process.env.PORT || 3000;
 
 // Configuração do Supabase
@@ -134,17 +137,25 @@ const Galeria = mongoose.model('Galeria', GaleriaSchema);
 app.use(cors(corsOptions));
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.urlencoded({ extended: true }));
+
+// Configuração do EJS
+app.use(express.static(path.resolve(__dirname, 'views')));
+app.set('views', path.resolve(__dirname, 'views'));
+console.log('O Express está a usar o seguinte caminho para views:', app.get('views'));
+app.set('view engine', 'ejs');
+
+
 
 
 // TODAS AS ROTAS QUE PRECISAM DO ID DA ORGANIZAÇÃO
 const extractOrganizationId = (req, res, next) => {
   const organizationId = req.headers['organization-id'] || req.query.organization_id || (req.body && req.body.organization_id);
-  
+
   if (!organizationId) {
     return res.status(400).json({ error: 'Organization ID é obrigatório' });
   }
-  
+
   req.organizationId = organizationId;
   next();
 };
@@ -231,7 +242,44 @@ app.use(
   swaggerUi.setup(swaggerSpec, swaggerUiOptions)
 );
 // Rotas para servir os arquivos HTML
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+// app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/', async (req, res) => {
+  try {
+    // 1. Pega o ID da organização da URL. No EJS, o ID deve vir da URL ou de outro lugar.
+    const organizationId = req.query.organization_id;
+
+    if (!organizationId) {
+      // Se não houver ID da organização, renderiza uma página de erro ou a página principal.
+      // Neste caso, vamos apenas retornar uma mensagem de erro.
+      return res.status(400).send('ID da organização é obrigatório.');
+    }
+
+    // 2. Busca as categorias no banco de dados.
+    const { data: categories, error } = await supabase
+      .from('categories')
+      .select('id, name, imagem_category')
+      .eq('organization_id', organizationId)
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('Erro ao buscar categorias:', error);
+      return res.status(500).send('Erro interno do servidor.');
+    }
+
+    // 3. Renderiza o ficheiro EJS e passa os dados das categorias para ele.
+    console.log("tentanod renderizar EJS...");
+    res.render('index', {
+      categories: categories,
+      organizationId: organizationId
+    });
+    console.log("Renderização concluida")
+
+  } catch (err) {
+    console.error('Erro na rota principal:', err)
+    res.status(500).send('Erro interno do servidor')
+  }
+})
+
 app.get('/home', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/galeria', (req, res) => res.sendFile(path.join(__dirname, 'public', 'galeria.html')));
@@ -241,7 +289,7 @@ app.get('/admin', checkAuth, async (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 app.get('/funcionario', checkAuth, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'funcionario.html'));
+  res.sendFile(path.join(__dirname, 'public', 'funcionario.html'));
 });
 // Rota para a página inicial logada
 app.get('/logado', (req, res) => {
@@ -258,7 +306,7 @@ app.get('/logado/agendamentos', (req, res) => {
   if (!req.session.user) {
     return res.redirect('/login');
   }
-  
+
   // Envie o mesmo arquivo que a página principal, mas o JavaScript cuidará da exibição
   res.sendFile(path.join(__dirname, 'public', 'logado.html'), {
     headers: {
@@ -279,30 +327,30 @@ const transporter = nodemailer.createTransport({
 
 // Rota para enviar email de contato
 app.post('/api/contact', async (req, res) => {
-    const { name, email, phone, message } = req.body;
+  const { name, email, phone, message } = req.body;
 
-    // Validação básica
-    if (!name || !email || !message) {
-        return res.status(400).json({ error: 'Nome, email e mensagem são obrigatórios' });
+  // Validação básica
+  if (!name || !email || !message) {
+    return res.status(400).json({ error: 'Nome, email e mensagem são obrigatórios' });
+  }
+
+  // Configuração do transporter (substitua com suas credenciais SMTP)
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // true para 465, false para outras portas
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
     }
+  });
 
-    // Configuração do transporter (substitua com suas credenciais SMTP)
-    const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,
-        secure: false, // true para 465, false para outras portas
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        }
-    });
-
-    // Configuração do email
-    const mailOptions = {
-        from: `"Formulário de Contato" <${email}>`,
-        to: 'salaopaulatrancas@gmail.com',
-        subject: `Nova mensagem de ${name} - Site Paula Tranças`,
-        text: `
+  // Configuração do email
+  const mailOptions = {
+    from: `"Formulário de Contato" <${email}>`,
+    to: 'salaopaulatrancas@gmail.com',
+    subject: `Nova mensagem de ${name} - Site Paula Tranças`,
+    text: `
             Nome: ${name}
             Email: ${email}
             Telefone: ${phone || 'Não informado'}
@@ -310,7 +358,7 @@ app.post('/api/contact', async (req, res) => {
             Mensagem:
             ${message}
         `,
-        html: `
+    html: `
             <h2>Nova mensagem do site Paula Tranças</h2>
             <p><strong>Nome:</strong> ${name}</p>
             <p><strong>Email:</strong> ${email}</p>
@@ -318,15 +366,15 @@ app.post('/api/contact', async (req, res) => {
             <p><strong>Mensagem:</strong></p>
             <p>${message.replace(/\n/g, '<br>')}</p>
         `
-    };
+  };
 
-    try {
-        await transporter.sendMail(mailOptions);
-        res.status(200).json({ message: 'Mensagem enviada com sucesso!' });
-    } catch (error) {
-        console.error('Erro ao enviar email:', error);
-        res.status(500).json({ error: 'Ocorreu um erro ao enviar a mensagem. Por favor, tente novamente mais tarde.' });
-    }
+  try {
+    await transporter.sendMail(mailOptions);
+    res.status(200).json({ message: 'Mensagem enviada com sucesso!' });
+  } catch (error) {
+    console.error('Erro ao enviar email:', error);
+    res.status(500).json({ error: 'Ocorreu um erro ao enviar a mensagem. Por favor, tente novamente mais tarde.' });
+  }
 });
 
 // Função para gerar senha
@@ -414,21 +462,21 @@ async function updateUserPassword(userId, newPassword) {
 app.post('/api/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     // Aqui você deve verificar se o email existe no seu banco de dados
     // Esta é uma implementação simulada - substitua pela sua lógica real
     const user = await findUserByEmail(email); // Você precisa implementar esta função
-    
+
     if (!user) {
       return res.status(404).json({ success: false, error: 'Email não encontrado' });
     }
 
     // Gera nova senha
     const newPassword = gerarSenha();
-    
+
     // Atualiza a senha no banco de dados (implemente esta função)
     await updateUserPassword(user.id, newPassword);
-    
+
     // Envia email com a nova senha
     const mailOptions = {
       from: process.env.EMAIL_USER,
@@ -444,7 +492,7 @@ app.post('/api/forgot-password', async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('Erro na recuperação de senha:', error);
@@ -561,9 +609,9 @@ app.post('/api/send-whatsapp-confirmation', async (req, res) => {
     const { clientPhone, appointmentDetails } = req.body;
 
     if (!whatsappClient) {
-      return res.status(500).json({ 
-        success: false, 
-        error: "WhatsApp não conectado. Por favor, reinicie o servidor." 
+      return res.status(500).json({
+        success: false,
+        error: "WhatsApp não conectado. Por favor, reinicie o servidor."
       });
     }
 
@@ -585,14 +633,14 @@ app.post('/api/send-whatsapp-confirmation', async (req, res) => {
 
     // Envia a mensagem
     await whatsappClient.sendText(formattedPhone, message);
-    
+
     res.json({ success: true });
 
   } catch (error) {
     console.error("Erro ao enviar WhatsApp:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || "Falha no envio" 
+    res.status(500).json({
+      success: false,
+      error: error.message || "Falha no envio"
     });
   }
 });
@@ -633,7 +681,7 @@ app.get('/health', (req, res) => {
 async function startWhatsappBot() {
   try {
     const sessionExists = fs.existsSync(SESSION_FILE);
-    
+
     const client = await create({
       session: 'salon-bot',
       puppeteerOptions: {
@@ -773,11 +821,11 @@ app.get('/api/users/:id', extractOrganizationId, async (req, res) => {
       .select('*')
       .eq('id', id)
       .eq('organization_id', req.organizationId)  // ALTERADO
-      // .single();
+    // .single();
 
     if (error) throw error;
     if (data.length === 0) return res.status(404).json({ error: 'Usuário não encontrado nessa organização' });
-    
+
     res.json(data[0]);
   } catch (error) {
     console.error('Error fetching user:', error);
@@ -1483,17 +1531,17 @@ app.get('/api/categories', extractOrganizationId, async (req, res) => {
       .order('name', { ascending: true });
 
     if (error) throw error;
-    
+
     // Converter imagens base64 para URLs de dados
     const categoriesWithImages = data.map(category => {
       return {
         ...category,
-        imagem_category: category.imagem_category 
+        imagem_category: category.imagem_category
           ? category.imagem_category
           : null
       };
     });
-    
+
     res.json(categoriesWithImages);
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -1560,17 +1608,17 @@ app.get('/api/services/:categoryId', extractOrganizationId, async (req, res) => 
       .order('name', { ascending: true });
 
     if (error) throw error;
-    
+
     // Converter imagens base64 para URLs de dados
     const servicesWithImages = data.map(service => {
       return {
         ...service,
-        imagem_service: service.imagem_service 
+        imagem_service: service.imagem_service
           ? service.imagem_service
           : null
       };
     });
-    
+
     res.json(servicesWithImages);
   } catch (error) {
     console.error('Error fetching services:', error);
@@ -1638,15 +1686,15 @@ app.get('/api/employees/:serviceId', extractOrganizationId, async (req, res) => 
       .eq('organization_id', req.organizationId);
 
     if (error) throw error;
-    
+
     // Converter imagens base64 para URLs de dados
     const employees = data.map(item => ({
       ...item.employees,
-      imagem_funcionario: item.employees.imagem_funcionario 
+      imagem_funcionario: item.employees.imagem_funcionario
         ? `data:image/jpeg;base64,${item.employees.imagem_funcionario}`
         : null
     }));
-    
+
     res.json(employees);
   } catch (error) {
     console.error('Error fetching employees:', error);
@@ -1715,79 +1763,220 @@ app.get('/api/employees/:serviceId', extractOrganizationId, async (req, res) => 
  *         description: Erro interno do servidor
  */
 
-app.get('/api/available-times', extractOrganizationId, async (req, res) => {
-  try {
-    const { employeeId, date, duration } = req.query;
-    const organizationId = req.organizationId;
-    console.log('Parâmetros recebidos:', { employeeId, date, duration, organizationId });
-    
-    const dateObj = new Date(date);
-    const dayOfWeek = dateObj.getDay(); // 0=Domingo, 1=Segunda, 2=Terça, ..., 6=Sábado
-    console.log('Dia da semana calculado:', dayOfWeek);
+// 1. Função CRÍTICA: Converte data BR (DD/MM/YYYY) para um objeto de partes numéricas [ano, mês, dia]
+function parseDateParts(dateString) {
+  const parts = dateString.split('/');
+  if (parts.length === 3) {
+    // [dia, mês, ano] -> [ano, mês-1, dia]
+    // O mês é (parts[1] - 1) porque o JS usa 0=Janeiro, 11=Dezembro
+    return {
+      year: parseInt(parts[2]),
+      month: parseInt(parts[1]) - 1,
+      day: parseInt(parts[0])
+    };
+  }
+  // Retorna valores inválidos se o formato for ruim
+  return { year: NaN, month: NaN, day: NaN };
+}
 
-    const { data: schedule, error: scheduleError } = await supabase
+// 2. Função para garantir que a hora está no formato HH:MM:SS
+function cleanTimeFormat(timeString) {
+  if (timeString && timeString.length > 8) {
+    return timeString.substring(0, 8);
+  }
+  return timeString;
+}
+
+// app.get('/api/available-times', extractOrganizationId, async (req, res) => {
+//     try {
+//         const { employeeId, date, duration } = req.query; 
+//         const organizationId = req.organizationId;
+
+//         // 1. ANÁLISE SEGURA DA DATA: Usa a função para evitar o erro de formato na criação do objeto Date
+//         const safeDateString = parseDateBRToJS(date); 
+
+//         const dateObj = new Date(safeDateString); // ✅ Usa o formato seguro
+
+//         if (isNaN(dateObj.getTime())) {
+//              return res.status(400).json({ error: 'Data selecionada é inválida.' });
+//         }
+
+//         const dayOfWeek = dateObj.getDay(); 
+//         console.log('Parâmetros recebidos:', { employeeId, date, duration, organizationId });
+//         console.log('Dia da semana calculado:', dayOfWeek); 
+
+//         // 2. BUSCA DA ESCALA DE TRABALHO (WORK SCHEDULES)
+//         const { data: scheduleArray, error: scheduleError } = await supabase
+//             .from('work_schedules')
+//             .select('*')
+//             .eq('employee_id', employeeId)
+//             .eq('day_of_week', dayOfWeek)
+//             .eq('organization_id', req.organizationId); // 👈 .single() foi REMOVIDO!
+
+//         // Trata erros de consulta Supabase
+//         if (scheduleError) {
+//              console.error('ERRO SUPABASE - WORK SCHEDULES:', scheduleError);
+//              return res.status(500).json({ error: 'Erro ao buscar escala de trabalho.' });
+//         }
+
+//         // Pega o primeiro resultado ou define como null
+//         const schedule = scheduleArray && scheduleArray.length > 0 ? scheduleArray[0] : null;
+
+//         // Se a escala não foi encontrada ou não está disponível
+//         if (!schedule || !schedule.is_available) {
+//             console.log(`Nenhuma escala disponível para o dia ${dayOfWeek}.`);
+//             return res.json([]);
+//         }
+
+//         // 3. BUSCA DE AGENDAMENTOS EXISTENTES (APPOINTMENTS)
+//         const { data: appointments, error: appointmentsError } = await supabase
+//             .from('appointments')
+//             .select('*')
+//             .eq('employee_id', employeeId)
+//             .eq('appointment_date', date) // ⬅️ Aqui usamos o 'date' original (DD/MM/YYYY) para a busca no DB
+//             .eq('organization_id', req.organizationId)
+//             .order('start_time', { ascending: true });
+
+//         if (appointmentsError) throw appointmentsError;
+
+//         // 4. CÁLCULO DOS SLOTS
+//         // 🚨 CRÍTICO: Usa safeDateString na construção dos objetos Date para garantir o fuso horário
+//         const workStart = new Date(`${safeDateString}T${schedule.start_time}`);
+//         const workEnd = new Date(`${safeDateString}T${schedule.end_time}`);
+
+//         const interval = 15 * 60 * 1000;
+//         const durationMs = duration * 60 * 1000;
+
+//         let currentSlot = new Date(workStart);
+//         const availableSlots = [];
+
+//         while (currentSlot.getTime() + durationMs <= workEnd.getTime()) {
+//             const slotStart = new Date(currentSlot);
+//             const slotEnd = new Date(slotStart.getTime() + durationMs);
+
+//             const isAvailable = !appointments.some(appointment => {
+//                 // 🚨 CRÍTICO: Usa safeDateString na comparação de agendamentos
+//                 const apptStart = new Date(`${safeDateString}T${appointment.start_time}`);
+//                 const apptEnd = new Date(`${safeDateString}T${appointment.end_time}`);
+
+//                 return (
+//                     (slotStart >= apptStart && slotStart < apptEnd) ||
+//                     (slotEnd > apptStart && slotEnd <= apptEnd) ||
+//                     (slotStart <= apptStart && slotEnd >= apptEnd)
+//                 );
+//             });
+
+//             if (isAvailable) {
+//                 availableSlots.push({
+//                     start: slotStart.toTimeString().substring(0, 5),
+//                     end: slotEnd.toTimeString().substring(0, 5)
+//                 });
+//             }
+
+//             currentSlot = new Date(currentSlot.getTime() + interval);
+//         }
+
+//         res.json(availableSlots);
+//     } catch (error) {
+//         console.error('Error fetching available times:', error);
+//         res.status(500).json({ error: 'Internal server error' });
+//     }
+// });
+// ... (Certifique-se de que a função parseDateBRToJS está no topo do arquivo)
+
+app.get('/api/available-times', async (req, res) => {
+  try {
+    const { employeeId, date, duration, organization_id } = req.query;
+    const organizationId = organization_id
+
+    // 1. PREPARAÇÃO E CONVERSÃO
+    const employeeIdInt = parseInt(employeeId);
+    const durationMs = parseInt(duration) * 60 * 1000;
+
+    // ✅ NOVO: Análise da Data em Partes
+    const dateParts = parseDateParts(date);
+    const dayOfWeekInt = new Date(dateParts.year, dateParts.month, dateParts.day).getDay();
+
+    console.log('--- BUSCA DE HORÁRIOS ---');
+    console.log('Dia da semana calculado:', dayOfWeekInt);
+    console.log('Filtros WORK_SCHEDULES:', {
+      employee_id: employeeIdInt,
+      day_of_week: dayOfWeekInt,
+      organization_id: organizationId
+    });
+
+    // 2. BUSCA DA ESCALA DE TRABALHO
+    const { data: scheduleArray, error: scheduleError } = await supabase
       .from('work_schedules')
       .select('*')
-      .eq('employee_id', employeeId)
-      .eq('day_of_week', dayOfWeek)
-      .eq('organization_id', req.organizationId)
-      .single();
+      .eq('employee_id', employeeIdInt)
+      .eq('day_of_week', dayOfWeekInt)
+      .eq('organization_id', organizationId);
 
-    if (scheduleError || !schedule || !schedule.is_available) {
+    // ... (Verificação de scheduleError e schedule existe)
+
+    const schedule = scheduleArray && scheduleArray.length > 0 ? scheduleArray[0] : null;
+
+    if (!schedule || !schedule.is_available) {
+      console.log(`FALHA: Nenhuma escala disponível para o dia ${dayOfWeekInt}.`);
       return res.json([]);
     }
 
-    const { data: appointments, error: appointmentsError } = await supabase
-      .from('appointments')
-      .select('*')
-      .eq('employee_id', employeeId)
-      .eq('appointment_date', date)
-      .eq('organization_id', req.organizationId)
-      .order('start_time', { ascending: true });
+    // 3. BUSCA DE AGENDAMENTOS EXISTENTES (Mantida simplificada para o teste)
+    // Se estiver a testar a versão com appointments ignorados, mantenha: const appointments = [];
+    // Caso contrário, use a sua consulta normal:
+    const { data: appointments } = await supabase.from('appointments').select('*').eq('employee_id', employeeIdInt).eq('appointment_date', date).eq('organization_id', organizationId).order('start_time', { ascending: true });
 
-    if (appointmentsError) throw appointmentsError;
+    // 4. CÁLCULO DOS SLOTS (Com Nova Criação de Data UTC Segura)
 
-    const workStart = new Date(`${date}T${schedule.start_time}`);
-    const workEnd = new Date(`${date}T${schedule.end_time}`);
+    const cleanStartTime = cleanTimeFormat(schedule.start_time);
+    const cleanEndTime = cleanTimeFormat(schedule.end_time);
+
+    const [startHour, startMin, startSec] = cleanStartTime.split(':').map(Number);
+    const [endHour, endMin, endSec] = cleanEndTime.split(':').map(Number);
+
+    // ✅ CRÍTICO: Usar Date.UTC(ano, mês, dia, hora, minuto, segundo) com números
+    const workStart = new Date(Date.UTC(dateParts.year, dateParts.month, dateParts.day, startHour, startMin, startSec));
+    const workEnd = new Date(Date.UTC(dateParts.year, dateParts.month, dateParts.day, endHour, endMin, endSec));
+
     const interval = 15 * 60 * 1000;
-    const durationMs = duration * 60 * 1000;
-    
-    let currentSlot = new Date(workStart);
+    let currentSlotTime = workStart.getTime();
     const availableSlots = [];
 
-    while (currentSlot.getTime() + durationMs <= workEnd.getTime()) {
-      const slotStart = new Date(currentSlot);
-      const slotEnd = new Date(slotStart.getTime() + durationMs);
-      
-      const isAvailable = !appointments.some(appointment => {
-        const apptStart = new Date(`${date}T${appointment.start_time}`);
-        const apptEnd = new Date(`${date}T${appointment.end_time}`);
-        
-        return (
-          (slotStart >= apptStart && slotStart < apptEnd) ||
-          (slotEnd > apptStart && slotEnd <= apptEnd) ||
-          (slotStart <= apptStart && slotEnd >= apptEnd)
-        );
-      });
-      
+    // Condição relaxada
+    while (currentSlotTime + durationMs < workEnd.getTime() + 1) {
+      // ... (Resto da lógica de while loop com getUTCHours/Minutes)
+
+      const slotStart = new Date(currentSlotTime);
+      const slotEnd = new Date(currentSlotTime + durationMs);
+
+      // Lógica de agendamentos (use isAvailable = true para o teste)
+      const isAvailable = true; // TESTE: Se isto falhar, o problema é puramente workStart/workEnd
+
       if (isAvailable) {
+        const startHour = String(slotStart.getUTCHours()).padStart(2, '0');
+        const startMinute = String(slotStart.getUTCMinutes()).padStart(2, '0');
+        const endHour = String(slotEnd.getUTCHours()).padStart(2, '0');
+        const endMinute = String(slotEnd.getUTCMinutes()).padStart(2, '0');
+
         availableSlots.push({
-          start: slotStart.toTimeString().substring(0, 5),
-          end: slotEnd.toTimeString().substring(0, 5)
+          start: `${startHour}:${startMinute}`,
+          end: `${endHour}:${endMinute}`
         });
       }
-      
-      currentSlot = new Date(currentSlot.getTime() + interval);
+      currentSlotTime += interval;
     }
 
+    console.log(`SUCESSO: ${availableSlots.length} slots encontrados.`);
     res.json(availableSlots);
+
   } catch (error) {
     console.error('Error fetching available times:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 /**
  * @swagger
@@ -1869,8 +2058,8 @@ app.get('/api/available-times', extractOrganizationId, async (req, res) => {
 
 app.post('/api/appointments', extractOrganizationId, async (req, res) => {
   try {
-    const { client_name, client_email, client_phone, service_id, employee_id, date, start_time, end_time , final_price , coupon_code , original_price } = req.body;
-    
+    const { client_name, client_email, client_phone, service_id, employee_id, date, start_time, end_time, final_price, coupon_code, original_price } = req.body;
+
     const { data, error } = await supabase
       .from('appointments')
       .insert([{
@@ -1885,7 +2074,7 @@ app.post('/api/appointments', extractOrganizationId, async (req, res) => {
         end_time,
         final_price,
         coupon_code,
-        original_price, 
+        original_price,
         status: 'confirmed'
       }])
       .select();
@@ -1947,7 +2136,7 @@ app.post('/api/appointments', extractOrganizationId, async (req, res) => {
 app.get('/api/logado/appointments', async (req, res) => {
   try {
     const { email } = req.query;
-    
+
     if (!email) {
       return res.status(400).json({ error: 'Email é obrigatório' });
     }
@@ -2058,9 +2247,9 @@ app.get('/api/admin/appointments/by-employee', async (req, res) => {
     res.json(sortedData);
   } catch (error) {
     console.error('Error fetching appointments by employee:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -2069,7 +2258,7 @@ app.get('/api/admin/appointments/by-employee', async (req, res) => {
 app.get('/api/appointments/by-employee/:employeeId', async (req, res) => {
   try {
     const { employeeId } = req.params;
-    
+
     const { data, error } = await supabase
       .from('appointments')
       .select(`
@@ -2082,7 +2271,7 @@ app.get('/api/appointments/by-employee/:employeeId', async (req, res) => {
       .order('start_time', { ascending: true });
 
     if (error) throw error;
-    
+
     res.json(data || []);
   } catch (error) {
     console.error('Error fetching appointments:', error);
@@ -2151,10 +2340,10 @@ app.get('/api/admin/appointments', async (req, res) => {
       // Converte DD-MM-YYYY para YYYY-MM-DD
       const [startDay, startMonth, startYear] = start_date.split('-');
       const [endDay, endMonth, endYear] = end_date.split('-');
-      
+
       const dbStartDate = `${startYear}-${startMonth}-${startDay}`;
       const dbEndDate = `${endYear}-${endMonth}-${endDay}`;
-      
+
       query = query.gte('appointment_date', dbStartDate).lte('appointment_date', dbEndDate);
     }
 
@@ -2165,10 +2354,10 @@ app.get('/api/admin/appointments', async (req, res) => {
     const { data, error } = await query;
 
     if (error) throw error;
-    
+
     let filteredData = data;
     if (employee) {
-      filteredData = data.filter(appt => 
+      filteredData = data.filter(appt =>
         appt.employees?.name?.toLowerCase().includes(employee.toLowerCase())
       );
     }
@@ -2288,7 +2477,7 @@ app.get('/api/admin/appointments/:id', async (req, res) => {
 app.put('/api/admin/appointments/:id/complete', extractOrganizationId, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Verificar se o agendamento existe E pertence à organização correta
     const { data: appointmentData, error: fetchError } = await supabase
       .from('appointments')
@@ -2389,11 +2578,11 @@ async function updateYesterdayAppointmentsToCompleted() {
 app.put('/api/admin/appointments/complete-yesterday', async (req, res) => {
   try {
     const result = await updateYesterdayAppointmentsToCompleted();
-    
+
     if (!result.success) {
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to update appointments',
-        details: result.error 
+        details: result.error
       });
     }
 
@@ -2404,9 +2593,9 @@ app.put('/api/admin/appointments/complete-yesterday', async (req, res) => {
     });
   } catch (error) {
     console.error('Error in complete-yesterday route:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -2526,7 +2715,7 @@ app.put('/api/admin/appointments/:id/cancel', async (req, res) => {
 
   } catch (error) {
     console.error('Error canceling appointment:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Erro interno no servidor',
       details: error.message
     });
@@ -2725,7 +2914,7 @@ app.get('/api/admin/categories/:id', async (req, res) => {
 
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Categoria não encontrada' });
-    
+
     res.json(data);
   } catch (error) {
     console.error('Error fetching category:', error);
@@ -2809,9 +2998,9 @@ app.post('/api/admin/categories', upload.single('image'), async (req, res) => {
     // salva no banco só o caminho/URL
     const { data, error } = await supabase
       .from('categories')
-      .insert([{ 
-        name, 
-        imagem_category: imagePath 
+      .insert([{
+        name,
+        imagem_category: imagePath
       }])
       .select();
 
@@ -2901,7 +3090,7 @@ app.put('/api/admin/categories/:id', upload.single('image'), async (req, res) =>
     }
 
     // Atualiza no banco
-    const updateData = { 
+    const updateData = {
       name,
       ...(imageUrl && { imagem_category: imageUrl }) // só troca se veio imagem
     };
@@ -3178,11 +3367,11 @@ app.post('/api/admin/services', upload.single('image'), async (req, res) => {
 
     const { data, error } = await supabase
       .from('services')
-      .insert([{ 
-        category_id, 
-        name, 
-        description, 
-        duration, 
+      .insert([{
+        category_id,
+        name,
+        description,
+        duration,
         price,
         imagem_service: imageUrl // agora salva só a URL pública
       }])
@@ -3234,7 +3423,7 @@ app.get('/api/admin/services/:id', async (req, res) => {
 
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Serviço não encontrado' });
-    
+
     res.json(data);
   } catch (error) {
     console.error('Error fetching service:', error);
@@ -3304,15 +3493,15 @@ app.put('/api/admin/services/:id', upload.single('image'), async (req, res) => {
 
     // Se enviou nova imagem, converte para base64
     if (req.file) {
-    const buffer = await sharp(req.file.buffer)
-      .resize({ width: 600 }) // opcional: redimensiona para largura máxima de 600px
-      .webp({ quality: 80 }) // converte para webp com qualidade razoável
-      .toBuffer();
+      const buffer = await sharp(req.file.buffer)
+        .resize({ width: 600 }) // opcional: redimensiona para largura máxima de 600px
+        .webp({ quality: 80 }) // converte para webp com qualidade razoável
+        .toBuffer();
 
       imageData = buffer.toString('base64'); // se ainda quiser salvar como base64
     }
 
-    const updateData = { 
+    const updateData = {
       category_id,
       name,
       description,
@@ -3490,10 +3679,10 @@ app.get('/api/admin/employees', async (req, res) => {
 
         if (schedulesError) throw schedulesError;
 
-        return { 
-          ...employee, 
+        return {
+          ...employee,
           services: services?.map(item => item.services) || [],
-          work_schedules: schedules || [] 
+          work_schedules: schedules || []
         };
       })
     );
@@ -3501,9 +3690,9 @@ app.get('/api/admin/employees', async (req, res) => {
     res.json(employeesWithDetails);
   } catch (error) {
     console.error('Error fetching employees:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -3548,11 +3737,11 @@ app.get('/api/admin/employees/:id', async (req, res) => {
     if (error) throw error;
 
     // Converter imagem base64 para URL de dados se existir
-    const employeeWithImage = data.imagem_funcionario 
+    const employeeWithImage = data.imagem_funcionario
       ? {
-          ...data,
-          imagem_funcionario: `data:image/jpeg;base64,${data.imagem_funcionario}`
-        }
+        ...data,
+        imagem_funcionario: `data:image/jpeg;base64,${data.imagem_funcionario}`
+      }
       : data;
 
     res.json(employeeWithImage);
@@ -3631,16 +3820,16 @@ app.post('/api/admin/employees', upload.single('image'), async (req, res) => {
         .webp({ quality: 80 }) // converte para webp com qualidade razoável
         .toBuffer();
 
-        imageData = buffer.toString('base64'); // se ainda quiser salvar como base64
+      imageData = buffer.toString('base64'); // se ainda quiser salvar como base64
     }
 
     const { data, error } = await supabase
       .from('employees')
-      .insert([{ 
-        name, 
-        email, 
+      .insert([{
+        name,
+        email,
         phone,
-        comissao, 
+        comissao,
         imagem_funcionario: imageData,
         is_active: is_active === 'true' || is_active === true
       }])
@@ -3718,13 +3907,13 @@ app.put('/api/admin/employees/:id', upload.single('image'), async (req, res) => 
         .webp({ quality: 80 }) // converte para webp com qualidade razoável
         .toBuffer();
 
-        imageData = buffer.toString('base64'); // se ainda quiser salvar como base64
+      imageData = buffer.toString('base64'); // se ainda quiser salvar como base64
     }
 
-    const updateData = { 
-      name, 
-      email, 
-      phone, 
+    const updateData = {
+      name,
+      email,
+      phone,
       comissao,
       is_active: is_active === 'true' || is_active === true,
       ...(imageData && { imagem_funcionario: imageData })
@@ -3768,7 +3957,7 @@ app.put('/api/admin/employees/:id', upload.single('image'), async (req, res) => 
 app.delete('/api/admin/employees/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Primeiro deletar os horários associados
     const { error: scheduleError } = await supabase
       .from('work_schedules')
@@ -4165,7 +4354,7 @@ app.post("/schedules", async (req, res) => {
 
     // Validações
     if (!employee_id || day_of_week === undefined || !start_time || !end_time) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Dados incompletos',
         details: 'employee_id, day_of_week (número), start_time e end_time são obrigatórios'
       });
@@ -4174,7 +4363,7 @@ app.post("/schedules", async (req, res) => {
     // Converter dia da semana para número se for string
     const dayNumber = convertDayToNumber(day_of_week);
     if (dayNumber === null) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Dia da semana inválido',
         details: 'Use número (0-6) ou nome do dia (ex: "Segunda-feira")'
       });
@@ -4187,12 +4376,12 @@ app.post("/schedules", async (req, res) => {
     // Inserção no banco
     const { data, error } = await supabase
       .from("work_schedules")
-      .insert([{ 
-        employee_id, 
-        day_of_week: dayNumber, 
-        start_time: formattedStart, 
-        end_time: formattedEnd, 
-        is_available 
+      .insert([{
+        employee_id,
+        day_of_week: dayNumber,
+        start_time: formattedStart,
+        end_time: formattedEnd,
+        is_available
       }])
       .select();
 
@@ -4201,9 +4390,9 @@ app.post("/schedules", async (req, res) => {
 
   } catch (error) {
     console.error('Erro no servidor:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -4214,7 +4403,7 @@ function convertDayToNumber(day) {
     return (day >= 0 && day <= 6) ? day : null;
   }
 
-   const daysMap = {
+  const daysMap = {
     'domingo': 0,
     'segunda': 1, 'segunda-feira': 1,
     'terça': 2, 'terça-feira': 2,
@@ -4222,7 +4411,7 @@ function convertDayToNumber(day) {
     'quinta': 4, 'quinta-feira': 4,
     'sexta': 5, 'sexta-feira': 5,
     'sábado': 6, 'sabado': 6
-    
+
   };
 
   return daysMap[day.toLowerCase()] || null;
@@ -4230,23 +4419,23 @@ function convertDayToNumber(day) {
 
 function formatTimeToHHMMSS(time) {
   if (!time) return '09:00:00'; // Valor padrão
-  
+
   // Se já está no formato HH:MM:SS
   if (typeof time === 'string' && time.match(/^\d{2}:\d{2}:\d{2}$/)) {
     return time;
   }
-  
+
   // Se está no formato HH:MM
   if (typeof time === 'string' && time.match(/^\d{2}:\d{2}$/)) {
     return `${time}:00`;
   }
-  
+
   // Se é um número como 800 (8:00) ou 1700 (17:00)
   if (typeof time === 'number') {
     const timeStr = String(time).padStart(4, '0');
     return `${timeStr.substr(0, 2)}:${timeStr.substr(2, 2)}:00`;
   }
-  
+
   return '09:00:00'; // Valor padrão se não reconhecer
 }
 
@@ -4291,12 +4480,12 @@ app.get("/schedules/:employee_id", async (req, res) => {
       .eq('organization_id', req.organizationId);
 
     if (error) throw error;
-    
+
     // Função para converter número para nome do dia
     const convertNumberToDayName = (dayNumber) => {
       const days = [
         'Domingo',
-        'Segunda-feira', 
+        'Segunda-feira',
         'Terça-feira',
         'Quarta-feira',
         'Quinta-feira',
@@ -4313,7 +4502,7 @@ app.get("/schedules/:employee_id", async (req, res) => {
       start_time: formatTimeFromDB(schedule.start_time),
       end_time: formatTimeFromDB(schedule.end_time)
     }));
-    
+
     res.json(formattedData);
   } catch (error) {
     console.error('Error fetching employee schedules:', error);
@@ -4324,16 +4513,16 @@ app.get("/schedules/:employee_id", async (req, res) => {
 // Função auxiliar para formatar o horário do banco de dados
 function formatTimeFromDB(time) {
   if (!time) return null;
-  
+
   // Se já estiver no formato HH:MM
   if (typeof time === 'string' && time.includes(':')) return time;
-  
+
   // Se for um número (como 100000 para 10:00:00)
   if (typeof time === 'number') {
     const timeStr = String(time).padStart(6, '0');
     return `${timeStr.substr(0, 2)}:${timeStr.substr(2, 2)}`;
   }
-  
+
   return time;
 }
 
@@ -4443,7 +4632,7 @@ app.put('/schedules/:employee_id', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error updating schedules:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
       message: error.message
     });
@@ -4689,10 +4878,10 @@ app.get('/api/admin/dashboard', extractOrganizationId, async (req, res) => {
       { count: servicesCount },
       { count: appointmentsCount }
     ] = await Promise.all([
-      supabase.from('employees').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId), 
-      supabase.from('categories').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId), 
-      supabase.from('services').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId), 
-      supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId).eq('status', 'confirmed') 
+      supabase.from('employees').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId),
+      supabase.from('categories').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId),
+      supabase.from('services').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId),
+      supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId).eq('status', 'confirmed')
     ]);
 
     // 2. Dados detalhados para os gráficos
@@ -4702,18 +4891,18 @@ app.get('/api/admin/dashboard', extractOrganizationId, async (req, res) => {
       { data: couponsData, error: couponsError },
       { data: appointmentsData, error: appointmentsError }
     ] = await Promise.all([
-      supabase.from('employees').select('is_active').eq('organization_id', req.organizationId), 
-      supabase.from('users').select('tipo').eq('organization_id', req.organizationId), 
-      supabase.from('coupons').select('is_active').eq('organization_id', req.organizationId), 
-      supabase.from('appointments').select('appointment_date').eq('organization_id', req.organizationId).eq('status', 'confirmed') 
+      supabase.from('employees').select('is_active').eq('organization_id', req.organizationId),
+      supabase.from('users').select('tipo').eq('organization_id', req.organizationId),
+      supabase.from('coupons').select('is_active').eq('organization_id', req.organizationId),
+      supabase.from('appointments').select('appointment_date').eq('organization_id', req.organizationId).eq('status', 'confirmed')
     ]);
 
     // Verificar erros nas consultas
     if (employeesError || usersError || couponsError || appointmentsError) {
       throw new Error(
-        employeesError?.message || 
-        usersError?.message || 
-        couponsError?.message || 
+        employeesError?.message ||
+        usersError?.message ||
+        couponsError?.message ||
         appointmentsError?.message
       );
     }
@@ -4751,22 +4940,22 @@ app.get('/api/admin/dashboard', extractOrganizationId, async (req, res) => {
       totalCategories: categoriesCount || 0,
       totalServices: servicesCount || 0,
       totalAppointments: appointmentsCount || 0,
-      
+
       // Dados para gráficos
       monthlyAppointments,
       employeesStatus,
       usersDistribution,
       couponsStatus,
-      
+
       // Metadados
       lastUpdated: new Date().toISOString()
     });
 
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -4807,7 +4996,7 @@ app.get('/api/coupons', async (req, res) => {
       .select('*')
       .eq('organization_id', req.organizationId)
       .order('created_at', { ascending: false });
-    
+
     if (error) throw error;
     res.json(data);
   } catch (error) {
@@ -4849,7 +5038,7 @@ app.get('/api/coupons/:id', async (req, res) => {
       .eq('id', req.params.id)
       .eq('organization_id', req.organizationId)
       .single();
-    
+
     if (error) throw error;
     res.json(data);
   } catch (error) {
@@ -4887,13 +5076,13 @@ app.post('/api/coupons', async (req, res) => {
       ...req.body,
       code: req.body.code.toUpperCase()
     };
-    
+
     const { data, error } = await supabase
       .from('coupons')
       .insert(couponData)
       .select()
       .single();
-    
+
     if (error) throw error;
     res.status(201).json(data);
   } catch (error) {
@@ -4941,7 +5130,7 @@ app.put('/api/coupons/:id', async (req, res) => {
       .eq('id', req.params.id)
       .select()
       .single();
-    
+
     if (error) throw error;
     res.json(data);
   } catch (error) {
@@ -4977,7 +5166,7 @@ app.delete('/api/coupons/:id', async (req, res) => {
       .from('coupons')
       .delete()
       .eq('id', req.params.id);
-    
+
     if (error) throw error;
     res.status(204).end();
   } catch (error) {
@@ -5299,38 +5488,38 @@ app.get('/api/validate-coupon', async (req, res) => {
 app.get('/api/admin/revenue', async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
-    
+
     // 1. Buscar todos os agendamentos concluídos
     let appointmentsQuery = supabase
       .from('appointments')
       .select('id, final_price, appointment_date, employee_id, employees(id, name, comissao)')
       .eq('status', 'completed')
       .eq('organization_id', req.organizationId);; // Considerar apenas agendamentos confirmados
-    
+
     // Aplicar filtro de datas se existir (corrigido para usar appointment_date)
     if (start_date && end_date) {
       appointmentsQuery = appointmentsQuery
         .gte('appointment_date', start_date)
         .lte('appointment_date', end_date);
     }
-    
+
     const { data: appointments, error: appointmentsError } = await appointmentsQuery;
     if (appointmentsError) throw appointmentsError;
-    
+
     // 2. Buscar todos os funcionários para garantir que apareçam mesmo sem agendamentos
     const { data: employees, error: employeesError } = await supabase
       .from('employees')
       .select('id, name, comissao')
       .eq('organization_id', req.organizationId);
-    
+
     if (employeesError) throw employeesError;
-    
+
     // 3. Processar os dados para calcular métricas
     const employeesMap = new Map();
     let totalAppointments = 0;
     let totalRevenue = 0;
     let totalCommissions = 0;
-    
+
     // Inicializar mapa com todos os funcionários
     employees.forEach(employee => {
       employeesMap.set(employee.id, {
@@ -5343,52 +5532,52 @@ app.get('/api/admin/revenue', async (req, res) => {
         net_profit: 0
       });
     });
-    
+
     // Processar agendamentos
     appointments.forEach(appointment => {
       totalAppointments++;
-      
+
       const finalPrice = appointment.final_price || 0;
       totalRevenue += finalPrice;
-      
+
       const employeeId = appointment.employee_id; // Usando employee_id diretamente
       if (!employeeId) return;
-      
+
       const employee = employeesMap.get(employeeId);
       if (!employee) return;
-      
+
       employee.appointments_count++;
       employee.total_revenue += finalPrice;
     });
-    
+
     // Calcular comissões e lucro líquido para cada funcionário
     employeesMap.forEach(employee => {
       employee.commission_value = employee.total_revenue * (employee.commission_rate / 100);
       employee.net_profit = employee.total_revenue - employee.commission_value;
-      
+
       totalCommissions += employee.commission_value;
     });
-    
+
     // Converter o Map para array e ordenar por maior faturamento
     const details = Array.from(employeesMap.values())
       .sort((a, b) => b.total_revenue - a.total_revenue);
-    
+
     // 4. Retornar os dados
     res.json({
-      period: start_date && end_date 
-        ? `${start_date} a ${end_date}` 
+      period: start_date && end_date
+        ? `${start_date} a ${end_date}`
         : 'Todos os períodos',
       total_appointments: totalAppointments,
       total_revenue: totalRevenue,
       total_commissions: totalCommissions,
       details: details
     });
-    
+
   } catch (error) {
     console.error('Error fetching revenue data:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -5429,29 +5618,29 @@ app.get('/api/admin/revenue', async (req, res) => {
 app.get('/api/admin/revenue/export', async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
-    
+
     // Reutilizar a mesma lógica da rota principal
     let appointmentsQuery = supabase
       .from('appointments')
       .select('id, final_price, appointment_date, employees(id, name, comissao)')
       .eq('status', 'completed')
       .eq('organization_id', req.organizationId);
-    
+
     if (start_date && end_date) {
       appointmentsQuery = appointmentsQuery
         .gte('appointment_date', start_date)
         .lte('appointment_date', end_date);
     }
-    
+
     const { data: appointments, error: appointmentsError } = await appointmentsQuery;
     if (appointmentsError) throw appointmentsError;
-    
+
     const { data: employees, error: employeesError } = await supabase
       .from('employees')
       .select('id, name, comissao');
-    
+
     if (employeesError) throw employeesError;
-    
+
     // Processar os dados (mesma lógica da rota principal)
     const employeesMap = new Map();
     employees.forEach(employee => {
@@ -5464,33 +5653,33 @@ app.get('/api/admin/revenue/export', async (req, res) => {
         net_profit: 0
       });
     });
-    
+
     appointments.forEach(appointment => {
       const employeeId = appointment.employees?.id;
       if (!employeeId) return;
-      
+
       const employee = employeesMap.get(employeeId);
       if (!employee) return;
-      
+
       const finalPrice = appointment.final_price || 0;
-      
+
       employee.appointments_count++;
       employee.total_revenue += finalPrice;
     });
-    
+
     employeesMap.forEach(employee => {
       employee.commission_value = employee.total_revenue * (employee.commission_rate / 100);
       employee.net_profit = employee.total_revenue - employee.commission_value;
     });
-    
+
     const details = Array.from(employeesMap.values())
       .sort((a, b) => b.total_revenue - a.total_revenue);
-    
+
     // Criar arquivo Excel (usando a biblioteca exceljs)
     const ExcelJS = require('exceljs');
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Relatório de Receitas');
-    
+
     // Adicionar cabeçalhos
     worksheet.columns = [
       { header: 'Profissional', key: 'name', width: 30 },
@@ -5500,15 +5689,15 @@ app.get('/api/admin/revenue/export', async (req, res) => {
       { header: 'Valor Comissão', key: 'commission_value', width: 20, style: { numFmt: '"R$"#,##0.00' } },
       { header: 'Lucro Líquido', key: 'net_profit', width: 20, style: { numFmt: '"R$"#,##0.00' } }
     ];
-    
+
     // Adicionar dados
     worksheet.addRows(details);
-    
+
     // Adicionar totais
     const totalAppointments = details.reduce((sum, emp) => sum + emp.appointments_count, 0);
     const totalRevenue = details.reduce((sum, emp) => sum + emp.total_revenue, 0);
     const totalCommissions = details.reduce((sum, emp) => sum + emp.commission_value, 0);
-    
+
     worksheet.addRow([]);
     worksheet.addRow({
       name: 'TOTAIS',
@@ -5516,7 +5705,7 @@ app.get('/api/admin/revenue/export', async (req, res) => {
       total_revenue: totalRevenue,
       commission_value: totalCommissions
     });
-    
+
     // Configurar resposta
     res.setHeader(
       'Content-Type',
@@ -5526,15 +5715,15 @@ app.get('/api/admin/revenue/export', async (req, res) => {
       'Content-Disposition',
       'attachment; filename=relatorio-receitas.xlsx'
     );
-    
+
     await workbook.xlsx.write(res);
     res.end();
-    
+
   } catch (error) {
     console.error('Error exporting revenue data:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -5684,7 +5873,7 @@ app.post('/api/galeria/upload', upload.single('imagem'), async (req, res) => {
 
     await novaImagem.save();
 
-    res.json({ 
+    res.json({
       success: true,
       id: novaImagem._id,
       titulo: novaImagem.titulo,
@@ -5728,7 +5917,7 @@ app.post('/api/galeria/upload', upload.single('imagem'), async (req, res) => {
 app.get('/api/galeria/imagem/:id', async (req, res) => {
   try {
     const imagem = await Galeria.findById(req.params.id).select('imagem');
-    
+
     if (!imagem) {
       return res.status(404).send('Imagem não encontrada');
     }
@@ -5775,7 +5964,7 @@ app.get('/api/galeria/imagem/:id', async (req, res) => {
 app.get('/api/galeria/busca', async (req, res) => {
   try {
     const { termo } = req.query;
-    
+
     if (!termo || termo.trim() === '') {
       return res.status(400).json({ error: 'Termo de busca é obrigatório' });
     }
@@ -5836,7 +6025,7 @@ app.delete('/api/galeria/:id', async (req, res) => {
     }
 
     const resultado = await Galeria.findByIdAndDelete(req.params.id);
-    
+
     if (!resultado) {
       return res.status(404).json({ error: 'Imagem não encontrada' });
     }
@@ -5873,8 +6062,97 @@ app.delete('/api/galeria/:id', async (req, res) => {
  *               description: Tipo MIME da imagem
  *               example: "image/jpeg"
  */
+// Rota para finalizar o agendamento (POST)
+app.post('/api/book-appointment', extractOrganizationId, async (req, res) => {
 
+  // 🚨 Esta função 'extractOrganizationId' precisa ser definida e estar a funcionar
 
+  try {
+    const organization_id = req.organizationId;
+    const { service_id, employee_id, appointment_date, start_time, client_name, client_email, client_phone } = req.body;
+
+    // --- 1. GARANTIA DE TIPAGEM ---
+    // CRÍTICO: Converte os IDs para int4 (o tipo na sua tabela)
+    const employeeIdInt = parseInt(employee_id);
+    const serviceIdInt = parseInt(service_id);
+
+    if (isNaN(employeeIdInt) || isNaN(serviceIdInt)) {
+      return res.status(400).json({ error: 'ID do profissional ou serviço inválido.' });
+    }
+
+    // --- 2. BUSCA DA DURAÇÃO DO SERVIÇO ---
+    const { data: serviceData, error: serviceError } = await supabase
+      .from('services')
+      .select('duration')
+      .eq('id', serviceIdInt) // Usa o ID INTEIRO
+      .single();
+
+    if (serviceError || !serviceData || !serviceData.duration) {
+      console.error('Erro/Falha ao buscar duração do serviço:', serviceError || 'Duração não encontrada.');
+      return res.status(400).json({ error: 'Duração do serviço não encontrada para cálculo do fim.' });
+    }
+
+    const durationMinutes = serviceData.duration; // Duração em minutos
+
+    // 3. CÁLCULO DO END TIME E FORMATAÇÃO DA DATA
+    const [day, month, year] = appointment_date.split('/').map(Number);
+    const [startHour, startMin] = start_time.split(':').map(Number);
+
+    // 🚨 CORREÇÃO CRÍTICA: Formatando a data para YYYY-MM-DD para o Supabase
+    const formattedDateForDB = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    // Exemplo: '2025-10-13'
+
+    // Cria o objeto Date para o cálculo (em UTC)
+    // O mês é (month - 1) porque o JS usa 0=Janeiro
+    const startTimeUTC = new Date(Date.UTC(year, month - 1, day, startHour, startMin, 0));
+
+    // Calcula o tempo de fim (adiciona a duração em milissegundos)
+    const endTimeUTC = new Date(startTimeUTC.getTime() + durationMinutes * 60 * 1000);
+
+    // Formata o End Time de volta para HH:MM:SS (Supabase 'time without time zone')
+    const end_time = `${String(endTimeUTC.getUTCHours()).padStart(2, '0')}:${String(endTimeUTC.getUTCMinutes()).padStart(2, '0')}:00`;
+    // ----------------------------------------------------
+
+    // --- 4. INSERÇÃO NO SUPABASE (Tabela appointments) ---
+    const { data, error } = await supabase
+      .from('appointments')
+      .insert([{
+        organization_id,
+        employee_id: employeeIdInt,
+        service_id: serviceIdInt,
+        appointment_date: formattedDateForDB, // <--- 🚨 USANDO O FORMATO CORRIGIDO AQUI
+        start_time,
+        end_time,
+        client_name,
+        client_email,
+        client_phone,
+        status: 'completed' // Define um status inicial
+      }])
+      .select();
+
+    if (error) {
+      // Se houver um erro de SQL (ex: ID inválido, fuso horário), ele será capturado aqui.
+      console.error('Erro de SQL ao salvar agendamento:', error);
+      throw error;
+    }
+
+    // Sucesso
+    res.status(201).json({
+      message: 'Agendamento criado com sucesso!',
+      appointment: data[0]
+    });
+
+  } catch (error) {
+    // --- ERRO DETALHADO NO BACKEND ---
+    console.error('---------------------------------');
+    console.error('Erro na rota book-appointment (Servidor):', error.message || error);
+    console.error('Dados de entrada:', req.body);
+    console.error('---------------------------------');
+
+    // Retorna uma resposta JSON de erro
+    res.status(500).json({ error: 'Falha ao processar o agendamento no servidor.' });
+  }
+});
 
 // Iniciar o servidor
 app.listen(port, () => {
