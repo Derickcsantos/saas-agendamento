@@ -142,11 +142,11 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Configuração do EJS
-app.use(express.static(path.resolve(__dirname, 'views')));
-app.set('views', path.resolve(__dirname, 'views'));
-console.log('O Express está a usar o seguinte caminho para views:', app.get('views'));
-app.set('view engine', 'ejs');
+// // Configuração do EJS
+// app.use(express.static(path.resolve(__dirname, 'views')));
+// app.set('views', path.resolve(__dirname, 'views'));
+// console.log('O Express está a usar o seguinte caminho para views:', app.get('views'));
+// app.set('view engine', 'ejs');
 
 
 app.use(express.static(path.join(__dirname, 'public')));
