@@ -18,6 +18,14 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
   criarToastContainer();
 
+function getOrganizationIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("organization_id");
+}
+
+const organizationId = getOrganizationIdFromUrl();
+console.log(organizationId);
+
   // Função para alternar entre temas
 function toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -46,7 +54,7 @@ document.getElementById('themeToggleSidebar').addEventListener('click', toggleTh
       showLoading(true);
       clearGallery();
       
-      const response = await fetch('/api/galeria');
+      const response = await fetch(`/api/galeria?organization_id=${organizationId}`);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Erro ao carregar imagens');

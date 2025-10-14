@@ -15,6 +15,13 @@ const profileUsernameInput = document.getElementById('userUsername');
 const profileEmailInput = document.getElementById('userEmail');
 const profilePasswordInput = document.getElementById('userPassword');
 
+function getOrganizationIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("organization_id");
+}
+
+const organizationId = getOrganizationIdFromUrl();
+console.log(organizationId);
 
 // Verificar se os elementos do formulário de perfil existem
 if (profileUserIdInput && profileUsernameInput && profileEmailInput && profilePasswordInput) {
@@ -162,7 +169,7 @@ async function updateUserProfile(e) {
     }
 
 
-    const response = await fetch(`/api/users/${userId}`, {
+    const response = await fetch(`/api/users/${userId}?organization_id=${organizationId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -227,7 +234,7 @@ async function updateUserProfile(e) {
 // Função para carregar usuários na tabela (admin)
 async function loadUsers() {
   try {
-    const response = await fetch('/api/users');
+    const response = await fetch(`/api/users?organization_id=${organizationId}`);
     const users = await response.json();
 
     if (!response.ok) {
@@ -300,7 +307,7 @@ document.addEventListener("DOMContentLoaded", function () {
     employeeSelect.appendChild(defaultOption);
 
     try {
-      const response = await fetch('/api/employees'); // Nova rota padrão que criamos
+      const response = await fetch(`/api/employees?organization_id=${organizationId}`); // Nova rota padrão que criamos
       const employees = await response.json();
 
       employees.forEach(employee => {
@@ -337,7 +344,7 @@ document.addEventListener("DOMContentLoaded", function () {
 // Função para carregar usuário para edição (admin)
 async function loadUserForEdit(userId) {
   try {
-    const response = await fetch(`/api/users/${userId}`);
+    const response = await fetch(`/api/users/${userId}?organization_id=${organizationId}`);
     const user = await response.json();
 
     if (!response.ok) {
@@ -369,7 +376,7 @@ async function loadUserForEdit(userId) {
 // Função para criar usuário (admin)
 async function createUser(userData) {
   try {
-    const response = await fetch('/api/users', {
+    const response = await fetch(`/api/users?organization_id=${organizationId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData)
@@ -404,7 +411,7 @@ async function updateUser(userData) {
       updatePayload.id_employee = userData.id_employee;
     }
 
-    const response = await fetch(`/api/users/${userData.id}`, {
+    const response = await fetch(`/api/users/${userData.id}?organization_id=${organizationId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updatePayload),
@@ -429,7 +436,7 @@ async function updateUser(userData) {
 // Função para excluir usuário (admin)
 async function deleteUser(userId) {
   try {
-    const response = await fetch(`/api/users/${userId}`, {
+    const response = await fetch(`/api/users/${userId}?organization_id=${organizationId}`, {
       method: 'DELETE'
     });
 

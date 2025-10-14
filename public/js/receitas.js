@@ -1,3 +1,11 @@
+function getOrganizationIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("organization_id");
+}
+
+const organizationId = getOrganizationIdFromUrl();
+console.log(organizationId);
+
 // Função para formatar valores monetários
 function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -21,7 +29,7 @@ function formatCurrency(value) {
       revenueDetails.innerHTML = '<tr><td colspan="6" class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div></td></tr>';
       
       // Construir a URL da API com os parâmetros
-      let url = '/api/admin/revenue';
+      let url = `/api/admin/revenue`;
       const params = new URLSearchParams();
       
       if (startDate) params.append('start_date', startDate);

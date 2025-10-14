@@ -14,13 +14,31 @@ document.addEventListener('DOMContentLoaded', function() {
   // Instancia o modal de recuperação de senha do Bootstrap
   const forgotPasswordModal = new bootstrap.Modal(document.getElementById('forgotPasswordModal'));
 
-  function getOrganizationIdFromUrl() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("organization_id");
+function getOrganizationId() {
+  const params = new URLSearchParams(window.location.search);
+  let orgId = params.get("organization_id");
+
+  if (orgId) {
+    // Se veio na URL, salva no localStorage
+    localStorage.setItem("organization_id", orgId);
+  } else {
+    // Se não veio na URL, tenta buscar do localStorage
+    orgId = localStorage.getItem("organization_id");
+    if (orgId) {
+      // Reescreve a URL para incluir o organization_id
+      params.set("organization_id", orgId);
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState({}, "", newUrl);
+    }
   }
 
-  const organizationId = getOrganizationIdFromUrl();
-  console.log(organizationId);
+  return orgId;
+}
+
+// Uso
+const organizationId = getOrganizationId();
+console.log("Organization ID:", organizationId);
+
 
   // Alterna entre as telas de login e cadastro
   switchToCadastro.addEventListener('click', function(e) {

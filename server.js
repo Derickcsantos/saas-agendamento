@@ -84,8 +84,8 @@ if (!fs.existsSync(SESSION_DIR)) {
 
 const corsOptions = {
   origin: '*',              // Permite qualquer origem
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],  // Permite os métodos HTTP que você precisa
-  allowedHeaders: ['Content-Type'], // Permite esses cabeçalhos específicos
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],  // Permite os métodos HTTP que você precisa
+  allowedHeaders: ['Content-Type', 'Authorization', 'organization-id', 'organization_id', 'Accept'], // Permite esses cabeçalhos específicos
   credentials: true,        // Permite cookies (importante se for necessário)
 };
 
@@ -148,17 +148,25 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 
-// TODAS AS ROTAS QUE PRECISAM DO ID DA ORGANIZAÇÃO
 const extractOrganizationId = (req, res, next) => {
-  const organizationId = req.headers['organization-id'] || req.query.organization_id || (req.body && req.body.organization_id);
-  
+  // headers em Node são sempre lowercased
+  const headerOrg = req.headers['organization-id'] || req.headers['organization_id'] || req.headers['organizationid'];
+  const organizationId = headerOrg || req.query.organization_id || (req.body && req.body.organization_id);
+
+  // logs para debug
+  console.log('[extractOrganizationId] headers:', req.headers);
+  console.log('[extractOrganizationId] query:', req.query);
+  console.log('[extractOrganizationId] body keys:', req.body && Object.keys(req.body));
+  console.log('[extractOrganizationId] resolved organizationId:', organizationId);
+
   if (!organizationId) {
     return res.status(400).json({ error: 'Organization ID é obrigatório' });
   }
-  
+
   req.organizationId = organizationId;
   next();
 };
+
 
 const checkAuth = (req, res, next) => {
   const userData = req.cookies.userData;  // Obtendo os dados do usuário do cookie
@@ -1338,7 +1346,7 @@ app.post('/api/login', extractOrganizationId, async (req, res) => {
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_SECRET_KEY,
-    callbackURL: "http://localhost:3000/auth/google/callback",
+    callbackURL: process.env.CALLBACK_URL,
     passReqToCallback: true
   },
   async (req, accessToken, refreshToken, profile, done) => {
@@ -2144,12 +2152,13 @@ app.get('/api/logado/appointments', async (req, res) => {
  *         description: Erro interno do servidor
  */
 // Rota para obter agendamentos por funcionário
-app.get('/api/admin/appointments/by-employee', async (req, res) => {
+app.get('/api/admin/appointments/by-employee', extractOrganizationId, async (req, res) => {
   try {
     // Primeiro, buscamos todos os funcionários
     const { data: employees, error: employeesError } = await supabase
       .from('employees')
       .select('id, name')
+      .eq('organization_id', req.organizationId)
       .order('name', { ascending: true });
 
     if (employeesError) throw employeesError;
@@ -2247,7 +2256,7 @@ app.get('/api/appointments/by-employee/:employeeId', async (req, res) => {
  *         description: Erro interno do servidor
  */
 // Rotas para agendamentos (admin)
-app.get('/api/admin/appointments', async (req, res) => {
+app.get('/api/admin/appointments', extractOrganizationId, async (req, res) => {
   try {
     const { search, date, employee, start_date, end_date } = req.query;
     let query = supabase
@@ -2346,7 +2355,7 @@ app.get('/api/admin/appointments', async (req, res) => {
  *         description: Erro interno do servidor
  */
 // Rota para obter detalhes de um agendamento específico
-app.get('/api/admin/appointments/:id', async (req, res) => {
+app.get('/api/admin/appointments/:id', extractOrganizationId, async (req, res) => {
   try {
     const { id } = req.params;
     const { data, error } = await supabase
@@ -2357,6 +2366,7 @@ app.get('/api/admin/appointments/:id', async (req, res) => {
         employees(name)
       `)
       .eq('id', id)
+      .eq('organization_id', req.organizationId)
       .single();
 
     if (error) throw error;
@@ -2792,7 +2802,7 @@ app.get('/api/admin/canceled_appointments', async (req, res) => {
  *         description: Erro interno do servidor
  */
 // Rotas para categorias
-app.get('/api/admin/categories', async (req, res) => {
+app.get('/api/admin/categories', extractOrganizationId, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('categories')
@@ -2834,7 +2844,7 @@ app.get('/api/admin/categories', async (req, res) => {
  *       500:
  *         description: Erro interno do servidor
  */
-app.get('/api/admin/categories/:id', async (req, res) => {
+app.get('/api/admin/categories/:id', extractOrganizationId, async (req, res) => {
   try {
     const { id } = req.params;
     const { data, error } = await supabase
@@ -2894,7 +2904,7 @@ app.get('/api/admin/categories/:id', async (req, res) => {
  */
 
 // Atualize a rota POST de categorias
-app.post('/api/admin/categories', upload.single('image'), async (req, res) => {
+app.post('/api/admin/categories', upload.single('image'), extractOrganizationId, async (req, res) => {
   try {
     const { name } = req.body;
     let imagePath = null;
@@ -2931,6 +2941,7 @@ app.post('/api/admin/categories', upload.single('image'), async (req, res) => {
     const { data, error } = await supabase
       .from('categories')
       .insert([{ 
+        organization_id: req.organizationId,
         name, 
         imagem_category: imagePath 
       }])
@@ -2987,7 +2998,7 @@ app.post('/api/admin/categories', upload.single('image'), async (req, res) => {
  *         description: Erro interno do servidor
  */
 // Atualize a rota PUT de categorias
-app.put('/api/admin/categories/:id', upload.single('image'), async (req, res) => {
+app.put('/api/admin/categories/:id', upload.single('image'), extractOrganizationId, async (req, res) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
@@ -3177,7 +3188,7 @@ app.get('/api/services', async (req, res) => {
  */
 
 // Rotas para serviços
-app.get('/api/admin/services', async (req, res) => {
+app.get('/api/admin/services', extractOrganizationId, async (req, res) => {
   try {
     const { name } = req.query;
 
@@ -3581,7 +3592,7 @@ app.delete('/api/admin/services/:id', async (req, res) => {
  *                 details:
  *                   type: string
  */
-app.get('/api/admin/employees', async (req, res) => {
+app.get('/api/admin/employees', extractOrganizationId, async (req, res) => {
   try {
     // Buscar funcionários
     const { data: employees, error: employeesError } = await supabase
@@ -4921,7 +4932,7 @@ app.get('/api/admin/dashboard', extractOrganizationId, async (req, res) => {
  *         description: Erro interno do servidor
  */
 // Rotas de Cupons
-app.get('/api/coupons', async (req, res) => {
+app.get('/api/coupons', extractOrganizationId, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('coupons')
@@ -5417,7 +5428,7 @@ app.get('/api/validate-coupon', async (req, res) => {
  *         description: Erro interno do servidor
  */
 // Rota para relatório de receitas (atualizada)
-app.get('/api/admin/revenue', async (req, res) => {
+app.get('/api/admin/revenue', extractOrganizationId, async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
     

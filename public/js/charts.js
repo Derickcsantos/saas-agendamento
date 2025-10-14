@@ -9,6 +9,14 @@ let charts = {
   appointmentsByEmployee: null
 };
 
+function getOrganizationIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("organization_id");
+}
+
+const organizationId = getOrganizationIdFromUrl();
+console.log(organizationId);
+
   
   // Configurações dos gráficos
   const chartConfigs = {
@@ -222,12 +230,12 @@ async function loadDashboardData() {
     showLoading(true);
 
     // Busca todos os dados em paralelo
-    const response = await fetch('/api/admin/dashboard');
+    const response = await fetch(`/api/admin/dashboard?organization_id=${organizationId}`);
     if (!response.ok) {
       throw new Error(`Erro HTTP! status: ${response.status}`);
     }
     
-    const appointmentsByEmployeeRes = await fetch('/api/admin/appointments/by-employee');
+    const appointmentsByEmployeeRes = await fetch(`/api/admin/appointments/by-employee?organization_id=${organizationId}`);
     if (!appointmentsByEmployeeRes.ok) throw new Error('Erro ao carregar agendamentos por funcionário');
     const appointmentsByEmployeeData = await appointmentsByEmployeeRes.json();
     

@@ -16,10 +16,18 @@ document.addEventListener('DOMContentLoaded', function() {
   const cancelCouponEdit = document.getElementById('cancelCouponEdit');
   const couponsTable = document.getElementById('couponsTable');
 
+function getOrganizationIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("organization_id");
+}
+
+const organizationId = getOrganizationIdFromUrl();
+console.log(organizationId);
+
   // Carregar cupons
   async function loadCoupons() {
     try {
-      const response = await fetch('/api/coupons');
+      const response = await fetch(`/api/coupons?organization_id=${organizationId}`);
       if (!response.ok) throw new Error('Erro ao carregar cupons');
       
       const coupons = await response.json();
@@ -178,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       } else {
         // Criar novo cupom
-        response = await fetch('/api/coupons', {
+        response = await fetch(`/api/coupons?organization_id=${organizationId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(couponData)

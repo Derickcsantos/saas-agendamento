@@ -34,12 +34,35 @@ let allServices = [];
 let employeeServices = [];
 let workSchedules = [];
 
+function getOrganizationId() {
+  const params = new URLSearchParams(window.location.search);
+  let orgId = params.get("organization_id");
 
+  if (orgId) {
+    // Se veio na URL, salva no localStorage
+    localStorage.setItem("organization_id", orgId);
+  } else {
+    // Se não veio na URL, tenta buscar do localStorage
+    orgId = localStorage.getItem("organization_id");
+    if (orgId) {
+      // Reescreve a URL para incluir o organization_id
+      params.set("organization_id", orgId);
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState({}, "", newUrl);
+    }
+  }
+
+  return orgId;
+}
+
+// Uso
+const organizationId = getOrganizationId();
+console.log("Organization ID:", organizationId);
 
 
 function logout() {
   localStorage.removeItem('isLoggedIn');
-  window.location.href = '/login';
+  window.location.href = `/login?organization_id=${organizationId}`;
 }
 
 // Função para atualizar data e hora
@@ -62,20 +85,6 @@ function atualizarDataHora() {
 // Atualizar imediatamente e depois a cada segundo
 atualizarDataHora();
 setInterval(atualizarDataHora, 1000);
-
-// Modifique todas as chamadas fetch para incluir a verificação
-async function loadCategories() {
-  if (!await checkAuth()) return;
-  
-  try {
-    const response = await fetch('/api/admin/categories', {
-      credentials: 'include'
-    });
-    // ... resto do código
-  } catch (error) {
-    console.error('Erro:', error);
-  }
-}
 
 // Funções auxiliares
 function formatDate(dateString) {
@@ -189,11 +198,11 @@ function showConfirmationModal(type, id) {
         let method = 'DELETE';
         
         switch (type) {
-          case 'category': endpoint = `/api/admin/categories/${id}`; break;
-          case 'service': endpoint = `/api/admin/services/${id}`; break;
-          case 'employee': endpoint = `/api/admin/employees/${id}`; break;
+          case 'category': endpoint = `/api/admin/categories/${id}?organization_id=${organizationId}`; break;
+          case 'service': endpoint = `/api/admin/services/${id}?organization_id=${organizationId}`; break;
+          case 'employee': endpoint = `/api/admin/employees/${id}?organization_id=${organizationId}`; break;
           case 'appointment': 
-            endpoint = `/api/admin/appointments/${id}/cancel`;
+            endpoint = `/api/admin/appointments/${id}/cancel?organization_id=${organizationId}`;
             method = 'PUT';
             break;
         }
@@ -250,7 +259,7 @@ function showConfirmationModal(type, id) {
 // Carregar dados
 async function loadCategories() {
   try {
-    const response = await fetch('/api/admin/categories');
+    const response = await fetch(`/api/admin/categories?organization_id=${organizationId}`);
     if (!response.ok) throw new Error(`Erro HTTP! status: ${response.status}`);
     
     const data = await response.json();
@@ -290,7 +299,7 @@ async function loadCategories() {
 
 async function loadServices() {
   try {
-    const response = await fetch('/api/admin/services');
+    const response = await fetch(`/api/admin/services?organization_id=${organizationId}`);
     if (!response.ok) {
       throw new Error(`Erro HTTP! status: ${response.status}`);
     }
@@ -325,7 +334,7 @@ async function loadServices() {
 
 async function searchServicesByName(name) {
   try {
-    const response = await fetch(`/api/admin/services/search?name=${encodeURIComponent(name)}`);
+    const response = await fetch(`/api/admin/services/search?name=${encodeURIComponent(name)}&organization_id=${organizationId}`);
     if (!response.ok) throw new Error(`Erro HTTP! status: ${response.status}`);
     
     const data = await response.json();
@@ -357,27 +366,11 @@ function renderServicesTable(data) {
   });
 }
 
-async function searchServicesByName(name) {
-  try {
-    const response = await fetch(`/api/admin/services?name=${encodeURIComponent(name)}`);
-    if (!response.ok) throw new Error(`Erro HTTP! status: ${response.status}`);
-    
-    const data = await response.json();
-    renderServicesTable(data);
-  } catch (error) {
-    console.error('Erro ao buscar serviços:', error);
-    showToast(`Erro ao buscar serviços: ${error.message}`, 'error');
-  }
-}
-
 // Evento do botão de busca
 document.getElementById('searchServiceBtn').addEventListener('click', () => {
   const searchValue = document.getElementById('searchServiceInput').value.trim();
   searchServicesByName(searchValue); // Busca com ou sem valor
 });
-
-
-
 
 function formatTimeToHHMM(timeStr) {
   return timeStr && typeof timeStr === 'string' ? timeStr.slice(0, 5) : '';
@@ -385,7 +378,7 @@ function formatTimeToHHMM(timeStr) {
 
 async function loadEmployees() {
   try {
-    const response = await fetch('/api/admin/employees');
+    const response = await fetch(`/api/admin/employees?organization_id=${organizationId}`);
     if (!response.ok) throw new Error(`Erro HTTP! status: ${response.status}`);
     
     const data = await response.json();
@@ -562,7 +555,7 @@ function initializeCalendar(calendarEl) {
         // Adiciona feedback visual de loading
         calendarEl.classList.add('loading');
         
-        const response = await fetch(`/api/admin/appointments?start_date=${startDate}&end_date=${endDate}`);
+        const response = await fetch(`/api/admin/appointments?start_date=${startDate}&end_date=${endDate}&organization_id=${organizationId}`);
         if (!response.ok) throw new Error(`Erro HTTP! status: ${response.status}`);
         
         const data = await response.json();
@@ -657,7 +650,7 @@ async function loadAppointments(filters = {}) {
     if (filters.start_date) queryParams.append('start_date', filters.start_date);
     if (filters.end_date) queryParams.append('end_date', filters.end_date);
 
-    const response = await fetch(`/api/admin/appointments?${queryParams.toString()}`);
+    const response = await fetch(`/api/admin/appointments?${queryParams.toString()}&organization_id=${organizationId}`);
     if (!response.ok) throw new Error(`Erro HTTP! status: ${response.status}`);
     
     const data = await response.json();
@@ -688,7 +681,7 @@ async function loadCanceledAppointments(filters = {}) {
     if (filters.start_date) queryParams.append('start_date', filters.start_date);
     if (filters.end_date) queryParams.append('end_date', filters.end_date);
 
-    const response = await fetch(`/api/admin/canceled_appointments?${queryParams.toString()}`);
+    const response = await fetch(`/api/admin/canceled_appointments?${queryParams.toString()}&organization_id=${organizationId}`);
     if (!response.ok) throw new Error(`Erro HTTP! status: ${response.status}`);
 
     const data = await response.json();
@@ -733,7 +726,7 @@ function createGoogleCalendarUrl(appointment) {
 // Função para marcar como concluído
 async function completeAppointment(appointmentId) {
   try {
-    const response = await fetch(`/api/admin/appointments/${appointmentId}/complete`, {
+    const response = await fetch(`/api/admin/appointments/${appointmentId}/complete?organization_id=${organizationId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
@@ -763,7 +756,7 @@ async function completeAppointment(appointmentId) {
 async function cancelAppointment(appointmentId) {
   try {
 
-    const response = await fetch(`/api/admin/appointments/${appointmentId}/cancel`, {
+    const response = await fetch(`/api/admin/appointments/${appointmentId}/cancel?organization_id=${organizationId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
@@ -864,7 +857,7 @@ function renderAppointmentsTable(appointments) {
     btn.addEventListener('click', async () => {
       const appointmentId = btn.getAttribute('data-id');
       try {
-        const response = await fetch(`/api/admin/appointments/${appointmentId}`);
+        const response = await fetch(`/api/admin/appointments/${appointmentId}?organization_id=${organizationId}`);
         if (!response.ok) throw new Error('Erro ao buscar agendamento');
         
         const appointment = await response.json();
@@ -1127,43 +1120,52 @@ function setupEventListeners() {
     }
   });
 }
-
-// Funções para manipulação de categorias
 async function handleCategorySubmit(e) {
   try {
     e.preventDefault();
-    
+
+    const organizationId = getOrganizationId();
+    if (!organizationId) throw new Error("Organization ID não encontrado");
+
     const name = document.getElementById('categoryName')?.value.trim();
     if (!name) throw new Error('O nome da categoria é obrigatório');
-    
+
     const categoryId = document.getElementById('categoryId')?.value;
     const method = categoryId ? 'PUT' : 'POST';
-    const endpoint = categoryId ? `/api/admin/categories/${categoryId}` : '/api/admin/categories';
-    
+    const endpoint = categoryId
+      ? `/api/admin/categories/${categoryId}?organization_id=${organizationId}`
+      : `/api/admin/categories?organization_id=${organizationId}`;
+
     const formData = new FormData();
     formData.append('name', name);
-    
+
     const imageInput = document.getElementById('categoryImage');
-    if (imageInput.files[0]) {
+    if (imageInput && imageInput.files && imageInput.files[0]) {
       formData.append('image', imageInput.files[0]);
     }
-    
+
     const response = await fetch(endpoint, {
-      method: method,
-      body: formData
+      method,
+      body: formData,
+      headers: {
+        // use hífen para bater com req.headers['organization-id']
+        'organization-id': organizationId,
+        // opcional: aceitar json de resposta
+        'Accept': 'application/json'
+      }
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
     }
-    
+
     const result = await response.json();
-    
+
     document.getElementById('categoryForm').reset();
     document.getElementById('categoryId').value = '';
     document.getElementById('categoryImagePreview').innerHTML = '';
-    
+
     await loadCategories();
     showToast(result.message || 'Categoria salva com sucesso!', 'success');
   } catch (error) {
@@ -1172,11 +1174,12 @@ async function handleCategorySubmit(e) {
   }
 }
 
+
 async function editCategory(id) {
   try {
     if (!id) throw new Error('ID da categoria não fornecido');
     
-    const response = await fetch(`/api/admin/categories/${id}`);
+    const response = await fetch(`/api/admin/categories/${id}?organization_id=${organizationId}`);
     if (!response.ok) throw new Error(`Erro HTTP! status: ${response.status}`);
     
     const category = await response.json();
@@ -1210,8 +1213,7 @@ function cancelCategoryEdit() {
   document.getElementById('categoryImagePreview').innerHTML = '';
 }
 
-// Funções para manipulação de serviços
-// Funções para manipulação de serviços
+
 async function handleServiceSubmit(e) {
   try {
     e.preventDefault();
@@ -1228,7 +1230,7 @@ async function handleServiceSubmit(e) {
     
     const serviceId = document.getElementById('serviceId')?.value;
     const method = serviceId ? 'PUT' : 'POST';
-    const endpoint = serviceId ? `/api/admin/services/${serviceId}` : '/api/admin/services';
+    const endpoint = serviceId ? `/api/admin/services/${serviceId}?organization_id=${organizationId}` : `/api/admin/services?organization_id=${organizationId}`;
     
     const formData = new FormData();
     formData.append('category_id', categoryId);
@@ -1270,7 +1272,7 @@ async function editService(id) {
   try {
     if (!id) throw new Error('ID do serviço não fornecido');
     
-    const response = await fetch(`/api/admin/services/${id}`);
+    const response = await fetch(`/api/admin/services/${id}?organization_id=${organizationId}`);
     if (!response.ok) throw new Error(`Erro HTTP! status: ${response.status}`);
     
     const service = await response.json();
@@ -1379,12 +1381,12 @@ async function handleEmployeeSubmit(e) {
     let response;
     
     if (employeeId) {
-      response = await fetch(`/api/admin/employees/${employeeId}`, {
+      response = await fetch(`/api/admin/employees/${employeeId}?organization_id=${organizationId}`, {
         method: 'PUT',
         body: formData  // Não definir Content-Type, o browser fará isso automaticamente
       });
     } else {
-      response = await fetch('/api/admin/employees', {
+      response = await fetch(`/api/admin/employees?organization_id=${organizationId}`, {
         method: 'POST',
         body: formData  // Não definir Content-Type, o browser fará isso automaticamente
       });
@@ -1449,12 +1451,12 @@ async function openManageServicesModal() {
     bootstrapModal.show();
     
     // Carregar todos os serviços
-    const servicesResponse = await fetch('/api/services');
+    const servicesResponse = await fetch(`/api/services?organization_id=${organizationId}`);
     if (!servicesResponse.ok) throw new Error('Erro ao carregar serviços');
     allServices = await servicesResponse.json();
     
     // Carregar serviços do funcionário
-    const employeeServicesResponse = await fetch(`/api/employee-services/${currentEmployeeId}`);
+    const employeeServicesResponse = await fetch(`/api/employee-services/${currentEmployeeId}?organization_id=${organizationId}`);
     if (!employeeServicesResponse.ok) throw new Error('Erro ao carregar serviços do funcionário');
     employeeServices = await employeeServicesResponse.json();
     
@@ -1589,7 +1591,7 @@ async function saveEmployeeServices() {
       service_id: service.service_id
     }));
     
-    const response = await fetch(`/api/employee-services/${currentEmployeeId}`, {
+    const response = await fetch(`/api/employee-services/${currentEmployeeId}?organization_id=${organizationId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
@@ -1868,8 +1870,8 @@ async function editEmployee(id) {
     container.innerHTML = '<div class="text-center py-3">Carregando...</div>';
     
     const [employeeResponse, schedulesResponse] = await Promise.all([
-      fetch(`/api/admin/employees/${id}`),
-      fetch(`/schedules/${id}`)
+      fetch(`/api/admin/employees/${id}?organization_id=${organizationId}`),
+      fetch(`/schedules/${id}?organization_id=${organizationId}`)
     ]);
     
     if (!employeeResponse.ok || !schedulesResponse.ok) {
