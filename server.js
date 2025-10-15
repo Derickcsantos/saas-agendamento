@@ -11,8 +11,6 @@ const ExcelJS = require('exceljs');
 const multer = require('multer');
 const fs = require('fs');
 const mongoose = require('mongoose');
-const swaggerJsdoc = require('swagger-jsdoc');  
-const swaggerUi = require('swagger-ui-express');  // Cria um ainterface para testarmos a API
 const upload = multer();
 const schedule = require('node-schedule');
 const cron = require('node-cron');
@@ -21,46 +19,7 @@ const session = require('express-session');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { v4: uuidv4 } = require('uuid'); // Gera ids unicos
-
-
-// Configuração do Swagger personalizada
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'Sistema de Agendamentos Online',
-      version: '1.0.0',
-      description: 'Documentação das rotas da API de agendamentos',
-      contact: {
-        name: 'Dérick Campos',
-        email: 'derickcampossantos1@gmail.com'
-      }
-    },
-    servers: [
-      {
-        url: 'http://localhost:3000',
-        description: 'Servidor local'
-      },
-      {
-        url: 'https://agendaagora.onrender.com',
-        description: 'Servidor de produção'
-      }
-    ]
-  },
-  apis: ['./server.js'] // Todas as rotas estão neste arquivo
-};
-
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
-
-// Configuração do Swagger UI com opções personalizadas
-const swaggerUiOptions = {
-  customSiteTitle: "Sistema de Agendamentos Online - Documentação",
-  customCss: `
-    .topbar { display: none }
-    .swagger-ui .information-container { background-color: #f5f5f5 }
-  `,
-  customfavIcon: '/favicon.ico'
-};
+const { setupSwagger } = require('./swagger.js');
 
 let whatsappClient = null;
 const SESSION_DIR = path.join(__dirname, 'tokens');
@@ -70,6 +29,9 @@ const SESSION_FILE = path.join(SESSION_DIR, 'salon-bot.json');
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Swagger Docs
+setupSwagger(app)
 
 // Configuração do Supabase
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -243,12 +205,6 @@ async function migrateImages() {
 
 // migrateImages();
 
-// Integração com Express (coloque isto ANTES das outras rotas)
-app.use(
-  '/api-docs',
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec, swaggerUiOptions)
-);
 // Rotas para servir os arquivos HTML
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/home', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
