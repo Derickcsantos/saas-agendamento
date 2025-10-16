@@ -20,6 +20,9 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { v4: uuidv4 } = require('uuid'); // Gera ids unicos
 const { setupSwagger } = require('./swagger.js');
+const { mongoURI } = require('./lib/mongo.js');
+const { supabase } = require('./lib/supabase.js');
+const { Galeria }  = require('./models/Galeria.js');
 
 let whatsappClient = null;
 const SESSION_DIR = path.join(__dirname, 'tokens');
@@ -33,10 +36,7 @@ const port = process.env.PORT || 3000;
 // Swagger Docs
 setupSwagger(app)
 
-// Configuração do Supabase
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+
 app.use(cookieParser());
 
 // Criar diretório se não existir
@@ -50,50 +50,6 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization', 'organization-id', 'organization_id', 'Accept'], // Permite esses cabeçalhos específicos
   credentials: true,        // Permite cookies (importante se for necessário)
 };
-
-// const mongoURI = process.env.MONGO_URI || 'uri do banco de dados mongodb'
-// // Conexão com MongoDB
-//  mongoose.connect('uri do banco de dados para a galeria, utilizar mongodb', {
-//    useNewUrlParser: true,
-//    useUnifiedTopology: true,
-//    serverSelectionTimeoutMS: 10000,
-//    socketTimeoutMS: 45000
-//  })
-//  .then(() => console.log('✅ MongoDB conectado com sucesso'))
-//  .catch(err => {
-//    console.error('❌ Falha na conexão com MongoDB:', err);
-//    process.exit(1);
-//  });
-
-// Modelo da Galeria
-const ImagemSchema = new mongoose.Schema({
-  dados: {
-    type: Buffer,
-    required: true
-  },
-  tipo: {
-    type: String,
-    required: true
-  }
-}, { _id: false });;
-
-const GaleriaSchema = new mongoose.Schema({
-  titulo: {
-    type: String,
-    default: 'Sem título'
-  },
-  imagem: {
-    type: ImagemSchema,
-    required: true
-  },
-  criadoEm: {
-    type: Date,
-    default: Date.now
-  }
-}, { versionKey: false });
-
-const Galeria = mongoose.model('Galeria', GaleriaSchema);
-
 
 // Middlewares
 app.use(cors(corsOptions));
