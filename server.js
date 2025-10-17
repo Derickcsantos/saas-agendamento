@@ -23,6 +23,7 @@ const { setupSwagger } = require('./swagger.js');
 const { mongoURI } = require('./lib/mongo.js');
 const { supabase } = require('./lib/supabase.js');
 const { Galeria }  = require('./models/Galeria.js');
+const { emailContactRouter } = require('./routes/contatoRoutes.js')
 
 let whatsappClient = null;
 const SESSION_DIR = path.join(__dirname, 'tokens');
@@ -199,66 +200,7 @@ app.get('/logado/agendamentos', (req, res) => {
   });
 });
 
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
-
-// Rota para enviar email de contato
-app.post('/api/contact', async (req, res) => {
-    const { name, email, phone, message } = req.body;
-
-    // Validação básica
-    if (!name || !email || !message) {
-        return res.status(400).json({ error: 'Nome, email e mensagem são obrigatórios' });
-    }
-
-    // Configuração do transporter (substitua com suas credenciais SMTP)
-    const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,
-        secure: false, // true para 465, false para outras portas
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        }
-    });
-
-    // Configuração do email
-    const mailOptions = {
-        from: `"Formulário de Contato" <${email}>`,
-        to: 'salaopaulatrancas@gmail.com',
-        subject: `Nova mensagem de ${name} - Site Paula Tranças`,
-        text: `
-            Nome: ${name}
-            Email: ${email}
-            Telefone: ${phone || 'Não informado'}
-            
-            Mensagem:
-            ${message}
-        `,
-        html: `
-            <h2>Nova mensagem do site Paula Tranças</h2>
-            <p><strong>Nome:</strong> ${name}</p>
-            <p><strong>Email:</strong> ${email}</p>
-            <p><strong>Telefone:</strong> ${phone || 'Não informado'}</p>
-            <p><strong>Mensagem:</strong></p>
-            <p>${message.replace(/\n/g, '<br>')}</p>
-        `
-    };
-
-    try {
-        await transporter.sendMail(mailOptions);
-        res.status(200).json({ message: 'Mensagem enviada com sucesso!' });
-    } catch (error) {
-        console.error('Erro ao enviar email:', error);
-        res.status(500).json({ error: 'Ocorreu um erro ao enviar a mensagem. Por favor, tente novamente mais tarde.' });
-    }
-});
+app.use('/api/contato', emailContactRouter)
 
 // Função para gerar senha
 function gerarSenha() {

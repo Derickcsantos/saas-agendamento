@@ -1,3 +1,5 @@
+// swagger.js
+
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 
@@ -13,13 +15,20 @@ const swaggerOptions = {
     },
     servers: [
       {
+        url: 'https://ubiquitous-train-v6pw96wx6v64h664v-3000.app.github.dev',
+        description: 'Servidor Codespaces (Public URL)'
+      },
+      {
         url: 'http://localhost:3000',
         description: 'Servidor local'
       },
-      // ... etc
     ]
   },
-  apis: ['./server.js']
+  apis: [
+    './server.js',
+    './routes/*.js',
+    './controllers/*.js'
+  ],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
