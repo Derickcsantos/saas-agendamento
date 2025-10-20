@@ -24,6 +24,12 @@ const { mongoURI } = require('./lib/mongo.js');
 const { supabase } = require('./lib/supabase.js');
 const { Galeria }  = require('./models/Galeria.js');
 const { emailContactRouter } = require('./routes/contatoRoutes.js')
+const categoryRouter = require('./routes/categoryRoutes.js');
+const { generateAccessToken } = require('./utils/jwt.js')
+const jwt = require('jsonwebtoken');
+const { authenticateJWT } = require('./middlewares/authMiddleware.js')
+const { extractOrganizationId } = require('./middlewares/authMiddleware.js')
+
 
 let whatsappClient = null;
 const SESSION_DIR = path.join(__dirname, 'tokens');
@@ -40,17 +46,32 @@ setupSwagger(app)
 
 app.use(cookieParser());
 
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Credentials', 'true'); // importante
+  next();
+});
+
 // Criar diretório se não existir
 if (!fs.existsSync(SESSION_DIR)) {
   fs.mkdirSync(SESSION_DIR, { recursive: true });
 }
 
 const corsOptions = {
-  origin: '*',              // Permite qualquer origem
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],  // Permite os métodos HTTP que você precisa
-  allowedHeaders: ['Content-Type', 'Authorization', 'organization-id', 'organization_id', 'Accept'], // Permite esses cabeçalhos específicos
-  credentials: true,        // Permite cookies (importante se for necessário)
+  origin: ['http://localhost:3000', 'https://ubiquitous-train-v6pw96wx6v64h664v-3000.app.github.dev'], 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'organization-id', 'organization_id', 'Accept'],
+  credentials: true,
 };
+
+
+function setTokenCookie(res, token) {
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production', // em dev pode ser false
+    sameSite: 'strict',
+    maxAge: 60 * 60 * 1000, // 1 hora
+  });
+}
 
 // Middlewares
 app.use(cors(corsOptions));
@@ -67,41 +88,28 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 
-const extractOrganizationId = (req, res, next) => {
-  // headers em Node são sempre lowercased
-  const headerOrg = req.headers['organization-id'] || req.headers['organization_id'] || req.headers['organizationid'];
-  const organizationId = headerOrg || req.query.organization_id || (req.body && req.body.organization_id);
-
-  // logs para debug
-  console.log('[extractOrganizationId] headers:', req.headers);
-  console.log('[extractOrganizationId] query:', req.query);
-  console.log('[extractOrganizationId] body keys:', req.body && Object.keys(req.body));
-  console.log('[extractOrganizationId] resolved organizationId:', organizationId);
-
-  if (!organizationId) {
-    return res.status(400).json({ error: 'Organization ID é obrigatório' });
-  }
-
-  req.organizationId = organizationId;
-  next();
-};
-
-
 const checkAuth = (req, res, next) => {
-  const userData = req.cookies.userData;  // Obtendo os dados do usuário do cookie
+  const token = req.cookies.token; // 🔥 Aqui pegamos o token JWT httpOnly
 
-  if (!userData) {
-    return res.status(403).send('Acesso negado');  // Caso não tenha cookie
+  if (!token) {
+    return res.status(403).json({ error: 'Acesso negado. Token não encontrado.' });
   }
 
-  const parsedUser = JSON.parse(userData);
+  try {
+    // Verifica e decodifica o token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-  // Verificando se o tipo do usuário é 'admin' ou 'funcionario'
-  if (parsedUser.tipo === 'admin' || parsedUser.tipo === 'funcionario') {
-    req.organizationId = parsedUser.organization_id;
-    next();  // Usuário autorizado, segue para a rota
-  } else {
-    return res.status(403).send('Acesso negado');
+    // Decoded agora contém os dados do usuário, como id, tipo, organization_id
+    if (decoded.tipo === 'admin' || decoded.tipo === 'funcionario') {
+      req.user = decoded;
+      req.organizationId = decoded.organization_id;
+      next();
+    } else {
+      return res.status(403).json({ error: 'Acesso negado. Permissão insuficiente.' });
+    }
+  } catch (err) {
+    console.error('Erro ao verificar token JWT:', err);
+    return res.status(401).json({ error: 'Token inválido ou expirado.' });
   }
 };
 
@@ -201,6 +209,15 @@ app.get('/logado/agendamentos', (req, res) => {
 });
 
 app.use('/api/contato', emailContactRouter)
+
+app.post('/api/logout', (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',
+  });
+  res.json({ success: true, message: 'Logout realizado com sucesso' });
+});
 
 // Função para gerar senha
 function gerarSenha() {
@@ -1178,16 +1195,16 @@ app.post('/api/login', extractOrganizationId, async (req, res) => {
       tipo: user.tipo
     };
 
-    res.cookie('userData', JSON.stringify(userData), {
-      httpOnly: true,   // Evita que o cookie seja acessado via JavaScript
-      secure: false,    // Coloque true se estiver usando HTTPS em produção
-      maxAge: 60 * 60 * 1000, // Expira após 1 hora
-    });
+    const token = generateAccessToken(userData);
+    setTokenCookie(res, token);
 
-    res.json({
+
+    return res.json({
       success: true,
+      message: 'login bem sucedido',
       user: userData
     });
+
 
   } catch (err) {
     console.error('Erro ao fazer login:', err);
@@ -1281,11 +1298,7 @@ app.get('/auth/google/callback',
       tipo: req.user.tipo
     };
 
-    res.cookie('userData', JSON.stringify(userData), {
-      httpOnly: false,
-      secure: false,
-      maxAge: 60 * 60 * 1000,
-    });
+    const token = generateAccessToken(userData);
 
     // redireciona de acordo com o tipo do usuário
     let redirectUrl = `/logado?organization_id=${userData.organization_id}`;
@@ -1297,13 +1310,7 @@ app.get('/auth/google/callback',
       redirectUrl = `/logado?organization_id=${userData.organization_id}`;
     }
 
-    res.send(`
-      <script>
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('currentUser', '${JSON.stringify(userData)}');
-        window.location.href = '${redirectUrl}';
-      </script>
-    `);
+    res.redirect(redirectUrl);
   }
 );
 
@@ -2630,325 +2637,7 @@ app.get('/api/admin/canceled_appointments', async (req, res) => {
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-/**
- * @swagger
- * tags:
- *   - name: Categorias
- *     description: Endpoints para gestão de categorias de serviços (admin)
- */
-
-/**
- * @swagger
- * /api/admin/categories:
- *   get:
- *     summary: Lista todas as categorias
- *     tags: [Categorias]
- *     responses:
- *       200:
- *         description: Lista de categorias ordenadas por nome
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Category'
- *       500:
- *         description: Erro interno do servidor
- */
-// Rotas para categorias
-app.get('/api/admin/categories', extractOrganizationId, async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('categories')
-      .select('id, name') // Adicione aqui apenas os campos que você quer retornar
-      .eq('organization_id', req.organizationId)
-      .order('name', { ascending: true });
-
-    if (error) throw error;
-    res.json(data);
-  } catch (error) {
-    console.error('Error fetching categories:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-
-/**
- * @swagger
- * /api/admin/categories/{id}:
- *   get:
- *     summary: Obtém detalhes de uma categoria específica
- *     tags: [Categorias]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID da categoria
- *     responses:
- *       200:
- *         description: Dados completos da categoria
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Category'
- *       404:
- *         description: Categoria não encontrada
- *       500:
- *         description: Erro interno do servidor
- */
-app.get('/api/admin/categories/:id', extractOrganizationId, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('id', id)
-      .eq('organization_id', req.organizationId)
-      .single();
-
-    if (error) throw error;
-    if (!data) return res.status(404).json({ error: 'Categoria não encontrada' });
-    
-    res.json(data);
-  } catch (error) {
-    console.error('Error fetching category:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-
-/**
- * @swagger
- * /api/admin/categories:
- *   post:
- *     summary: Cria uma nova categoria
- *     tags: [Categorias]
- *     consumes:
- *       - multipart/form-data
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *             properties:
- *               name:
- *                 type: string
- *                 description: Nome da categoria
- *                 example: "Cabelo"
- *               image:
- *                 type: string
- *                 format: binary
- *                 description: Imagem da categoria (opcional)
- *     responses:
- *       201:
- *         description: Categoria criada com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Category'
- *       400:
- *         description: Dados inválidos
- *       500:
- *         description: Erro interno do servidor
- */
-
-// Atualize a rota POST de categorias
-app.post('/api/admin/categories', upload.single('image'), extractOrganizationId, async (req, res) => {
-  try {
-    const { name } = req.body;
-    let imagePath = null;
-
-    if (req.file) {
-      // processa a imagem
-      const buffer = await sharp(req.file.buffer)
-        .resize({ width: 600 }) // redimensiona
-        .webp({ quality: 80 }) // converte para webp
-        .toBuffer();
-
-      // cria um nome único para a imagem
-      const fileName = `${uuidv4()}.webp`;
-
-      // faz upload para o Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('category-images')
-        .upload(fileName, buffer, {
-          contentType: 'image/webp',
-          upsert: false, // evita sobrescrever
-        });
-
-      if (uploadError) throw uploadError;
-
-      // gera a URL pública (se o bucket for público)
-      const { data: publicUrl } = supabase.storage
-        .from('category-images')
-        .getPublicUrl(fileName);
-
-      imagePath = publicUrl.publicUrl;
-    }
-
-    // salva no banco só o caminho/URL
-    const { data, error } = await supabase
-      .from('categories')
-      .insert([{ 
-        organization_id: req.organizationId,
-        name, 
-        imagem_category: imagePath 
-      }])
-      .select();
-
-    if (error) throw error;
-    res.status(201).json(data[0]);
-  } catch (error) {
-    console.error('Error creating category:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
-  }
-});
-
-/**
- * @swagger
- * /api/admin/categories/{id}:
- *   put:
- *     summary: Atualiza uma categoria existente
- *     tags: [Categorias]
- *     consumes:
- *       - multipart/form-data
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID da categoria
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 description: Novo nome da categoria
- *                 example: "Cabelo e Barba"
- *               image:
- *                 type: string
- *                 format: binary
- *                 description: Nova imagem da categoria (opcional)
- *     responses:
- *       200:
- *         description: Categoria atualizada com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Category'
- *       404:
- *         description: Categoria não encontrada
- *       500:
- *         description: Erro interno do servidor
- */
-// Atualize a rota PUT de categorias
-app.put('/api/admin/categories/:id', upload.single('image'), extractOrganizationId, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name } = req.body;
-    let imageUrl = null;
-
-    // Se enviou nova imagem → salva no Storage
-    if (req.file) {
-      const buffer = await sharp(req.file.buffer)
-        .resize({ width: 600 }) // redimensiona
-        .webp({ quality: 80 }) // converte para webp
-        .toBuffer();
-
-      // Gera nome único
-      const fileName = `${uuidv4()}.webp`;
-
-      // Upload no bucket
-      const { error: uploadError } = await supabase.storage
-        .from('category-images')
-        .upload(fileName, buffer, {
-          contentType: 'image/webp',
-          upsert: false,
-        });
-
-      if (uploadError) throw uploadError;
-
-      // URL pública
-      const { data: publicUrl } = supabase.storage
-        .from('category-images')
-        .getPublicUrl(fileName);
-
-      imageUrl = publicUrl.publicUrl;
-    }
-
-    // Atualiza no banco
-    const updateData = { 
-      name,
-      ...(imageUrl && { imagem_category: imageUrl }) // só troca se veio imagem
-    };
-
-    const { data, error } = await supabase
-      .from('categories')
-      .update(updateData)
-      .eq('id', id)
-      .select();
-
-    if (error) throw error;
-    if (!data || data.length === 0) {
-      return res.status(404).json({ error: 'Categoria não encontrada' });
-    }
-
-    res.json(data[0]);
-  } catch (error) {
-    console.error('Error updating category:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
-  }
-});
-
-
-/**
- * @swagger
- * /api/admin/categories/{id}:
- *   delete:
- *     summary: Remove uma categoria
- *     tags: [Categorias]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID da categoria
- *     responses:
- *       204:
- *         description: Categoria removida com sucesso
- *       404:
- *         description: Categoria não encontrada
- *       500:
- *         description: Erro interno do servidor
- */
-
-app.delete('/api/admin/categories/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { error } = await supabase
-      .from('categories')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-    res.status(204).send();
-  } catch (error) {
-    console.error('Error deleting category:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
+app.use('/api/admin/categories', categoryRouter)
 
 /**
  * @swagger

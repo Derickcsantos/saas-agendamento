@@ -1120,6 +1120,7 @@ function setupEventListeners() {
     }
   });
 }
+
 async function handleCategorySubmit(e) {
   try {
     e.preventDefault();

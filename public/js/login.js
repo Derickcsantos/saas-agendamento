@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-  // Seletores dos elementos principais
+  // Seletores dos elementos principais (verifica existência)
   const loginForm = document.getElementById('loginForm');
   const cadastroForm = document.getElementById('cadastroForm');
   const forgotPasswordForm = document.getElementById('forgotPasswordForm');
@@ -11,220 +11,267 @@ document.addEventListener('DOMContentLoaded', function() {
   const switchToCadastro = document.getElementById('switchToCadastro');
   const switchToLogin = document.getElementById('switchToLogin');
   const forgotPasswordLink = document.getElementById('forgotPasswordLink');
-  // Instancia o modal de recuperação de senha do Bootstrap
-  const forgotPasswordModal = new bootstrap.Modal(document.getElementById('forgotPasswordModal'));
 
-function getOrganizationId() {
-  const params = new URLSearchParams(window.location.search);
-  let orgId = params.get("organization_id");
+  const forgotPasswordModalEl = document.getElementById('forgotPasswordModal');
+  const forgotPasswordModal = (typeof bootstrap !== 'undefined' && forgotPasswordModalEl)
+    ? new bootstrap.Modal(forgotPasswordModalEl)
+    : null;
 
-  if (orgId) {
-    // Se veio na URL, salva no localStorage
-    localStorage.setItem("organization_id", orgId);
-  } else {
+  // ---------- getOrganizationId ----------
+  function getOrganizationId() {
+    const params = new URLSearchParams(window.location.search);
+    let orgId = params.get("organization_id");
+
+    if (orgId) {
+      // Se veio na URL, salva no localStorage para persistir entre reloads
+      localStorage.setItem("organization_id", orgId);
+      return orgId;
+    }
+
     // Se não veio na URL, tenta buscar do localStorage
     orgId = localStorage.getItem("organization_id");
     if (orgId) {
-      // Reescreve a URL para incluir o organization_id
+      // Se já existe no localStorage, garante que a URL mostre isso sem recarregar
       params.set("organization_id", orgId);
       const newUrl = `${window.location.pathname}?${params.toString()}`;
+      // replaceState evita adicionar histórico extra
       window.history.replaceState({}, "", newUrl);
     }
+
+    return orgId;
   }
 
-  return orgId;
-}
+  // Uso
+  const organizationId = getOrganizationId();
+  console.log("Organization ID:", organizationId);
 
-// Uso
-const organizationId = getOrganizationId();
-console.log("Organization ID:", organizationId);
+  // ---------- UI switches (só se os elementos existirem) ----------
+  if (switchToCadastro && loginContainer && cadastroContainer) {
+    switchToCadastro.addEventListener('click', function(e) {
+      e.preventDefault();
+      loginContainer.style.display = 'none';
+      cadastroContainer.style.display = 'block';
+    });
+  }
 
+  if (switchToLogin && cadastroContainer && loginContainer) {
+    switchToLogin.addEventListener('click', function(e) {
+      e.preventDefault();
+      cadastroContainer.style.display = 'none';
+      loginContainer.style.display = 'block';
+    });
+  }
 
-  // Alterna entre as telas de login e cadastro
-  switchToCadastro.addEventListener('click', function(e) {
-    e.preventDefault();
-    loginContainer.style.display = 'none';
-    cadastroContainer.style.display = 'block';
-  });
-
-  switchToLogin.addEventListener('click', function(e) {
-    e.preventDefault();
-    cadastroContainer.style.display = 'none';
-    loginContainer.style.display = 'block';
-  });
-
-  // --- LOGIN ---
-  // Envia o formulário de login para a API
-  loginForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-
-    const login = document.getElementById('login').value.trim();
-    const password = document.getElementById('password').value;
-
-    try {
-      // Faz requisição para a rota de login
-      const response = await fetch(`/api/login?organization_id=${organizationId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ login, password }),
-        credentials: 'include' // Envia cookies
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        // Incrementa tentativas de login no localStorage
-        let attempts = parseInt(localStorage.getItem('tentativaslogin') || '0');
-        attempts++;
-        localStorage.setItem('tentativaslogin', attempts);
-
-        if (attempts >= 5) {
-          throw new Error('Você excedeu o número máximo de tentativas. Tente novamente mais tarde.');
-        } else {
-          throw new Error(result.error || `Credenciais inválidas. Tentativa ${attempts}/3.`);
-        }
-      }
-
-      // Salva dados do usuário no localStorage
-      const userData = {
-        ...result.user,
-        password: password,
-        phone: result.user.phone || '',
-        aniversario: result.user.aniversario || '' 
-      };
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('tentativaslogin', '0');
-      localStorage.setItem('currentUser', JSON.stringify(userData));
-
-      // Redireciona conforme o tipo de usuário
-      if (result.user.tipo === 'admin') {
-        window.location.href = `/admin?organization_id=${organizationId}`;
-      } else if (result.user.tipo === 'funcionario') {
-        window.location.href = `/funcionario?organization_id=${organizationId}`;
-      } else {
-        window.location.href = `/logado?organization_id=${organizationId}`;
-      }
-
-    } catch (error) {
-      showMessage(loginMessage, error.message, 'danger');
-    }
-  });
-
-  // Login com o GOOGLE: 
-  document.getElementById('googleLoginBtn').addEventListener('click', () => {
-    window.location.href = `/auth/google?organization_id=${organizationId}`;
-  });
-
-
-  // --- CADASTRO ---
-  // Envia o formulário de cadastro para a API
-  cadastroForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const username = document.getElementById('cadastroUsername').value.trim();
-    const email = document.getElementById('cadastroEmail').value.trim();
-    const aniversario = document.getElementById('cadastroAniversario').value.trim();
-    const phone = document.getElementById('cadastroPhone').value.trim();
-    const password = document.getElementById('cadastroPassword').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-
-    // Validação das senhas
-    if (password !== confirmPassword) {
-      showMessage(cadastroMessage, 'As senhas não coincidem', 'danger');
-      return;
-    }
-
-    if (password.length < 2) {
-      showMessage(cadastroMessage, 'A senha deve ter pelo menos 3 caracteres', 'danger');
-      return;
-    }
-
-    try {
-      // Faz requisição para a rota de cadastro
-      const response = await fetch(`/api/register?organization_id=${organizationId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          username, 
-          email, 
-          aniversario,
-          phone,
-          organization_id: organizationId,
-          password_plaintext: password
-        })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Erro ao cadastrar usuário');
-      }
-
-      showMessage(cadastroMessage, 'Cadastro realizado com sucesso! Faça login para continuar.', 'success');
-      
-      // Volta para o login após 2 segundos
-      setTimeout(() => {
-        cadastroContainer.style.display = 'none';
-        loginContainer.style.display = 'block';
-        cadastroForm.reset();
-      }, 2000);
-
-    } catch (error) {
-      showMessage(cadastroMessage, error.message, 'danger');
-    }
-  });
-
-  // --- RECUPERAÇÃO DE SENHA ---
-  // Mostra o modal de recuperação de senha
-  forgotPasswordLink.addEventListener('click', function(e) {
-    e.preventDefault();
-    forgotPasswordModal.show();
-  });
-
-  // Envia o formulário de recuperação de senha para a API
-  forgotPasswordForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const email = document.getElementById('recoveryEmail').value.trim();
-    
-    try {
-      const response = await fetch('/api/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Erro ao processar solicitação');
-      }
-
-      showMessage(recoveryMessage, 'Uma nova senha foi enviada para seu email. Verifique sua caixa de entrada.', 'success');
-      
-      // Fecha o modal após 3 segundos
-      setTimeout(() => {
-        forgotPasswordModal.hide();
-        forgotPasswordForm.reset();
-        recoveryMessage.classList.add('d-none');
-      }, 3000);
-
-    } catch (error) {
-      showMessage(recoveryMessage, error.message, 'danger');
-    }
-  });
-
-  // Função utilitária para exibir mensagens de erro/sucesso
+  // ---------- Função utilitária de mensagens ----------
   function showMessage(element, message, type) {
+    if (!element) {
+      // fallback para console se elemento NÃO existir
+      console[type === 'danger' ? 'error' : 'log'](message);
+      return;
+    }
     element.textContent = message;
     element.className = `mt-3 alert alert-${type}`;
     element.classList.remove('d-none');
   }
 
-  // --- VISIBILIDADE DA SENHA ---
-  // Alterna a visibilidade dos campos de senha ao clicar no ícone
+  // ---------- LOGIN ----------
+  if (loginForm) {
+    loginForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const login = document.getElementById('login')?.value.trim() || '';
+      const password = document.getElementById('password')?.value || '';
+
+      if (!login || !password) {
+        showMessage(loginMessage, 'Preencha login e senha.', 'danger');
+        return;
+      }
+
+      try {
+        // NOTE: envio do organization_id na query para que o servidor consiga
+        // buscar o usuário e gerar o token. O servidor então retornará e
+        // setará o cookie HttpOnly; por isso usamos credentials: 'include'.
+        const response = await fetch(`/api/login?organization_id=${encodeURIComponent(organizationId || '')}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ login, password }),
+          credentials: 'include' // fundamental para receber cookie HttpOnly
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || !result.success) {
+          // Incrementa tentativas de login no localStorage
+          let attempts = parseInt(localStorage.getItem('tentativaslogin') || '0', 10);
+          attempts = Number.isNaN(attempts) ? 1 : attempts + 1;
+          localStorage.setItem('tentativaslogin', attempts);
+
+          if (attempts >= 5) {
+            throw new Error('Você excedeu o número máximo de tentativas. Tente novamente mais tarde.');
+          } else {
+            throw new Error(result.error || `Credenciais inválidas. Tentativa ${attempts}/5.`);
+          }
+        }
+
+        // NÃO salve senha no localStorage! salvar apenas dados não sensíveis.
+        const safeUserData = {
+          id: result.user?.id,
+          username: result.user?.username,
+          email: result.user?.email,
+          phone: result.user?.phone || '',
+          aniversario: result.user?.aniversario || '',
+          tipo: result.user?.tipo || '',
+          organization_id: result.user?.organization_id || organizationId
+        };
+
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('tentativaslogin', '0');
+        localStorage.setItem('currentUser', JSON.stringify(safeUserData));
+
+        // Redireciona conforme o tipo de usuário (a URL continua contendo organization_id
+        // para compatibilidade com páginas que ainda leem da query)
+        if (safeUserData.tipo === 'admin') {
+          window.location.href = `/admin?organization_id=${encodeURIComponent(safeUserData.organization_id)}`;
+        } else if (safeUserData.tipo === 'funcionario') {
+          window.location.href = `/funcionario?organization_id=${encodeURIComponent(safeUserData.organization_id)}`;
+        } else {
+          window.location.href = `/logado?organization_id=${encodeURIComponent(safeUserData.organization_id)}`;
+        }
+
+      } catch (error) {
+        console.error('Erro no submit da categoria:', error);
+        showMessage(loginMessage, error.message || 'Erro ao efetuar login', 'danger');
+      }
+    });
+  }
+
+  // ---------- LOGIN COM GOOGLE ----------
+  const googleBtn = document.getElementById('googleLoginBtn');
+  if (googleBtn) {
+    googleBtn.addEventListener('click', () => {
+      // redireciona com organization_id — o server (passport) colocará esse state no fluxo
+      const orgQuery = organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : '';
+      window.location.href = `/auth/google${orgQuery}`;
+    });
+  }
+
+  // ---------- CADASTRO ----------
+  if (cadastroForm) {
+    cadastroForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const username = document.getElementById('cadastroUsername')?.value.trim();
+      const email = document.getElementById('cadastroEmail')?.value.trim();
+      const aniversario = document.getElementById('cadastroAniversario')?.value.trim();
+      const phone = document.getElementById('cadastroPhone')?.value.trim();
+      const password = document.getElementById('cadastroPassword')?.value;
+      const confirmPassword = document.getElementById('confirmPassword')?.value;
+
+      if (!username || !email || !password) {
+        showMessage(cadastroMessage, 'Preencha os campos obrigatórios.', 'danger');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        showMessage(cadastroMessage, 'As senhas não coincidem', 'danger');
+        return;
+      }
+
+      if (password.length < 3) {
+        showMessage(cadastroMessage, 'A senha deve ter pelo menos 3 caracteres', 'danger');
+        return;
+      }
+
+      try {
+        // Recomendo que o servidor DESCRIPTE e valide organization_id no body
+        const payload = {
+          username,
+          email,
+          aniversario,
+          phone,
+          organization_id: organizationId,
+          password_plaintext: password
+        };
+
+        const response = await fetch(`/api/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          // não precisa de credentials aqui, registro inicial não depende de cookie
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Erro ao cadastrar usuário');
+        }
+
+        showMessage(cadastroMessage, 'Cadastro realizado com sucesso! Faça login para continuar.', 'success');
+
+        // Volta para o login após 2 segundos
+        setTimeout(() => {
+          if (cadastroContainer && loginContainer) {
+            cadastroContainer.style.display = 'none';
+            loginContainer.style.display = 'block';
+            cadastroForm.reset();
+          }
+        }, 2000);
+
+      } catch (error) {
+        console.error('Erro no cadastro:', error);
+        showMessage(cadastroMessage, error.message || 'Erro ao cadastrar', 'danger');
+      }
+    });
+  }
+
+  // ---------- RECUPERAÇÃO DE SENHA ----------
+  if (forgotPasswordLink && forgotPasswordModal) {
+    forgotPasswordLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      forgotPasswordModal.show();
+    });
+  }
+
+  if (forgotPasswordForm) {
+    forgotPasswordForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('recoveryEmail')?.value.trim();
+      if (!email) {
+        showMessage(recoveryMessage, 'Informe o email para recuperação', 'danger');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Erro ao processar solicitação');
+        }
+
+        showMessage(recoveryMessage, 'Uma nova senha foi enviada para seu email. Verifique sua caixa de entrada.', 'success');
+
+        setTimeout(() => {
+          if (forgotPasswordModal) forgotPasswordModal.hide();
+          forgotPasswordForm.reset();
+          if (recoveryMessage) recoveryMessage.classList.add('d-none');
+        }, 3000);
+
+      } catch (error) {
+        console.error('Erro na recuperação:', error);
+        showMessage(recoveryMessage, error.message || 'Erro ao solicitar recuperação', 'danger');
+      }
+    });
+  }
+
+  // ---------- VISIBILIDADE DA SENHA ----------
   document.addEventListener('click', function(e) {
-    if (e.target.closest('.toggle-password')) {
+    if (e.target.closest && e.target.closest('.toggle-password')) {
       const button = e.target.closest('.toggle-password');
       const input = button.parentElement.querySelector('.password-input');
 
