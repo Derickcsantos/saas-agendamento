@@ -13,19 +13,20 @@ export const swaggerOptions = {
     },
     servers: [
       {
-        url: 'https://ubiquitous-train-v6pw96wx6v64h664v-3000.app.github.dev',
-        description: 'Servidor Codespaces (Public URL)'
-      },
-      {
         url: 'http://localhost:3000',
         description: 'Servidor local'
+      },
+      {
+        url: 'https://ubiquitous-train-v6pw96wx6v64h664v-3000.app.github.dev',
+        description: 'Servidor Codespaces (Public URL)'
       },
     ]
   },
   apis: [
     './server.js',
     './routes/*.js',
-    './controllers/*.js'
+    './controllers/*.js',
+    './schemas/*.js'
   ],
 };
 
