@@ -34,6 +34,8 @@ import { authenticateJWT } from './middlewares/authMiddleware.js';
 import { extractOrganizationId } from './middlewares/authMiddleware.js';
 import { whatsappRouter } from './routes/whatsappRoutes.js'
 import { userRouter } from './routes/userRoutes.js'
+import generatePassword from './utils/PasswordGenerator.js'
+import { checkAuth } from './utils/checkAuth.js'
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -95,89 +97,6 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-
-const checkAuth = (req, res, next) => {
-  const token = req.cookies.token; // 🔥 Aqui pegamos o token JWT httpOnly
-
-  if (!token) {
-    return res.status(403).json({ error: 'Acesso negado. Token não encontrado.' });
-  }
-
-  try {
-    // Verifica e decodifica o token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Decoded agora contém os dados do usuário, como id, tipo, organization_id
-    if (decoded.tipo === 'admin' || decoded.tipo === 'funcionario') {
-      req.user = decoded;
-      req.organizationId = decoded.organization_id;
-      next();
-    } else {
-      return res.status(403).json({ error: 'Acesso negado. Permissão insuficiente.' });
-    }
-  } catch (err) {
-    console.error('Erro ao verificar token JWT:', err);
-    return res.status(401).json({ error: 'Token inválido ou expirado.' });
-  }
-};
-
-async function migrateImages() {
-  const { data: services, error } = await supabase
-    .from("services")
-    .select("id, imagem_service");
-
-  if (error) {
-    console.error("Erro buscando serviços:", error);
-    return;
-  }
-
-  for (const service of services) {
-    if (!service.imagem_service) continue; // não tem imagem base64
-
-    try {
-      const buffer = Buffer.from(service.imagem_service, "base64");
-
-      // converte para webp
-      const optimized = await sharp(buffer)
-        .resize({ width: 600 })
-        .webp({ quality: 80 })
-        .toBuffer();
-
-      const fileName = `service-${service.id}.webp`;
-
-      // upload para bucket
-      const { error: uploadError } = await supabase.storage
-        .from("services-images")
-        .upload(fileName, optimized, {
-          contentType: "image/webp",
-          upsert: true,
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: publicUrl } = supabase.storage
-        .from("services-images")
-        .getPublicUrl(fileName);
-
-      // atualiza tabela
-      const { error: updateError } = await supabase
-        .from("services")
-        .update({ imagem_service: publicUrl.publicUrl })
-        .eq("id", service.id);
-
-      if (updateError) throw updateError;
-
-      console.log(`Migrado serviço ${service.id}`);
-    } catch (err) {
-      console.error(`Erro migrando serviço ${service.id}:`, err);
-    }
-  }
-
-  console.log("✅ Migração concluída!");
-}
-
-// migrateImages();
-
 // Rotas para servir os arquivos HTML
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/home', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
@@ -226,22 +145,6 @@ app.post('/api/logout', (req, res) => {
   });
   res.json({ success: true, message: 'Logout realizado com sucesso' });
 });
-
-// Função para gerar senha
-function gerarSenha() {
-  const letras = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const numeros = '0123456789';
-
-  let senha = '';
-  for (let i = 0; i < 4; i++) {
-    senha += letras.charAt(Math.floor(Math.random() * letras.length));
-  }
-  for (let i = 0; i < 3; i++) {
-    senha += numeros.charAt(Math.floor(Math.random() * numeros.length));
-  }
-
-  return senha;
-}
 
 // Busca usuário por email
 async function findUserByEmail(email) {
@@ -322,7 +225,7 @@ app.post('/api/forgot-password', async (req, res) => {
     }
 
     // Gera nova senha
-    const newPassword = gerarSenha();
+    const newPassword = generatePassword();
     
     // Atualiza a senha no banco de dados (implemente esta função)
     await updateUserPassword(user.id, newPassword);
