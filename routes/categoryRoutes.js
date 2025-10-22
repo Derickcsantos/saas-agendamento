@@ -1,15 +1,15 @@
-const express = require('express');
-const multer = require('multer');
-const {
+import Router from 'express';
+import multer from 'multer';
+import {
   getAllCategories,
   getCategoryById,
   createCategory,
   updateCategory,
   deleteCategory,
-} = require('../controllers/categoriesController');
-const { authenticateJWT, extractOrganizationId } = require('../middlewares/authMiddleware');
+} from '../controllers/categoriesController.js';
+import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddleware.js';
 
-const categoryRouter = express.Router();
+export const categoryRouter = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 /**
@@ -211,5 +211,3 @@ categoryRouter.put('/:id', authenticateJWT, extractOrganizationId, upload.single
  *         description: Erro interno do servidor
  */
 categoryRouter.delete('/:id', authenticateJWT, extractOrganizationId, deleteCategory);
-
-module.exports = categoryRouter;

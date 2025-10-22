@@ -1,8 +1,8 @@
-require('dotenv').config();
-const jwt = require('jsonwebtoken');
+import 'dotenv/config';
+import jwt from 'jsonwebtoken';
 
-function generateAccessToken(userData) {
+export default function generateAccessToken(userData) {
   return jwt.sign(userData, process.env.JWT_SECRET, { expiresIn: '1h' });
 }
 
-module.exports = { generateAccessToken };
+

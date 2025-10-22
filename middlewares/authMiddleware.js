@@ -1,10 +1,9 @@
-require('dotenv').config();
-const express = require('express');
-const { generateAccessToken } = require('../utils/jwt')
-const jwt = require('jsonwebtoken');
+import 'dotenv/config';
+import express from 'express';
+import generateAccessToken from '../utils/jwt.js';
+import jwt from 'jsonwebtoken';
 
-function authenticateJWT(req, res, next) {
-  // tenta pegar o token do cookie
+export function authenticateJWT(req, res, next) {
   const token = req.cookies.token;
 
   if (!token) {
@@ -22,15 +21,14 @@ function authenticateJWT(req, res, next) {
   }
 }
 
-function extractOrganizationId(req, res, next) {
-  // 1️⃣ Tenta pegar do header Authorization (Bearer token)
+export function extractOrganizationId(req, res, next) {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
 
   if (token) {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = decoded; // guarda o payload inteiro
+      req.user = decoded;
       req.organizationId = decoded.organization_id;
       return next();
     } catch (err) {
@@ -39,7 +37,6 @@ function extractOrganizationId(req, res, next) {
     }
   }
 
-  // 2️⃣ Fallback (login inicial ou endpoints públicos)
   const orgId = req.query.organization_id || req.headers['organization-id'];
   if (orgId) {
     req.organizationId = orgId;
@@ -48,9 +45,3 @@ function extractOrganizationId(req, res, next) {
 
   return res.status(400).json({ error: 'Organization ID não encontrado' });
 }
-
-
-module.exports = {
-    authenticateJWT,
-    extractOrganizationId,
-};

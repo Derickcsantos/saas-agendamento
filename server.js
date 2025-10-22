@@ -1,35 +1,41 @@
-require('dotenv').config();
-const express = require('express');
-const path = require('path');
-const { createClient } = require('@supabase/supabase-js');  // Cliente para interagir com o Banco de Dados
-const cors = require('cors');
-const nodemailer = require('nodemailer');
-const bodyParser = require('body-parser');
-const { create } = require('@wppconnect-team/wppconnect');
-const cookieParser = require('cookie-parser');
-const ExcelJS = require('exceljs');
-const multer = require('multer');
-const fs = require('fs');
-const mongoose = require('mongoose');
-const upload = multer();
-const schedule = require('node-schedule');
-const cron = require('node-cron');
-const sharp = require('sharp');
-const session = require('express-session');
-const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const { v4: uuidv4 } = require('uuid'); // Gera ids unicos
-const { setupSwagger } = require('./swagger.js');
-const { mongoURI } = require('./lib/mongo.js');
-const { supabase } = require('./lib/supabase.js');
-const { Galeria }  = require('./models/Galeria.js');
-const { emailContactRouter } = require('./routes/contatoRoutes.js')
-const categoryRouter = require('./routes/categoryRoutes.js');
-const { generateAccessToken } = require('./utils/jwt.js')
-const jwt = require('jsonwebtoken');
-const { authenticateJWT } = require('./middlewares/authMiddleware.js')
-const { extractOrganizationId } = require('./middlewares/authMiddleware.js')
+import dotenv from 'dotenv';
+dotenv.config();
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { createClient } from '@supabase/supabase-js'; 
+import cors from 'cors';
+import nodemailer from 'nodemailer';
+import bodyParser from 'body-parser';
+import { create } from '@wppconnect-team/wppconnect';
+import cookieParser from 'cookie-parser';
+import ExcelJS from 'exceljs';
+import multer from 'multer';
+import fs from 'fs';
+import mongoose from 'mongoose';
+const upload = multer(); 
+import schedule from 'node-schedule';
+import cron from 'node-cron';
+import sharp from 'sharp';
+import session from 'express-session';
+import passport from 'passport';
+import passportGoogleOauth20 from 'passport-google-oauth20';
+const GoogleStrategy = passportGoogleOauth20.Strategy;
+import { v4 as uuidv4 } from 'uuid'; 
+import setupSwagger from './swagger.js';
+// import { mongoURI } from './lib/mongo.js';
+import { supabase } from './lib/supabase.js';
+import { Galeria } from './models/Galeria.js';
+import { emailContactRouter } from './routes/contatoRoutes.js';
+import { categoryRouter } from './routes/categoryRoutes.js';
+import generateAccessToken  from './utils/jwt.js';
+import jwt from 'jsonwebtoken';
+import { authenticateJWT } from './middlewares/authMiddleware.js';
+import { extractOrganizationId } from './middlewares/authMiddleware.js';
 
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let whatsappClient = null;
 const SESSION_DIR = path.join(__dirname, 'tokens');

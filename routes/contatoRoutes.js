@@ -1,7 +1,7 @@
-const { Router } = require('express');
-const { emailContact } = require('../controllers/contatosController');
+import Router from 'express';
+import { emailContact } from '../controllers/contatosController.js';
 
-const emailContactRouter = Router();
+export const emailContactRouter = Router();
 
 /**
  * @swagger
@@ -71,7 +71,3 @@ const emailContactRouter = Router();
  *                   example: "Ocorreu um erro ao enviar a mensagem. Por favor, tente novamente mais tarde."
  */
 emailContactRouter.post('/', emailContact )
-
-
-
-module.exports = { emailContactRouter };

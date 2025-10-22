@@ -1,9 +1,8 @@
-const { supabase } = require('../lib/supabase');
-const sharp = require('sharp');
-const { v4: uuidv4 } = require('uuid');
+import { supabase } from '../lib/supabase.js';
+import sharp from 'sharp';
+import { v4 as uuidv4 } from 'uuid';
 
-
-async function getAllCategories(req, res) {
+export async function getAllCategories(req, res) {
   try {
     const { data, error } = await supabase
       .from('categories')
@@ -19,8 +18,7 @@ async function getAllCategories(req, res) {
   }
 }
 
-
-async function getCategoryById(req, res) {
+export async function getCategoryById(req, res) {
   try {
     const { id } = req.params;
     const { data, error } = await supabase
@@ -40,8 +38,7 @@ async function getCategoryById(req, res) {
   }
 }
 
-
-async function createCategory(req, res) {
+export async function createCategory(req, res) {
   try {
     const { name } = req.body;
     let imagePath = null;
@@ -89,8 +86,7 @@ async function createCategory(req, res) {
   }
 }
 
-
-async function updateCategory(req, res) {
+export async function updateCategory(req, res) {
   try {
     const { id } = req.params;
     const { name } = req.body;
@@ -143,8 +139,7 @@ async function updateCategory(req, res) {
   }
 }
 
-
-async function deleteCategory(req, res) {
+export async function deleteCategory(req, res) {
   try {
     const { id } = req.params;
     const { error } = await supabase.from('categories').delete().eq('id', id);
@@ -156,11 +151,3 @@ async function deleteCategory(req, res) {
     res.status(500).json({ error: 'Internal server error' });
   }
 }
-
-module.exports = {
-  getAllCategories,
-  getCategoryById,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-};

@@ -1,10 +1,8 @@
-// swagger.js
+import swaggerJsdoc from 'swagger-jsdoc';
+import swaggerUi from 'swagger-ui-express';
 
-const swaggerJsdoc = require('swagger-jsdoc');
-const swaggerUi = require('swagger-ui-express');
 
-// ... (todo o seu código de options permanece o mesmo)
-const swaggerOptions = {
+export const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
@@ -31,11 +29,9 @@ const swaggerOptions = {
   ],
 };
 
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
+export const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-// 👇 ALTERAÇÃO AQUI: A função recebe 'app' diretamente
-function setupSwagger(app) {
-  // O swaggerUiOptions pode ficar aqui dentro ou fora, tanto faz
+export default function setupSwagger(app) {
   const swaggerUiOptions = {
     customSiteTitle: "Sistema de Agendamentos Online - Documentação",
     customCss: `
@@ -47,5 +43,3 @@ function setupSwagger(app) {
 
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions));
 }
-
-module.exports = { setupSwagger };

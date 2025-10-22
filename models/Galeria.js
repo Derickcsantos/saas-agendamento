@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 // Modelo da Galeria
 const ImagemSchema = new mongoose.Schema({
@@ -27,6 +27,5 @@ const GaleriaSchema = new mongoose.Schema({
   }
 }, { versionKey: false });
 
-const Galeria = mongoose.model('Galeria', GaleriaSchema);
+export const Galeria = mongoose.model('Galeria', GaleriaSchema);
 
-module.exports = { Galeria };
