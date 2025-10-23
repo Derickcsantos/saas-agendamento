@@ -42,6 +42,11 @@ import { verifyUserRouter } from './routes/verifyUserRoutes.js';
 import { couponRouter } from './routes/couponRoutes.js';
 import formatTimeFromDB from './utils/formatTimeFromDB.js';
 import { serviceRouter } from './routes/ServiceRoutes.js';
+import updateYesterdayAppointmentsToCompleted from './utils/confirmAppointments.js';
+import convertDayToNumber from './utils/convertDayToNumber.js';
+import formatTimeToHHMMSS from './utils/formatTimeToHHMMSS.js';
+import isValidTime from './utils/isValidTime.js';
+import setTokenCookie from './utils/setTokenCookie.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -79,15 +84,6 @@ const corsOptions = {
   credentials: true,
 };
 
-
-function setTokenCookie(res, token) {
-  res.cookie('token', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // em dev pode ser false
-    sameSite: 'strict',
-    maxAge: 60 * 60 * 1000, // 1 hora
-  });
-}
 
 // Middlewares
 app.use(cors(corsOptions));
@@ -249,9 +245,6 @@ app.get('/health', (req, res) => {
 
 
 app.use('/api/users', userRouter)
-
-
-
 
 /**
  * @swagger
@@ -1547,53 +1540,7 @@ app.put('/api/admin/appointments/:id/complete', extractOrganizationId, async (re
   }
 });
 
-async function updateYesterdayAppointmentsToCompleted() {
-  try {
-    // Obter a data de ontem no formato YYYY-MM-DD
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayFormatted = yesterday.toISOString().split('T')[0];
 
-    // Buscar todos os agendamentos de ontem que não estão cancelados
-    const { data: appointments, error: fetchError } = await supabase
-      .from('appointments')
-      .select('id, status')
-      .eq('appointment_date', yesterdayFormatted)
-      .neq('status', 'canceled');
-
-    if (fetchError) throw fetchError;
-
-    // Filtrar apenas os que estão "confirmed" ou outros status que devem ser completados
-    const appointmentsToUpdate = appointments.filter(
-      appt => appt.status === 'confirmed' // Adicione outros status se necessário
-    );
-
-    // Atualizar cada agendamento
-    const updatePromises = appointmentsToUpdate.map(async (appt) => {
-      const { error } = await supabase
-        .from('appointments')
-        .update({ status: 'completed' })
-        .eq('id', appt.id);
-
-      if (error) throw error;
-      return appt.id;
-    });
-
-    const updatedIds = await Promise.all(updatePromises);
-
-    return {
-      success: true,
-      message: `${updatedIds.length} agendamentos atualizados para "completed"`,
-      updatedIds
-    };
-  } catch (error) {
-    console.error('Error updating yesterday appointments:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
 
 // Rota para executar manualmente a atualização
 app.put('/api/admin/appointments/complete-yesterday', async (req, res) => {
@@ -2525,52 +2472,6 @@ app.post("/schedules", async (req, res) => {
   }
 });
 
-// Funções auxiliares
-function convertDayToNumber(day) {
-  if (typeof day === 'number') {
-    return (day >= 0 && day <= 6) ? day : null;
-  }
-
-   const daysMap = {
-    'domingo': 0,
-    'segunda': 1, 'segunda-feira': 1,
-    'terça': 2, 'terça-feira': 2,
-    'quarta': 3, 'quarta-feira': 3,
-    'quinta': 4, 'quinta-feira': 4,
-    'sexta': 5, 'sexta-feira': 5,
-    'sábado': 6, 'sabado': 6
-    
-  };
-
-  return daysMap[day.toLowerCase()] || null;
-}
-
-function formatTimeToHHMMSS(time) {
-  if (!time) return '09:00:00'; // Valor padrão
-  
-  // Se já está no formato HH:MM:SS
-  if (typeof time === 'string' && time.match(/^\d{2}:\d{2}:\d{2}$/)) {
-    return time;
-  }
-  
-  // Se está no formato HH:MM
-  if (typeof time === 'string' && time.match(/^\d{2}:\d{2}$/)) {
-    return `${time}:00`;
-  }
-  
-  // Se é um número como 800 (8:00) ou 1700 (17:00)
-  if (typeof time === 'number') {
-    const timeStr = String(time).padStart(4, '0');
-    return `${timeStr.substr(0, 2)}:${timeStr.substr(2, 2)}:00`;
-  }
-  
-  return '09:00:00'; // Valor padrão se não reconhecer
-}
-
-// Função auxiliar de validação
-function isValidTime(time) {
-  return /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time);
-}
 
 /**
  * @swagger
@@ -3726,10 +3627,7 @@ app.delete('/api/galeria/:id', async (req, res) => {
   }
 });
 
-
-
 // Iniciar o servidor
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
 });
-
