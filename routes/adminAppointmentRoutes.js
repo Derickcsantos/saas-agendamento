@@ -5,7 +5,8 @@ import {
   updateAdminAppointmentToCompleted, 
   updateAdminAppointmentToCompletedYesterday,
   updateAdminAppointmentToCanceled,
-  getAdminAppointmentsByEmployee
+  getAdminAppointmentsByEmployee,
+  getCancelledAppointments
 } from '../controllers/adminAppointmentsController.js';
 import { extractOrganizationId } from '../middlewares/authMiddleware.js';
 
@@ -181,3 +182,5 @@ adminAppointmentRouter.put('/:id/cancel', updateAdminAppointmentToCanceled);
  *         description: Erro interno do servidor
  */
 adminAppointmentRouter.get('/by-employee', extractOrganizationId, getAdminAppointmentsByEmployee);
+
+adminAppointmentRouter.get('/canceled_appointments', getCancelledAppointments)

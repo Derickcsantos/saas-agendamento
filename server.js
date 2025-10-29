@@ -59,24 +59,19 @@ import { revenueRouter } from './routes/revenueRouter.js'
 import { employeeScheduleRouter } from './routes/employeeScheduleRoutes.js'
 import { loginRouter } from './routes/loginRoutes.js'
 import { emailRouter } from './routes/emailRoutes.js'
+import { dashboardDataRouter } from './routes/dashboardDataRoutes.js'
+import { checkHealthRouter } from './routes/checkHealthRoutes.js'
+import { loggedInUserRouter } from './routes/loggedInUserRoutes.js'
+import { corsOptions } from './utils/corsOptions.js'
 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-let whatsappClient = null;
 const SESSION_DIR = path.join(__dirname, 'tokens');
 const SESSION_FILE = path.join(SESSION_DIR, 'salon-bot.json');
-
-// A pasta TOKEN serve para guardar onde os arquivos serão guardados
-
 const app = express();
 const port = process.env.PORT || 3000;
-
-// Swagger Docs
 setupSwagger(app)
-
-
 app.use(cookieParser());
 
 app.use((req, res, next) => {
@@ -89,15 +84,6 @@ if (!fs.existsSync(SESSION_DIR)) {
   fs.mkdirSync(SESSION_DIR, { recursive: true });
 }
 
-const corsOptions = {
-  origin: ['http://localhost:3000', 'https://ubiquitous-train-v6pw96wx6v64h664v-3000.app.github.dev'], 
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'organization-id', 'organization_id', 'Accept'],
-  credentials: true,
-};
-
-
-// Middlewares
 app.use(cors(corsOptions));
 
 app.use(express.json());
@@ -183,52 +169,14 @@ cron.schedule('0 3 * * *', async () => {
   }
 });
 
-
-
 app.use('/api/forgot-password', forgotPasswordRouter) 
 app.use('/api/send-confirmation-email', emailRouter)
 app.use('/api/send-whatsapp-confirmation', whatsappRouter )
-
-/**
- * @swagger
- * /health:
- *   get:
- *     summary: Verifica o estado da aplicação
- *     description: Retorna o status da API e do cliente WhatsApp.
- *     tags:
- *       - Sistema
- *     responses:
- *       200:
- *         description: Sistema está saudável
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: healthy
- *                 timestamp:
- *                   type: string
- *                   format: date-time
- *       503:
- *         description: Cliente WhatsApp não conectado
- */
-// Health Check
-app.get('/health', (req, res) => {
-  res.status(whatsappClient ? 200 : 503).json({
-    status: whatsappClient ? 'healthy' : 'unavailable',
-    timestamp: new Date()
-  });
-});
-
-
+app.use('/api/health', checkHealthRouter)
 app.use('/api/users', userRouter)
 app.use('/api/register', registerUserRouter);
 app.use('/api/login', loginRouter) 
 
-
-// Login com o Google
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_SECRET_KEY,
@@ -288,8 +236,6 @@ passport.deserializeUser((obj, done) => {
   done(null, obj); // devolve o objeto direto
 });
 
-
-// Inicia o login com Google
 app.get('/auth/google', (req, res, next) => {
   const organizationId = req.query.organization_id;
 
@@ -299,7 +245,6 @@ app.get('/auth/google', (req, res, next) => {
   })(req, res, next);
 });
 
-// Callback do Google
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
   (req, res) => {
@@ -329,176 +274,12 @@ app.get('/auth/google/callback',
   }
 );
 
-
 app.use('/api/verifica-usuario', verifyUserRouter); 
 app.use('/api/categories', appointmentCategoryRouter); 
 app.use('/api/employees', appointmentEmployeeRouter);
 app.use('/api/available-times', availableTimesRouter); 
 app.use('/api/appointments', appointmentsRouter); 
-
-/**
- * @swagger
- * /api/logado/appointments:
- *   get:
- *     summary: Lista agendamentos de um cliente (por e-mail)
- *     tags: [Agendamentos]
- *     parameters:
- *       - in: query
- *         name: email
- *         required: true
- *         schema:
- *           type: string
- *           format: email
- *         description: E-mail do cliente
- *     responses:
- *       200:
- *         description: Lista de agendamentos formatada
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                   date:
- *                     type: string
- *                     format: date
- *                   start_time:
- *                     type: string
- *                   end_time:
- *                     type: string
- *                   status:
- *                     type: string
- *                     enum: [confirmed, completed, canceled]
- *                   service_name:
- *                     type: string
- *                   service_price:
- *                     type: number
- *                   professional_name:
- *                     type: string
- *       500:
- *         description: Erro interno do servidor
- */
-// Rota para obter agendamentos por email (área do cliente)
-app.get('/api/logado/appointments', async (req, res) => {
-  try {
-    const { email } = req.query;
-    
-    if (!email) {
-      return res.status(400).json({ error: 'Email é obrigatório' });
-    }
-
-    // Busca os agendamentos do cliente
-    const { data, error } = await supabase
-      .from('appointments')
-      .select(`
-        id,
-        client_name,
-        client_email,
-        client_phone,
-        appointment_date,
-        start_time,
-        end_time,
-        status,
-        created_at,
-        services(name, price),
-        employees(name)
-      `)
-      .eq('client_email', email)
-      .order('appointment_date', { ascending: true })
-      .order('start_time', { ascending: true });
-
-    if (error) throw error;
-
-    // Formata os dados para resposta (ajustando para o formato esperado pelo frontend)
-    const formattedData = data.map(item => ({
-      id: item.id,
-      date: item.appointment_date, // Mantém o nome do campo que seu frontend espera
-      start_time: item.start_time,
-      end_time: item.end_time,
-      status: item.status,
-      service_name: item.services?.name || 'Serviço não especificado',
-      price: item.services?.price || 0,
-      professional_name: item.employees?.name || 'Profissional não especificado',
-      client_name: item.client_name,
-      client_email: item.client_email,
-      client_phone: item.client_phone
-    }));
-
-    res.json(formattedData);
-  } catch (error) {
-    console.error('Error fetching client appointments:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Rota para obter agendamentos por employee_id
-app.get('/api/appointments/by-employee/:employeeId', async (req, res) => {
-  try {
-    const { employeeId } = req.params;
-    
-    const { data, error } = await supabase
-      .from('appointments')
-      .select(`
-        *,
-        services:service_id (name),
-        employees:employee_id (name)
-      `)
-      .eq('employee_id', employeeId)
-      .order('appointment_date', { ascending: true })
-      .order('start_time', { ascending: true });
-
-    if (error) throw error;
-    
-    res.json(data || []);
-  } catch (error) {
-    console.error('Error fetching appointments:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.get('/api/admin/canceled_appointments', async (req, res) => {
-  try {
-    const { search, date, employee, start_date, end_date } = req.query;
-    let query = supabase
-      .from('canceled_appointments')
-      .select(`
-        *,
-        services(name, price),
-        employees(name)
-      `)
-      .order('appointment_date', { ascending: true })
-      .order('start_time', { ascending: true });
-
-    if (search) {
-      query = query.or(`client_name.ilike.%${search}%,client_email.ilike.%${search}%,client_phone.ilike.%${search}%`);
-    }
-
-    if (date) {
-      // Esperando data no formato YYYY-MM-DD
-      query = query.eq('appointment_date', date);
-    } else if (start_date && end_date) {
-      query = query.gte('appointment_date', start_date).lte('appointment_date', end_date);
-    }
-
-    if (employee) {
-      query = query.ilike('employees.name', `%${employee}%`);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    res.json(data);
-  } catch (error) {
-    console.error('Erro ao buscar agendamentos cancelados:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-
+app.use('/api/logado', loggedInUserRouter);
 app.use('/api/services', appointmentServicesRouter);
 app.use('/api/admin/categories', categoryRouter);
 app.use('/api/admin/services', serviceRouter);
@@ -506,194 +287,8 @@ app.use('/api/admin/appointments', adminAppointmentRouter);
 app.use('/api/admin/employees', adminEmployeeRouter); 
 app.use('/api/employee-services/', employeeServicesRouter) ;
 app.use('/api/galeria', galeryRouter);
-app.use("/schedules", employeeScheduleRouter)
-
-
-/**
- * @swagger
- * tags:
- *   - name: Dashboard
- *     description: Endpoints para dados do painel administrativo
- */
-
-/**
- * @swagger
- * /api/admin/dashboard:
- *   get:
- *     summary: Obtém dados consolidados para o painel administrativo
- *     description: |
- *       Retorna métricas e dados estatísticos para exibição no dashboard administrativo,
- *       incluindo contagens totais, distribuições e dados para gráficos.
- *     tags: [Dashboard]
- *     responses:
- *       200:
- *         description: Dados do dashboard retornados com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 totalEmployees:
- *                   type: integer
- *                   description: Número total de funcionários cadastrados
- *                   example: 15
- *                 totalCategories:
- *                   type: integer
- *                   description: Número total de categorias cadastradas
- *                   example: 5
- *                 totalServices:
- *                   type: integer
- *                   description: Número total de serviços cadastrados
- *                   example: 25
- *                 totalAppointments:
- *                   type: integer
- *                   description: Número total de agendamentos confirmados
- *                   example: 120
- *                 monthlyAppointments:
- *                   type: array
- *                   description: Contagem de agendamentos por mês (índices 0-11 representando Janeiro-Dezembro)
- *                   items:
- *                     type: integer
- *                   example: [10, 12, 15, 8, 5, 12, 18, 20, 10, 5, 8, 7]
- *                 employeesStatus:
- *                   type: object
- *                   description: Distribuição de funcionários por status
- *                   properties:
- *                     active:
- *                       type: integer
- *                       example: 12
- *                     inactive:
- *                       type: integer
- *                       example: 3
- *                 usersDistribution:
- *                   type: object
- *                   description: Distribuição de usuários por tipo
- *                   properties:
- *                     admin:
- *                       type: integer
- *                       example: 3
- *                     comum:
- *                       type: integer
- *                       example: 45
- *                 couponsStatus:
- *                   type: object
- *                   description: Distribuição de cupons por status
- *                   properties:
- *                     active:
- *                       type: integer
- *                       example: 8
- *                     inactive:
- *                       type: integer
- *                       example: 5
- *                 lastUpdated:
- *                   type: string
- *                   format: date-time
- *                   description: Timestamp da última atualização dos dados
- *                   example: "2023-08-15T14:30:00.000Z"
- *       500:
- *         description: Erro interno do servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                 details:
- *                   type: string
- */
-// Rota para dados do dashboard
-app.get('/api/admin/dashboard', extractOrganizationId, async (req, res) => {
-  try {
-    // 1. Contagem básica de funcionários, categorias, serviços e agendamentos
-    const [
-      { count: employeesCount },
-      { count: categoriesCount },
-      { count: servicesCount },
-      { count: appointmentsCount }
-    ] = await Promise.all([
-      supabase.from('employees').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId), 
-      supabase.from('categories').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId), 
-      supabase.from('services').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId), 
-      supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId).eq('status', 'confirmed') 
-    ]);
-
-    // 2. Dados detalhados para os gráficos
-    const [
-      { data: employeesData, error: employeesError },
-      { data: usersData, error: usersError },
-      { data: couponsData, error: couponsError },
-      { data: appointmentsData, error: appointmentsError }
-    ] = await Promise.all([
-      supabase.from('employees').select('is_active').eq('organization_id', req.organizationId), 
-      supabase.from('users').select('tipo').eq('organization_id', req.organizationId), 
-      supabase.from('coupons').select('is_active').eq('organization_id', req.organizationId), 
-      supabase.from('appointments').select('appointment_date').eq('organization_id', req.organizationId).eq('status', 'confirmed') 
-    ]);
-
-    // Verificar erros nas consultas
-    if (employeesError || usersError || couponsError || appointmentsError) {
-      throw new Error(
-        employeesError?.message || 
-        usersError?.message || 
-        couponsError?.message || 
-        appointmentsError?.message
-      );
-    }
-
-    // 3. Processamento dos dados para os gráficos
-    // Funcionários (ativos/inativos)
-    const employeesStatus = {
-      active: employeesData.filter(e => e.is_active).length,
-      inactive: employeesData.filter(e => !e.is_active).length
-    };
-
-    // Usuários (admin/comum)
-    const usersDistribution = {
-      admin: usersData.filter(u => u.tipo === 'admin').length,
-      comum: usersData.filter(u => u.tipo === 'comum').length
-    };
-
-    // Cupons (ativos/inativos)
-    const couponsStatus = {
-      active: couponsData.filter(c => c.is_active).length,
-      inactive: couponsData.filter(c => !c.is_active).length
-    };
-
-    // Agendamentos por mês
-    const monthlyAppointments = Array(12).fill(0); // Janeiro a Dezembro
-    appointmentsData.forEach(item => {
-      const month = new Date(item.appointment_date).getMonth(); // 0-11
-      monthlyAppointments[month]++;
-    });
-
-    // 4. Retornar todos os dados consolidados
-    res.json({
-      // Totais básicos
-      totalEmployees: employeesCount || 0,
-      totalCategories: categoriesCount || 0,
-      totalServices: servicesCount || 0,
-      totalAppointments: appointmentsCount || 0,
-      
-      // Dados para gráficos
-      monthlyAppointments,
-      employeesStatus,
-      usersDistribution,
-      couponsStatus,
-      
-      // Metadados
-      lastUpdated: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      details: error.message 
-    });
-  }
-});
-
+app.use("/api/schedules", employeeScheduleRouter)
+app.use('/api/admin/dashboard', dashboardDataRouter) 
 app.use('/api/coupons', couponRouter); 
 app.use('/api/admin/revenue', revenueRouter) 
 

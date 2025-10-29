@@ -280,3 +280,42 @@ export const getAdminAppointmentsByEmployee = async (req, res) => {
     });
   }
 };
+
+export const getCancelledAppointments = async (req, res) => {
+  try {
+    const { search, date, employee, start_date, end_date } = req.query;
+    let query = supabase
+      .from('canceled_appointments')
+      .select(`
+        *,
+        services(name, price),
+        employees(name)
+      `)
+      .order('appointment_date', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    if (search) {
+      query = query.or(`client_name.ilike.%${search}%,client_email.ilike.%${search}%,client_phone.ilike.%${search}%`);
+    }
+
+    if (date) {
+      // Esperando data no formato YYYY-MM-DD
+      query = query.eq('appointment_date', date);
+    } else if (start_date && end_date) {
+      query = query.gte('appointment_date', start_date).lte('appointment_date', end_date);
+    }
+
+    if (employee) {
+      query = query.ilike('employees.name', `%${employee}%`);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    res.json(data);
+  } catch (error) {
+    console.error('Erro ao buscar agendamentos cancelados:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
