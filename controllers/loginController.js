@@ -2,7 +2,7 @@ import express from 'express'
 import { supabase } from '../lib/supabase'
 import generateAccessToken from '../utils/jwt.js'
 import setTokenCookie from '../utils/setTokenCookie.js'
-
+const token = generateAccessToken(userData);
 export const login = async (req, res) => {
   const { login, password } = req.body;
 

@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
+import { create } from '@wppconnect-team/wppconnect';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
