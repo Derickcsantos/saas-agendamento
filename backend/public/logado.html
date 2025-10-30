@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="Dérick Campos Santos, Derick, Dking">
+  <meta name="description" content="Salão de beleza especializado em tranças e alongamentos.">
+  <title>Área do Cliente - Salão Paula Tranças</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" href="img/LogoPaulaTrancas.png" type="image/png">
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  
+  <!-- CSS Customizado -->
+  <link rel="stylesheet" href="css/logado.css">
+  
+  <!-- Fonte Poppins -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- API do Vlibras -->
+  <div vw class="enabled">
+    <div vw-access-button class="active"></div>
+    <div vw-plugin-wrapper>
+      <div class="vw-plugin-top-wrapper"></div>
+    </div>
+  </div>
+  
+  <!-- Botão WhatsApp -->
+  <a href="https://wa.me/5511952801212" target="_blank" class="whatsapp-button">
+    <i class="bi bi-whatsapp"></i>
+  </a>
+
+  <!-- Barra de Navegação -->
+  <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/logado" >
+        <img src="img/LogoPaulaTrancas.png" alt="Logo" class="d-inline-block align-top" style="border-radius: 50%;">
+        Paula Tranças
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link active" href="/logado">
+              <i class="bi bi-house-door me-1"></i> Início
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/">
+              <i class="bi bi-calendar-plus me-1"></i> Agendar Serviço
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/logado/agendamentos">
+              <i class="bi bi-list-check me-1"></i> Meus Agendamentos
+            </a>
+          </li>
+        </ul>
+        <div class="d-flex align-items-center">
+          <button id="themeToggle" class="btn btn-sm btn-outline-light me-2" title="Alternar Tema">
+            <i class="bi bi-moon-fill"></i>
+          </button>
+          <button id="btnPerfil" class="btn btn-light me-2">
+            <i class="bi bi-person-fill me-1"></i> Perfil
+          </button>
+          <button id="btnLogout" class="btn btn-outline-light">
+            <i class="bi bi-box-arrow-right me-1"></i> Sair
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Conteúdo Principal -->
+  <main class="flex-grow-1 py-4">
+    <!-- Página Inicial -->
+    <div id="paginaInicial" class="fade-in">
+      <div class="container my-4">
+        <!-- Banner Hero -->
+        <div id="bannerPrincipal" class="hero-banner text-white rounded-3 p-5 mb-5 position-relative overflow-hidden" style="background-color: #9c5cb8;">
+          <div class="position-absolute top-0 end-0 opacity-25">
+            <i class="bi bi-scissors" style="font-size: 8rem;"></i>
+          </div>
+          <div class="position-relative z-index-1">
+            <h1 class="display-4 fw-bold mb-3 text-center">Bem-vindo(a) ao Salão Paula Tranças</h1>
+            <p class="lead mb-4 text-center">Seu espaço de beleza e bem-estar, onde cada detalhe é pensado para realçar sua beleza única.</p>
+            <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+              <a href="/" class="btn btn-light btn-lg px-4 gap-3">
+                <i class="bi bi-calendar-plus"></i> Agendar Agora
+              </a>
+              <a href="/logado/agendamentos" class="btn btn-outline-light btn-lg px-4">
+                <i class="bi bi-list-check"></i> Meus Agendamentos
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seção de Serviços -->
+        <h2 class="text-center mb-4 fw-bold">Nossos Serviços</h2>
+        <div class="row g-4">
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body text-center p-4">
+                <div class="icon-wrapper bg-primary-light rounded-circle p-3 mb-3 mx-auto" style="width: 80px; height: 80px;">
+                  <i class="bi bi-scissors" style="font-size: 2rem; color: #9c5cb8;"></i>
+                </div>
+                <h3 class="h4">Tranças e Penteados</h3>
+                <p class="card-text">Transforme seu visual com nossas tranças exclusivas e penteados sofisticados para cada ocasião.</p>
+                <a onclick="window.location.href='/'" class="btn btn-sm btn-outline-primary mt-2">Agendar</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body text-center p-4">
+                <div class="icon-wrapper bg-primary-light rounded-circle p-3 mb-3 mx-auto" style="width: 80px; height: 80px;">
+                  <i class="bi bi-palette" style="font-size: 2rem; color: #9c5cb8;"></i>
+                </div>
+                <h3 class="h4">Alongamentos</h3>
+                <p class="card-text">Alongamentos de cabelo com técnicas avançadas e produtos de alta qualidade para um resultado natural.</p>
+                <a onclick="window.location.href='/'" class="btn btn-sm btn-outline-primary mt-2">Agendar</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body text-center p-4">
+                <div class="icon-wrapper bg-primary-light rounded-circle p-3 mb-3 mx-auto" style="width: 80px; height: 80px;">
+                  <i class="bi bi-emoji-heart-eyes" style="font-size: 2rem; color: #9c5cb8;"></i>
+                </div>
+                <h3 class="h4">Tratamentos</h3>
+                <p class="card-text">Tratamentos capilares personalizados para cuidar da saúde e beleza dos seus cabelos.</p>
+                <a onclick="window.location.href='/'" class="btn btn-sm btn-outline-primary mt-2">Agendar</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seção de Promoções -->
+        <div class="row mt-5">
+          <div class="col-12">
+            <div class="card border-0 shadow-sm bg-gradient-primary text-white">
+              <div class="card-body p-4">
+                <div class="row align-items-center">
+                  <div class="col-md-8">
+                    <h3 class="mb-2 textoCorrecao" style="color: #000;">Promoção Especial!</h3>
+                    <p class="mb-0 textoCorrecao" style="color: #000;">Agende dois serviços e ganhe 15% de desconto no segundo.</p>
+                  </div>
+                  <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                    <a href="/" class="btn btn-light">Aproveitar Oferta</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Página de Agendamentos -->
+    <div id="paginaAgendamentos" style="display: none;">
+      <div class="container my-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h4 mb-0">
+              <i class="bi bi-calendar-check me-2"></i>Meus Agendamentos
+            </h2>
+            <a href="/logado" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-arrow-left me-1"></i>Voltar
+            </a>
+          </div>
+          <div class="card-body">
+            <!-- Contagem Regressiva -->
+            <div id="contagemRegressiva" class="alert mb-4">
+              <i class="bi bi-calendar-check me-2"></i> 
+              <span id="proximoServico">Seu próximo serviço é </span>
+              <strong id="diasRestantes">X dias</strong> - 
+              <span id="dataProximoAgendamento">DD/MM/AAAA às HH:MM</span>
+            </div>
+            
+            <!-- Tabela de Agendamentos -->
+            <div class="table-responsive">
+              <table class="table table-hover align-middle" id="tabelaAgendamentos">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Serviço</th>
+                    <th>Profissional</th>
+                    <th>Horário</th>
+                    <th>Status</th>
+                    <th>Valor</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Exemplo de linha - será preenchido via JavaScript -->
+                  <tr>
+                    <td>15/10/2023</td>
+                    <td>Trança Box Braids</td>
+                    <td>Paula</td>
+                    <td>14:00 - 16:00</td>
+                    <td><span class="badge bg-success">Confirmado</span></td>
+                    <td>R$ 180,00</td>
+                    <td>
+                      <button class="btn btn-sm btn-outline-primary me-1" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-danger" title="Cancelar">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <!-- Sem agendamentos -->
+            <div id="semAgendamentos" class="text-center py-5" style="display: none;">
+              <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
+              <h4 class="mt-3">Nenhum agendamento encontrado</h4>
+              <p class="text-muted">Você ainda não possui agendamentos marcados.</p>
+              <a href="/" class="btn btn-primary mt-2">
+                <i class="bi bi-calendar-plus me-1"></i>Agendar Serviço
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal de Perfil -->
+  <div class="modal fade" id="perfilModal" tabindex="-1" aria-labelledby="perfilModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="perfilModalLabel">
+            <i class="bi bi-person-fill me-2"></i>Meu Perfil
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <form id="profileForm">
+            <div class="row mb-3">
+              <div class="col-md-6 mb-3">
+                <label for="profileName" class="form-label">Nome Completo</label>
+                <input type="text" class="form-control" id="profileName" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="profilePhone" class="form-label">Telefone</label>
+                <input type="tel" class="form-control" id="profilePhone" required>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-md-6 mb-3">
+                <label for="profileEmail" class="form-label">Email</label>
+                <input type="email" class="form-control" id="profileEmail" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="profileBirthdate" class="form-label">Data de Nascimento</label>
+                <input type="date" class="form-control" id="profileBirthdate">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="profilePassword" class="form-label">Nova Senha (deixe em branco para não alterar)</label>
+              <div class="input-group">
+                <input type="password" class="form-control password-input" id="profilePassword">
+                <button class="btn btn-outline-secondary toggle-password" type="button">
+                  <i class="bi bi-eye-slash-fill"></i>
+                </button>
+              </div>
+              <div class="form-text">Mínimo de 8 caracteres</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Tipo de conta</label>
+              <input type="text" class="form-control" id="profileTipo" disabled>
+            </div>
+            <div class="d-flex justify-content-end pt-3">
+              <button type="button" class="btn btn-outline-secondary me-2" data-bs-dismiss="modal">
+                <i class="bi bi-x-lg me-1"></i>Fechar
+              </button>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-1"></i>Salvar Alterações
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rodapé -->
+  <footer class="py-4">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-4 mb-4 mb-lg-0">
+          <h5 class="text-white mb-3">Salão Paula Tranças</h5>
+          <p class="text-white-50">Especializado em beleza feminina, oferecemos serviços personalizados para realçar sua beleza natural.</p>
+          <div class="social-icons mt-3">
+            <a href="https://wa.me/5511952801212" class="text-white me-2"><i class="bi bi-whatsapp"></i></a>
+            <a href="instagram.com/paulatrancasealongamentos" class="text-white me-2"><i class="bi bi-instagram"></i></a>
+            <a href="linkedin.com/in/derick-campos-santos" class="text-white"><i class="bi bi-linkedin"></i></a>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
+          <h5 class="text-white mb-3">Links</h5>
+          <ul class="list-unstyled">
+            <li class="mb-2"><a onclick="window.location.href='/home'" class="text-white-50">Home</a></li>
+            <li class="mb-2"><a onclick="window.location.href='/logado'" class="text-white-50">Início</a></li>
+            <li class="mb-2"><a onclick="window.location.href='/'" class="text-white-50">Agendar</a></li>
+            <li class="mb-2"><a onclick="window.location.href='/logado/agendamentos'" class="text-white-50">Meus Agendamentos</a></li>
+            <li class="mb-2"><a onclick="window.location.href='/galeria'" class="text-white-50">Galeria</a></li>
+          </ul>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+          <h5 class="text-white mb-3">Horário</h5>
+          <ul class="list-unstyled text-white-50">
+            <li class="mb-2"><i class="bi bi-clock me-2"></i>Seg-Sex: 10h - 22h</li>
+            <li class="mb-2"><i class="bi bi-clock me-2"></i>Sábado: 10h - 22h</li>
+            <li><i class="bi bi-clock me-2"></i>Dom: Fechado</li>
+          </ul>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <h5 class="text-white mb-3">Contato</h5>
+          <ul class="list-unstyled text-white-50">
+            <li class="mb-2"><i class="bi bi-telephone me-2"></i> (11) 95280-1212</li>
+            <li class="mb-2"><i class="bi bi-geo-alt me-2"></i> Rua Mucugê, 127</li>
+            <li><i class="bi bi-envelope me-2"></i> salaopaulatrancas@gmail.com</li>
+          </ul>
+        </div>
+      </div>
+      <hr class="my-4 bg-light">
+      <div class="row align-items-center">
+        <div class="col-md-6 text-center text-md-start">
+          <p class="mb-0 text-white-50">&copy; <span id="ano"></span> Salão Paula Tranças. Todos os direitos reservados.</p>
+        </div>
+        <div class="col-md-6 text-center text-md-end">
+          <p class="mb-0 text-white-50">Desenvolvido por Derick Campos Santos</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Bootstrap Bundle com Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- VLibras -->
+  <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+  
+  <!-- JavaScript Customizado -->
+  <script src="js/logado.js"></script>
+</body>
+</html>
