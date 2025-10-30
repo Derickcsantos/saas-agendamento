@@ -12,7 +12,6 @@ const upload = multer();
 import schedule from 'node-schedule';
 import cron from 'node-cron';
 import session from 'express-session';
-import passport from 'passport';
 import passportGoogleOauth20 from 'passport-google-oauth20';
 import { v4 as uuidv4 } from 'uuid'; 
 import setupSwagger from './swagger.js';
@@ -59,7 +58,6 @@ const SESSION_DIR = path.join(__dirname, 'tokens');
 const SESSION_FILE = path.join(SESSION_DIR, 'salon-bot.json');
 const app = express();
 const port = process.env.PORT || 3000;
-const token = generateAccessToken(userData);
 setupSwagger(app)
 app.use(cookieParser());
 

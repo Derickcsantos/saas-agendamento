@@ -6,7 +6,7 @@ import {
   updateSchedule,
   deleteAllSchedulesFromEmployee,
   deleteOnlyOneSchedule
-} from '../controllers/employeeSchedulesController'
+} from '../controllers/employeeSchedulesController.js'
 
 export const employeeScheduleRouter = Router()
 

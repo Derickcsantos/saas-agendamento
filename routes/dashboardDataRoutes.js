@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddleware'
-import { getDashboardData } from '../controllers/dashboardDataController'
+import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddleware.js'
+import { getDashboardData } from '../controllers/dashboardDataController.js'
 
 export const dashboardDataRouter = Router()
 

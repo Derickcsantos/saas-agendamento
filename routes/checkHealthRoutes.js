@@ -1,4 +1,4 @@
-import { checkWhatsappHealth } from "../controllers/checkHealthController";
+import { checkWhatsappHealth } from "../controllers/checkHealthController.js";
 import { Router } from 'express'
 
 export const checkHealthRouter = Router()

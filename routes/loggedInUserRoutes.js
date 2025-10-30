@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getLoggedInUserAppointments } from '../controllers/loggedInUserController'
+import { getLoggedInUserAppointments } from '../controllers/loggedInUserController.js'
 
 export const loggedInUserRouter = Router()
 

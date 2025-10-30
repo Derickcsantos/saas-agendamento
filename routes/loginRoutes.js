@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import { login } from '../controllers/loginController'
-import { extractOrganizationId, authenticateJWT } from '../middlewares/authMiddleware'
+import { login } from '../controllers/loginController.js'
+import { extractOrganizationId, authenticateJWT } from '../middlewares/authMiddleware.js'
 
 export const loginRouter = Router()
 

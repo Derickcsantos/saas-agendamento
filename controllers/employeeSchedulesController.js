@@ -1,8 +1,8 @@
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase.js'
 import express from 'express'
-import convertDayToNumber from '../utils/convertDayToNumber';
-import formatTimeToHHMMSS from '../utils/formatTimeToHHMMSS'
-import formatTimeFromDB from '../utils/formatTimeFromDB'
+import convertDayToNumber from '../utils/convertDayToNumber.js';
+import formatTimeToHHMMSS from '../utils/formatTimeToHHMMSS.js'
+import formatTimeFromDB from '../utils/formatTimeFromDB.js'
 
 export const getSchedules = async (req, res) => {
   try {

@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { sendEmailConfirmation } from '../controllers/emailController'
+import { sendEmailConfirmation } from '../controllers/emailController.js'
 
 export const emailRouter = Router()
 
