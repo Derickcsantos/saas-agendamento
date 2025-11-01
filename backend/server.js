@@ -49,6 +49,7 @@ import { checkHealthRouter } from './routes/checkHealthRoutes.js'
 import { loggedInUserRouter } from './routes/loggedInUserRoutes.js'
 import { corsOptions } from './utils/corsOptions.js'
 import { googleRouter } from './routes/googleRoutes.js'
+import { landingPageRouter } from './routes/landingPagesRoutes.js'
 import passport from './lib/passport.js';
 
 
@@ -57,7 +58,7 @@ const __dirname = path.dirname(__filename);
 const SESSION_DIR = path.join(__dirname, 'tokens');
 const SESSION_FILE = path.join(SESSION_DIR, 'salon-bot.json');
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3333;
 setupSwagger(app)
 app.use(cookieParser());
 
@@ -167,6 +168,7 @@ app.use("/api/schedules", employeeScheduleRouter)
 app.use('/api/admin/dashboard', dashboardDataRouter) 
 app.use('/api/coupons', couponRouter); 
 app.use('/api/admin/revenue', revenueRouter) 
+app.use('/api/landing-page', landingPageRouter)
 
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
