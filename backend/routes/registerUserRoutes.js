@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { registerUser } from '../controllers/registerUserController.js';
+import { registerUser, registerBySlug } from '../controllers/registerUserController.js';
 import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddleware.js';
 
 export const registerUserRouter = Router();
@@ -85,3 +85,5 @@ export const registerUserRouter = Router();
  *         description: Erro interno do servidor
  */
 registerUserRouter.post('/', extractOrganizationId, registerUser);
+
+registerUserRouter.post('/:slug', registerBySlug)

@@ -1,11 +1,26 @@
-import express from 'express'
-import { supabase } from '../lib/supabase.js'
-import generateAccessToken from '../utils/jwt.js'
-import setTokenCookie from '../utils/setTokenCookie.js'
+// backend/controllers/loginController.js
+import { supabase } from '../lib/supabase.js';
+import generateAccessToken from '../utils/jwt.js';
+import setTokenCookie from '../utils/setTokenCookie.js';
+
 export const login = async (req, res) => {
   const { login, password } = req.body;
 
+  // ========================
+  // 1. Validação básica
+  // ========================
+  if (!login || !password) {
+    return res.status(400).json({ error: 'Login e senha são obrigatórios.' });
+  }
+
+  if (!req.organizationId) {
+    return res.status(400).json({ error: 'Organização não identificada.' });
+  }
+
   try {
+    // ========================
+    // 2. Busca do usuário
+    // ========================
     const { data: user, error } = await supabase
       .from('users')
       .select('id, username, email, aniversario, password_plaintext, phone, tipo')
@@ -13,11 +28,22 @@ export const login = async (req, res) => {
       .or(`username.eq.${login},email.eq.${login}`)
       .single();
 
-    if (error || !user || user.password_plaintext !== password) {
-      return res.status(401).json({ error: 'Credenciais inválidas' });
+    if (error || !user) {
+      console.warn(`Usuário não encontrado para login: ${login}`);
+      return res.status(401).json({ error: 'Credenciais inválidas.' });
     }
 
-    // Se a autenticação for bem-sucedida, define o cookie com os dados do usuário
+    // ========================
+    // 3. Verifica senha
+    // (substitua por bcrypt futuramente)
+    // ========================
+    if (user.password_plaintext !== password) {
+      return res.status(401).json({ error: 'Senha incorreta.' });
+    }
+
+    // ========================
+    // 4. Gera token JWT + Cookie HttpOnly
+    // ========================
     const userData = {
       id: user.id,
       username: user.username,
@@ -25,22 +51,45 @@ export const login = async (req, res) => {
       email: user.email,
       phone: user.phone,
       organization_id: req.organizationId,
-      tipo: user.tipo
+      tipo: user.tipo,
     };
 
     const token = generateAccessToken(userData);
-    setTokenCookie(res, token);
+    setTokenCookie(res, token); // define cookie HttpOnly
 
-
-    return res.json({
+    return res.status(200).json({
       success: true,
-      message: 'login bem sucedido',
-      user: userData
+      message: 'Login bem-sucedido.',
+      user: userData,
     });
-
-
   } catch (err) {
     console.error('Erro ao fazer login:', err);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    return res.status(500).json({ error: 'Erro interno do servidor.' });
+  }
+};
+
+export const loginBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    // Busca a organização pelo slug
+    const { data: org, error } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (error || !org) {
+      return res.status(404).json({ error: "Organização não encontrada." });
+    }
+
+    // Injeta o organization_id para o controller de login
+    req.organizationId = org.id;
+
+    // Chama o controller original
+    return login(req, res);
+  } catch (err) {
+    console.error("Erro ao processar login multi-tenant:", err);
+    return res.status(500).json({ error: "Erro interno no servidor." });
   }
 };

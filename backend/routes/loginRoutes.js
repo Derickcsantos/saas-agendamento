@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { login } from '../controllers/loginController.js'
+import { login, loginBySlug } from '../controllers/loginController.js'
 import { extractOrganizationId, authenticateJWT } from '../middlewares/authMiddleware.js'
 
 export const loginRouter = Router()
@@ -73,3 +73,5 @@ export const loginRouter = Router()
  *         description: Erro interno do servidor
  */
 loginRouter.post('/', authenticateJWT, extractOrganizationId, login)
+
+loginRouter.post('/:slug', loginBySlug)

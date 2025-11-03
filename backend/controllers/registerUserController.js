@@ -4,52 +4,79 @@ import { supabase } from '../lib/supabase.js';
 export const registerUser = async (req, res) => {
   const { username, email, aniversario, phone, password_plaintext } = req.body;
 
+  if (!username || !email || !password_plaintext) {
+    return res.status(400).json({ error: 'Campos obrigatórios ausentes.' });
+  }
+
+  if (!req.organizationId) {
+    return res.status(400).json({ error: 'Organização não identificada.' });
+  }
+
   try {
-    // Verifica se já existe usuário com mesmo username ou email
-    const { data: existingUsers, error: userError } = await supabase
+    // Verifica se já existe usuário
+    const { data: existing, error: existingError } = await supabase
       .from('users')
       .select('id')
       .eq('organization_id', req.organizationId)
       .or(`username.eq.${username},email.eq.${email}`);
 
-    if (userError) {
-      throw userError;
+    if (existingError) throw existingError;
+
+    if (existing && existing.length > 0) {
+      return res.status(400).json({ error: 'Usuário ou email já cadastrado.' });
     }
 
-    if (existingUsers && existingUsers.length > 0) {
-      return res.status(400).json({
-        error: 'Usuário ou email já cadastrado'
-      });
-    }
-
-    // Insere novo usuário com tipo "comum"
+    // Insere novo usuário (criptografia virá depois)
     const { data: newUser, error: insertError } = await supabase
       .from('users')
-      .insert([{
-        username,
-        email,
-        aniversario,
-        phone,
-        password_plaintext, // Em produção: criptografar
-        tipo: 'comum',
-        organization_id: req.organizationId,
-        created_at: new Date().toISOString()
-      }])
+      .insert([
+        {
+          username,
+          email,
+          aniversario,
+          phone,
+          password_plaintext,
+          tipo: 'comum',
+          organization_id: req.organizationId,
+          created_at: new Date().toISOString(),
+        },
+      ])
       .select('id, username, email, aniversario, phone, created_at')
-      .eq('organization_id', req.organizationId)
       .single();
 
-    if (insertError) {
-      throw insertError;
-    }
+    if (insertError) throw insertError;
 
-    res.json({
+    return res.status(201).json({
       success: true,
-      user: newUser
+      message: 'Usuário cadastrado com sucesso!',
+      user: newUser,
     });
-
   } catch (err) {
     console.error('Erro ao cadastrar usuário:', err);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    return res.status(500).json({ error: 'Erro interno do servidor.' });
+  }
+};
+
+
+export const registerBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    // Busca a organização pelo slug
+    const { data: org, error } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (error || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
+    req.organizationId = org.id;
+    return registerUser(req, res);
+  } catch (err) {
+    console.error("Erro ao processar cadastro multi-tenant:", err);
+    return res.status(500).json({ error: "Erro interno do servidor" });
   }
 };
