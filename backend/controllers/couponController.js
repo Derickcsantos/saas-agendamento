@@ -86,6 +86,22 @@ export const validateCoupon = async (req, res) => {
   try {
     const { code, serviceId } = req.query;
     const cleanCode = code.trim().toUpperCase();
+    const { slug } = req.params;
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    // Busca o organization_id correspondente ao slug
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
 
     // Busca o serviço
     const { data: service, error: serviceError } = await supabase
@@ -104,7 +120,7 @@ export const validateCoupon = async (req, res) => {
       .select('*')
       .eq('code', cleanCode)
       .eq('is_active', true)
-      .eq('organization_id', req.organizationId)
+      .eq('organization_id', orgData.id)
       .single();
 
     if (couponError || !coupon) {

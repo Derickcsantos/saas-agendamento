@@ -6,9 +6,6 @@ import setTokenCookie from '../utils/setTokenCookie.js';
 export const login = async (req, res) => {
   const { login, password } = req.body;
 
-  // ========================
-  // 1. Validação básica
-  // ========================
   if (!login || !password) {
     return res.status(400).json({ error: 'Login e senha são obrigatórios.' });
   }
@@ -18,9 +15,7 @@ export const login = async (req, res) => {
   }
 
   try {
-    // ========================
-    // 2. Busca do usuário
-    // ========================
+
     const { data: user, error } = await supabase
       .from('users')
       .select('id, username, email, aniversario, password_plaintext, phone, tipo')
@@ -33,17 +28,11 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: 'Credenciais inválidas.' });
     }
 
-    // ========================
-    // 3. Verifica senha
-    // (substitua por bcrypt futuramente)
-    // ========================
+
     if (user.password_plaintext !== password) {
       return res.status(401).json({ error: 'Senha incorreta.' });
     }
 
-    // ========================
-    // 4. Gera token JWT + Cookie HttpOnly
-    // ========================
     const userData = {
       id: user.id,
       username: user.username,

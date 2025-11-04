@@ -28,11 +28,33 @@ export const getAppointmentsByEmployee = async (req, res) => {
 export const createAppointment = async (req, res) => {
   try {
     const { client_name, client_email, client_phone, service_id, employee_id, date, start_time, end_time , final_price , coupon_code , original_price } = req.body;
+    const { slug } = req.params;
+    console.log({ client_name, client_email, client_phone, service_id, employee_id, date, start_time, end_time , final_price , coupon_code , original_price })
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    if (!client_name || !service_id || !employee_id || !date) {
+      return res.status(400).json({ error: 'Campos obrigatórios faltando.' });
+    }
+
+
+    // Busca o organization_id correspondente ao slug
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
     
     const { data, error } = await supabase
       .from('appointments')
       .insert([{
-        organization_id: req.organizationId,
+        organization_id: orgData.id,
         client_name,
         client_email,
         client_phone,

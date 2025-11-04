@@ -19,12 +19,28 @@ export const getAppointmentServices =  async (req, res) => {
 
 export const getAppointmentServicesByCategory = async (req, res) => {
   try {
-    const { categoryId } = req.params;
+    const { categoryId, slug } = req.params;
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    // Busca o organization_id correspondente ao slug
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
     const { data, error } = await supabase
       .from('services')
       .select('id, name, price, duration, imagem_service')
       .eq('category_id', categoryId)
-      .eq('organization_id', req.organizationId)
+      .eq('organization_id', orgData.id)
       .order('name', { ascending: true });
 
     if (error) throw error;

@@ -63,4 +63,4 @@ export const availableTimesRouter = Router()
  *       500:
  *         description: Erro interno do servidor
  */
-availableTimesRouter.get('/', extractOrganizationId, getAvailableTimes)
+availableTimesRouter.get('/:slug', getAvailableTimes)

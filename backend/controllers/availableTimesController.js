@@ -4,8 +4,27 @@ import { supabase } from '../lib/supabase.js'
 export const getAvailableTimes = async (req, res) => {
   try {
     const { employeeId, date, duration } = req.query;
-    const organizationId = req.organizationId;
-    console.log('Parâmetros recebidos:', { employeeId, date, duration, organizationId });
+    const employeeIdInt = parseInt(employeeId, 10);
+    const { slug } = req.params;
+
+    console.log('Parâmetros recebidos:', { employeeIdInt, date, duration, slug });
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+      console.log(orgData.id)
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+    
     
     const dateObj = new Date(date);
     const dayOfWeek = dateObj.getDay(); // 0=Domingo, 1=Segunda, 2=Terça, ..., 6=Sábado
@@ -14,10 +33,14 @@ export const getAvailableTimes = async (req, res) => {
     const { data: schedule, error: scheduleError } = await supabase
       .from('work_schedules')
       .select('*')
-      .eq('employee_id', employeeId)
+      .eq('employee_id', employeeIdInt)
       .eq('day_of_week', dayOfWeek)
-      .eq('organization_id', req.organizationId)
-      .single();
+      .eq('organization_id', orgData.id)
+      .maybeSingle();
+
+    console.log('Resultado do schedule =>', schedule);
+    console.log('Erro do schedule =>', scheduleError);
+
 
     if (scheduleError || !schedule || !schedule.is_available) {
       return res.json([]);
@@ -26,9 +49,9 @@ export const getAvailableTimes = async (req, res) => {
     const { data: appointments, error: appointmentsError } = await supabase
       .from('appointments')
       .select('*')
-      .eq('employee_id', employeeId)
+      .eq('employee_id', employeeIdInt)
       .eq('appointment_date', date)
-      .eq('organization_id', req.organizationId)
+      .eq('organization_id', orgData.id)
       .order('start_time', { ascending: true });
 
     if (appointmentsError) throw appointmentsError;

@@ -192,4 +192,4 @@ couponRouter.delete('/:id', authenticateJWT, extractOrganizationId, deleteCoupon
  *       500:
  *         description: Erro interno do servidor
  */
-couponRouter.get('/validate-coupon', validateCoupon)
+couponRouter.get('/validate-coupon/:slug', validateCoupon)

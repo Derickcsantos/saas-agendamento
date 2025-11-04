@@ -46,5 +46,5 @@ export const appointmentEmployeeRouter = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-appointmentEmployeeRouter.get('/:serviceId', extractOrganizationId, getAppointmentEmployeeByService);
+appointmentEmployeeRouter.get('/:serviceId/:slug', getAppointmentEmployeeByService);
 

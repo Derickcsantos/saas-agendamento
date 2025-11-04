@@ -34,7 +34,7 @@ appointmentServicesRouter.get('/', extractOrganizationId, getAppointmentServices
 
 /**
  * @swagger
- * /api/services/{categoryId}:
+ * /api/services/{categoryId}/{slug}:
  *   get:
  *     summary: Lista serviços de uma categoria específica
  *     description: Retorna todos os serviços disponíveis para uma categoria, com imagens convertidas para base64
@@ -78,4 +78,4 @@ appointmentServicesRouter.get('/', extractOrganizationId, getAppointmentServices
  *       500:
  *         description: Erro interno do servidor
  */
-appointmentServicesRouter.get('/:categoryId', extractOrganizationId, getAppointmentServicesByCategory);
+appointmentServicesRouter.get('/:categoryId/:slug', getAppointmentServicesByCategory);

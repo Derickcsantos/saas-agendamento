@@ -3,7 +3,22 @@ import express from 'express';
 
 export const getAppointmentEmployeeByService = async (req, res) => {
   try {
-    const { serviceId } = req.params;
+    const { serviceId, slug } = req.params;
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
     const { data, error } = await supabase
       .from('employee_services')
       .select(`
@@ -15,7 +30,7 @@ export const getAppointmentEmployeeByService = async (req, res) => {
         )
       `)
       .eq('service_id', serviceId)
-      .eq('organization_id', req.organizationId);
+      .eq('organization_id', orgData.id);
 
     if (error) throw error;
     

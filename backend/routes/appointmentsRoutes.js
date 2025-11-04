@@ -80,6 +80,6 @@ export const appointmentsRouter = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-appointmentsRouter.post('/', extractOrganizationId, createAppointment);
+appointmentsRouter.post('/:slug', createAppointment);
 
 appointmentsRouter.get('/by-employee/:employeeId', getAppointmentsByEmployee)

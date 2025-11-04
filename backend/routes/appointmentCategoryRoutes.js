@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { getAppointmentCategories } from '../controllers/appointmentCategoriesController.js';
-import { extractOrganizationId } from '../middlewares/authMiddleware.js';
 
 export const appointmentCategoryRouter = Router();
 
@@ -13,7 +12,7 @@ export const appointmentCategoryRouter = Router();
 
 /**
  * @swagger
- * /api/categories:
+ * /api/categories/{slug}:
  *   get:
  *     summary: Lista todas as categorias de serviços disponíveis para uma organização
  *     description: Retorna todas as categorias cadastradas no sistema para a organização especificada com suas imagens convertidas para formato base64
@@ -79,4 +78,4 @@ export const appointmentCategoryRouter = Router();
  *                   example: "Internal server error"
  */
 
-appointmentCategoryRouter.get('/', extractOrganizationId, getAppointmentCategories)
+appointmentCategoryRouter.get('/:slug', getAppointmentCategories)
