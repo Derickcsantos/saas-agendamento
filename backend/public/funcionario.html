@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content=" Dérick campos santos, Derick, Dking">
+    <meta name="language" content="pt-BR">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="generator" content="Visual studio code">
+    <meta name="description" content="Salão de beleza especializado em tranças e alongamentos.">
+    <meta name="keywords" content="Paula, Paula Tranças, Tranças, Agenda, Agendar trança, Salão, Sistema de agendamento, Me conheça, Derick Campos, Derick, Derick Campos Santos">
+    <meta name="keyword" content="Paula, Paula Tranças, Tranças, Agenda, Agendar trança, Salão, Sistema de agendamento, Me conheça, Derick Campos, Derick, Derick Campos Santos">
+
+    <meta name="country" content="Brazil">
+    <meta name="language" content="Portuguese, PT-BR">
+    <meta name="geography" content="São Paulo, SP">
+    <meta name="copyright" content="https://agendaagora.onrender.com/home">
+
+    <meta name="google-site-verification" content="ygBvn69LM73T3rI5Fe8LUUrlqCqr3ggeqVjrwf85rug" />
+    <meta name="googlebot" content="index, follow">
+    <meta name="baidubot" content="index, follow">
+    <meta name="slurp" content="index, follow">
+    <meta name="yahoobot" content="index, follow">
+    <meta name="unknownbot" content="index, follow">
+    <meta name="msnbot" content="index, follow">
+    <meta name="robots" content="index,follow">
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"> 
+    <meta http-equiv="Pragma" content="public">
+    <meta http-equiv="Expires" content="0">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+    <meta property="og:title" content="Paula Tranças e Alongamentos | Salão de Beleza">
+    <meta property="og:site_name" content="Paula Tranças e Alongamentos | Salão de Beleza">
+    <meta property="og:description" content="Salão de beleza">
+    <meta property="og:image" content="img/LogoPaulaTrancas.png">
+    <meta property="og:url" content="https://agendaagora.onrender.com/home">
+    <meta property="og:image:width" content="700">
+    <meta property="og:image:height" content="366">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt-BR">
+    <meta property="og:locale:alternate" content="en-US">
+    <meta property="og:locale:alternate" content="es-ES">
+    <meta property="og:locale:alternate" content="fr-FR">
+    <meta property="og:locale:alternate" content="de-DE">
+    <meta property="og:locale:alternate" content="it-IT">
+    <meta property="og:locale:alternate" content="ja-JP">
+    <meta property="og:locale:alternate" content="ko-KR">
+    <meta property="og:locale:alternate" content="zh-CN">
+    <meta property="og:locale:alternate" content="zh-TW">
+    <meta property="og:locale:alternate" content="ru-RU">
+    <meta property="og:locale:alternate" content="ar-SA">
+    <meta property="og:locale:alternate" content="pt-PT">
+    <meta property="og:locale:alternate" content="pt-AO">
+    <meta property="og:locale:alternate" content="pt-MZ">
+
+    <link rel="icon" style="border-radius: 50%;" href="img/LogoPaulaTrancas.png" type="image/png">
+    <title>Área do Funcionário</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/funcionario.css">
+</head>
+<body>
+    <div class="container-fluid p-0">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3 class="text-center">Área do Funcionário</h3>
+                <div class="user-info text-center mt-3">
+                    <img src="img/LogoPaulaTrancas.png" alt="User Avatar" class="rounded-circle mb-2" id="userAvatar">
+                    <h5 id="userName">Carregando...</h5>
+                    <p class="text-muted" id="userType">Funcionário</p>
+                </div>
+            </div>
+            <ul class="list-unstyled components">
+                <li class="active">
+                    <a href="#meusAgendamentos" data-bs-toggle="collapse" aria-expanded="true" class="dropdown-toggle">
+                        <i class="bi bi-calendar-check me-2"></i> Meus Agendamentos
+                    </a>
+                    <ul class="collapse list-unstyled show" id="meusAgendamentos">
+                        <li><a href="#hoje" class="agenda-filter" data-filter="hoje">Hoje</a></li>
+                        <li><a href="#semana" class="agenda-filter" data-filter="semana">Esta Semana</a></li>
+                        <li><a href="#mes" class="agenda-filter" data-filter="mes">Este Mês</a></li>
+                        <li><a href="#todos" class="agenda-filter" data-filter="todos">Todos</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#perfil" id="perfilLink">
+                        <i class="bi bi-person me-2"></i> Meu Perfil
+                    </a>
+                </li>
+                <li>
+                    <a onclick="window.location.href='/login'" id="logoutLink">
+                        <i class="bi bi-box-arrow-left me-2"></i> Sair
+                    </a>
+                </li>
+            </ul>
+            <div class="theme-switcher">
+                <button class="btn btn-sm btn-outline-secondary" id="themeToggle">
+                    <i class="bi bi-moon-fill"></i> Tema Escuro
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content" id="mainContent">
+            <!-- Top Navigation -->
+            <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                <div class="container-fluid">
+                    <button type="button" id="sidebarCollapse" class="btn btn-outline-secondary">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <a class="navbar-brand ms-3" href="#">Bem-vindo, <span id="welcomeName">Funcionário</span></a>
+                    <button onclick="window.location.href='/'" class="btn btn-primary ms-auto" id="newAppointmentBtn">
+                        <i class="bi bi-plus-circle me-1"></i> Novo Agendamento
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Content -->
+            <div class="content-container p-4">
+                <!-- Agendamentos Section -->
+                <div class="section" id="agendamentosSection">
+                    <h4 class="mb-4"><i class="bi bi-calendar-check me-2"></i> Meus Agendamentos</h4>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Buscar agendamentos..." id="searchAppointments">
+                                <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-secondary active" data-filter="all">Todos</button>
+                                <button type="button" class="btn btn-outline-success" data-filter="confirmed">Confirmados</button>
+                                <button type="button" class="btn btn-outline-warning" data-filter="pending">Pendentes</button>
+                                <button type="button" class="btn btn-outline-danger" data-filter="cancelled">Cancelados</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Horário</th>
+                                    <th>Cliente</th>
+                                    <th>Serviço</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="appointmentsTableBody">
+                                <tr>
+                                    <td colspan="6" class="text-center">Carregando agendamentos...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center" id="pagination">
+                            <!-- Pagination will be added dynamically -->
+                        </ul>
+                    </nav>
+                </div>
+
+                <!-- Perfil Section (Hidden by default) -->
+                <div class="section d-none" id="perfilSection">
+                    <h4 class="mb-4"><i class="bi bi-person me-2"></i> Meu Perfil</h4>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card mb-4">
+                                <div class="card-body text-center">
+                                    <img src="https://via.placeholder.com/150" alt="User Avatar" class="rounded-circle mb-3" id="profileAvatar">
+                                    <h5 id="profileName">Carregando...</h5>
+                                    <p class="text-muted" id="profileType">Funcionário</p>
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-outline-primary" id="changePasswordBtn">Alterar Senha</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-body">
+                                    <form id="profileForm">
+                                        <div class="mb-3">
+                                            <label for="username" class="form-label">Nome de Usuário</label>
+                                            <input type="text" class="form-control" id="username" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="email" class="form-label">E-mail</label>
+                                            <input type="email" class="form-control" id="email" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="tipo" class="form-label">Tipo de Usuário</label>
+                                            <input type="text" class="form-control" id="tipo" disabled>
+                                        </div>
+                                        <div class="text-end">
+                                            <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para detalhes do agendamento -->
+    <div class="modal fade" id="appointmentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalhes do Agendamento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="appointmentDetails">
+                    <!-- Detalhes serão preenchidos via JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" id="addToGoogleCalendar">
+                        <i class="bi bi-google me-1"></i> Adicionar ao Google Calendar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para alterar senha -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Alterar Senha</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="passwordForm">
+                        <div class="mb-3">
+                            <label for="currentPassword" class="form-label">Senha Atual</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control password-input" id="currentPassword" required>
+                                <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <i class="bi bi-eye-slash-fill"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">Nova Senha</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control password-input" id="newPassword" required>
+                                <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <i class="bi bi-eye-slash-fill"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmNewPassword" class="form-label">Confirmar Nova Senha</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control password-input" id="confirmNewPassword" required>
+                                <button class="btn btn-outline-secondary toggle-password" type="button">
+                                    <i class="bi bi-eye-slash-fill"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="alert alert-danger d-none" id="passwordError"></div>
+                        <div class="alert alert-success d-none" id="passwordSuccess"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="savePasswordBtn">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/funcionario.js"></script>
+</body>
+</html>
