@@ -186,15 +186,13 @@ export default function MarcafyLanding() {
           <Chip>Plataforma brasileira de agendamentos</Chip>
 
           <h1 className="mt-5 text-5xl font-extrabold leading-[1.1] tracking-tight md:text-6xl">
-            A plataforma de agendamento{" "}
-            <span style={{ color: BRAND }}>Online</span> mais fácil do{" "}
-            <span style={{ color: BRAND }}>Brasil</span>.
+            Mais tempo{" "}
+            <span style={{ color: BRAND }}>livre.</span> Mais clientes {" "}
+            <span style={{ color: BRAND }}>satisfeitos</span>.
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-7 text-neutral-700">
-            Web, rápida e acessível do mundo inteiro. Com milhões de clientes simultâneos,
-            agendamento sem login, 100% personalizável e com landing page + Gerenciador de conteúdo,
-            galeria, painéis (admin, funcionário, cliente) e muito mais.
+            Um sistema de agendamento online feito para simplificar sua rotina e aumentar seus resultados.
           </p>
 
           <div className="mt-8 flex items-center gap-3">
