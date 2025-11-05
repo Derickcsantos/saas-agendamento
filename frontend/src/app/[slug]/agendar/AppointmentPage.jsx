@@ -312,7 +312,7 @@ export default function AppointmentPage({ slug }) {
           onClick={() => router.push(`/${slug}`)}
           className="text-xl font-semibold text-purple-600 cursor-pointer flex items-center gap-2"
         >
-          <i className="bi bi-house-door"></i> Paula Tranças
+          <i className="bi bi-house-door"></i> Marcafy
         </div>
         {authenticated? (
           <button
