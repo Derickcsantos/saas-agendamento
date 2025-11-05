@@ -376,58 +376,137 @@ export default function MarcafyLanding() {
         <div className="mb-12 text-center">
           <Chip>Planos</Chip>
           <h2 className="mt-4 text-4xl font-bold">Escolha o plano ideal</h2>
-          <p className="mt-2 text-neutral-600">
-            Todos incluem pagina de agendamentos, landing page com CMS, galeria e personalização de cores.
+          <p className="mt-2 text-neutral-600 max-w-2xl mx-auto">
+            Todos os planos incluem armazenamento em nuvem, visão geral do calendário, link
+            de agendamento personalizado, notificações automáticas e adaptação de cores da sua marca.
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          <PricingCard
-            nome="Básico"
-            preco="R$ 50"
-            descricao="Tudo para começar bem, com comprovante de agendamento."
-            bullets={[
-              "Agendamento sem login e página pública",
-              "Landing page + CMS e galeria própria",
-              "Painel do cliente e painel administrativo",
-              "Relatórios personalizados (exportação básica)",
-              "Controle de cupons (básico)",
-              "Sem painel do funcionário",
-              "Sem emissão de Nota Fiscal (apenas comprovante)",
-            ]}
-          />
+        <div className="grid gap-8 md:grid-cols-3">
+          {/* ====================== BÁSICO ====================== */}
+          <SoftCard className="p-8 md:p-10 flex flex-col justify-between h-full">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold flex items-center gap-2">
+                  <Sparkles size={22} color="#5E3BEE" /> Básico
+                </h3>
+              </div>
 
-          <PricingCard
-            destaque
-            nome="Plus"
-            preco="R$ 100"
-            descricao="Todas as funcionalidades + armazenamento de documentos."
-            bullets={[
-              "Tudo do Básico",
-              "Painel do funcionário completo",
-              "Emissão de Notas Fiscais",
-              "Backups automáticos e armazenamento de docs",
-              "Exportar e importar dados",
-              "E-mail marketing integrado",
-              "Controle financeiro completo",
-            ]}
-          />
+              <p className="text-4xl font-extrabold text-[#5E3BEE]">R$ 50<span className="text-base font-medium text-neutral-500">/mês</span></p>
+              <p className="mt-2 text-sm text-neutral-600 mb-6">
+                Ideal para quem está começando e quer digitalizar o agendamento com praticidade e economia.
+              </p>
 
-          <PricingCard
-            nome="Pro"
-            preco="R$ 150"
-            descricao="Para escala e performance com suporte premium."
-            bullets={[
-              "Tudo do Plus",
-              "SEO especializado para sua landing",
-              "Suporte 24h e treinamento personalizado",
-              "Painel de sugestões de funcionalidades",
-              "Envio de confirmação para o cliente",
-              "Integração com Google Agenda",
-            ]}
-          />
+              <ul className="space-y-3 text-sm">
+                <Li>Agendamento online sem necessidade de login</Li>
+                <Li>Página de agendamentos personalizada</Li>
+                <Li>Landing page com CMS e galeria própria</Li>
+                <Li>Painel do cliente e painel administrativo</Li>
+                <Li>Relatórios personalizados e exportação em PDF/CSV</Li>
+                <Li>Controle de cupons e promoções básicas</Li>
+                <Li>Controle de escala de trabalho e comissões</Li>
+                <Li>Controle financeiro simplificado</Li>
+                <Li>Link de agendamento compartilhável</Li>
+                <Li>Armazenamento seguro em nuvem</Li>
+                <Li>Sem painel do funcionário</Li>
+                <Li>Sem emissão de Nota Fiscal (somente comprovante de agendamento)</Li>
+              </ul>
+            </div>
+
+            <div className="mt-8">
+              <a
+                href="https://wa.me/5511999999999"
+                className="w-full inline-block text-center rounded-full bg-[#5E3BEE] px-6 py-3 text-white font-semibold shadow-md hover:shadow-lg transition"
+              >
+                Contratar
+              </a>
+            </div>
+          </SoftCard>
+
+          {/* ====================== PLUS ====================== */}
+          <SoftCard className="p-8 md:p-10 flex flex-col justify-between h-full relative scale-[1.01] border-[#5E3BEE] border-opacity-40">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#5E3BEE] text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm">
+              Mais escolhido
+            </span>
+
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold flex items-center gap-2">
+                  <Sparkles size={22} color="#5E3BEE" /> Plus
+                </h3>
+              </div>
+
+              <p className="text-4xl font-extrabold text-[#5E3BEE]">R$ 100<span className="text-base font-medium text-neutral-500">/mês</span></p>
+              <p className="mt-2 text-sm text-neutral-600 mb-6">
+                Plano completo para quem precisa de controle total, automações e relatórios financeiros detalhados.
+              </p>
+
+              <ul className="space-y-3 text-sm">
+                <Li>Todas as funcionalidades do plano Básico</Li>
+                <Li>Painel do funcionário com permissões individuais</Li>
+                <Li>Emissão automática de Notas Fiscais</Li>
+                <Li>Backups automáticos e armazenamento de documentos</Li>
+                <Li>Exportar e importar dados em massa (CSV, Excel, JSON)</Li>
+                <Li>E-mail marketing integrado</Li>
+                <Li>Controle financeiro completo (entradas, despesas e gráficos)</Li>
+                <Li>Controle de escala de trabalho e comissões detalhadas</Li>
+                <Li>Integração com ferramentas externas (Google Drive, Zapier, etc.)</Li>
+                <Li>Relatórios de desempenho e produtividade por colaborador</Li>
+                <Li>Gestão de clientes com histórico e lembretes automáticos</Li>
+              </ul>
+            </div>
+
+            <div className="mt-8">
+              <a
+                href="https://wa.me/5511999999999"
+                className="w-full inline-block text-center rounded-full bg-[#5E3BEE] px-6 py-3 text-white font-semibold shadow-md hover:shadow-lg transition"
+              >
+                Contratar
+              </a>
+            </div>
+          </SoftCard>
+
+          {/* ====================== PRO ====================== */}
+          <SoftCard className="p-8 md:p-10 flex flex-col justify-between h-full">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold flex items-center gap-2">
+                  <Sparkles size={22} color="#5E3BEE" /> Pro
+                </h3>
+              </div>
+
+              <p className="text-4xl font-extrabold text-[#5E3BEE]">R$ 150<span className="text-base font-medium text-neutral-500">/mês</span></p>
+              <p className="mt-2 text-sm text-neutral-600 mb-6">
+                Para negócios em expansão que desejam maximizar o alcance e performance com suporte prioritário.
+              </p>
+
+              <ul className="space-y-3 text-sm">
+                <Li>Todas as funcionalidades do plano Plus</Li>
+                <Li>SEO especializado para sua landing page</Li>
+                <Li>Suporte 24h e treinamento personalizado</Li>
+                <Li>Painel de sugestões de novas funcionalidades</Li>
+                <Li>Envio de confirmação automática para o cliente</Li>
+                <Li>Integração completa com Google Agenda</Li>
+                <Li>Controle de acesso avançado e multiusuário</Li>
+                <Li>Monitoramento de desempenho em tempo real</Li>
+                <Li>Prioridade em atualizações e releases da plataforma</Li>
+                <Li>Auditoria de segurança e logs detalhados</Li>
+                <Li>Consultoria de implantação e otimização personalizada</Li>
+              </ul>
+            </div>
+
+            <div className="mt-8">
+              <a
+                href="https://wa.me/5511999999999"
+                className="w-full inline-block text-center rounded-full bg-[#5E3BEE] px-6 py-3 text-white font-semibold shadow-md hover:shadow-lg transition"
+              >
+                Contratar
+              </a>
+            </div>
+          </SoftCard>
         </div>
       </section>
+
 
       {/* CTA FINAL */}
       <section className="mx-auto max-w-6xl px-6 pb-24 md:px-8">
