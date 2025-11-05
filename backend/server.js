@@ -68,6 +68,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
+
 // Criar diretório se não existir
 if (!fs.existsSync(SESSION_DIR)) {
   fs.mkdirSync(SESSION_DIR, { recursive: true });
@@ -86,8 +88,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Rotas para servir os arquivos HTML
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
 app.get('/home', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/galeria', (req, res) => res.sendFile(path.join(__dirname, 'public', 'galeria.html')));
