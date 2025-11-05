@@ -12,8 +12,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Horafy",
+  title: "Marcafy",
   description: "Sistema de agendamento online",
+  icons: { icon: "/marcafy-logo.jpg" }
 };
 
 export default function RootLayout({ children }) {
