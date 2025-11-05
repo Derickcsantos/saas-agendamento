@@ -10,12 +10,16 @@ export const getLandingPageBySlug = async (req, res) => {
       .select(`
         *,
         organizations (
+          id,
           name,
-          phone
+          email,
+          phone,
+          address
         )
       `)
       .eq("slug", slug)
       .single();
+
 
     if (error || !data) {
       return res.status(404).json({ error: "Organização não encontrada" });
