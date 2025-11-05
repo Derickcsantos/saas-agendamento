@@ -29,7 +29,7 @@ export default function ClientLanding({ slug }) {
 
   if (!data) {
     return (
-      <div className="flex h-screen items-center justify-center text-gray-500">
+      <div className="flex h-screen items-center justify-center bg-white text-gray-500">
         <p>Carregando...</p>
       </div>
     );
