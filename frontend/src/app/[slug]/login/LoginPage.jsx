@@ -91,7 +91,7 @@ export default function LoginPage({ slug }) {
 
   if (checkingAuth) {
     return (
-      <div className="h-screen flex items-center justify-center text-gray-500">
+      <div className="h-screen flex items-center justify-center bg-white text-gray-500">
         Verificando autenticação...
       </div>
     );

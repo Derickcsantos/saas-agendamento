@@ -102,7 +102,7 @@ export default function SignInPage({ slug }) {
 
   if (checkingAuth) {
     return (
-      <div className="h-screen flex items-center justify-center text-gray-900">
+      <div className="h-screen flex items-center justify-center bg-white text-gray-700">
         Verificando autenticação...
       </div>
     );

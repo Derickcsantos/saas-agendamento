@@ -289,7 +289,7 @@ export default function AppointmentPage({ slug }) {
   // ================================
   if (checkingAuth)
     return (
-      <div className="h-screen flex items-center justify-center text-gray-500">
+      <div className="h-screen flex bg-white items-center justify-center text-gray-500">
         Verificando autenticação...
       </div>
     );

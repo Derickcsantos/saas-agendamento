@@ -21,8 +21,8 @@ export default function ClientLanding({ slug }) {
 
   if (notFound) {
     return (
-      <div className="flex h-screen items-center justify-center text-center text-gray-700">
-        <p>Organização não encontrada 😢</p>
+      <div className="flex h-screen items-center justify-center bg-white text-center text-gray-700">
+        <p>Organização não encontrada </p>
       </div>
     );
   }
@@ -54,7 +54,7 @@ export default function ClientLanding({ slug }) {
       <section className="bg-gray-50 text-center py-20 px-4">
         <h1 className="text-4xl font-bold mb-4">{landing.hero_title}</h1>
         <p className="max-w-2xl mx-auto text-gray-700">{landing.hero_subtitle}</p>
-        <a href={`https://wa.me/${landing.whatsapp}`} className="mt-6 inline-block bg-green-500 text-white px-6 py-3 rounded-lg">
+        <a href={`/${slug}/agendar`} className="mt-6 inline-block bg-green-500 text-white px-6 py-3 rounded-lg">
           Agendar Horário
         </a>
       </section>
