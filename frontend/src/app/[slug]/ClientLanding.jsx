@@ -8,7 +8,7 @@ export default function ClientLanding({ slug }) {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    fetch(`http://localhost:3000/api/landing-page/${slug}`, {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/landing-page/${slug}`, {
       credentials: 'include'
   })
       .then(res => {
