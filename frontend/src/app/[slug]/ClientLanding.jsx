@@ -43,16 +43,16 @@ export default function ClientLanding({ slug }) {
       <nav className="flex justify-between items-center p-4 bg-white shadow">
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 bg-gray-200 rounded-full" />
-          <span className="font-bold text-lg">{org?.name}</span>
+          <span className="font-bold text-gray-800 text-lg">{org?.name}</span>
         </div>
         <div className="flex gap-4">
           <a href={`https://wa.me/${landing.whatsapp}`} className="text-green-500">WhatsApp</a>
-          <a href={landing.instagram} target="_blank" rel="noreferrer">Instagram</a>
+          <a href={landing.instagram} target="_blank" rel="noreferrer" className="text-gray-800">Instagram</a>
         </div>
       </nav>
 
       <section className="bg-gray-50 text-center py-20 px-4">
-        <h1 className="text-4xl font-bold mb-4">{landing.hero_title}</h1>
+        <h1 className="text-4xl text-gray-900 font-bold mb-4">{landing.hero_title}</h1>
         <p className="max-w-2xl mx-auto text-gray-700">{landing.hero_subtitle}</p>
         <a href={`/${slug}/agendar`} className="mt-6 inline-block bg-green-500 text-white px-6 py-3 rounded-lg">
           Agendar Horário
@@ -60,12 +60,12 @@ export default function ClientLanding({ slug }) {
       </section>
 
       <section className="py-16 px-4 bg-white text-center">
-        <h2 className="text-2xl font-bold mb-4">{landing.about_title}</h2>
+        <h2 className="text-2xl text-gray-900 font-bold mb-4">{landing.about_title}</h2>
         <p className="max-w-3xl mx-auto text-gray-700">{landing.about_text}</p>
       </section>
 
       <section className="py-16 px-4 bg-gray-50 text-center">
-        <h2 className="text-2xl font-bold mb-4">{landing.services_title}</h2>
+        <h2 className="text-2xl text-gray-900 font-bold mb-4">{landing.services_title}</h2>
         <p className="text-gray-700">Os serviços serão listados aqui futuramente.</p>
       </section>
 
