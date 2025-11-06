@@ -236,7 +236,7 @@ export default function MarcafyLanding() {
           className="relative flex items-center justify-center"
         >
           <motion.img
-            src="/mockupCelular.png" // coloque o arquivo em /public/mobile.avif
+            src="/celularAgenda.png" // coloque o arquivo em /public/mobile.avif
             alt="App Marcafy no celular"
             className="w-[290px] md:w-[360px] rounded-[36px] border"
             style={{
