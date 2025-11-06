@@ -27,7 +27,7 @@ export default function AppointmentsPage({ params }) {
         setUser(authData.user);
 
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/logado/appointments?email=${encodeURIComponent(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/minha-conta/appointments?email=${encodeURIComponent(
             authData.user.email
           )}`
         );
@@ -61,7 +61,7 @@ export default function AppointmentsPage({ params }) {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-semibold">Meus Agendamentos</h2>
           <button
-            onClick={() => router.push(`/${slug}/logado`)}
+            onClick={() => router.push(`/${slug}/minha-conta`)}
             className="text-purple-600 hover:text-purple-800 transition"
           >
             ← Voltar

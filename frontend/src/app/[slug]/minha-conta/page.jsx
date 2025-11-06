@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useParams } from "next/navigation";
 import Footer from "../../components/Footer";
 import ProfileModal from "../../components/ProfileModal";
 
-export default function LogadoPage({ params }) {
+export default function LogadoPage() {
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams()
   const slug = params?.slug;
 
   const [user, setUser] = useState(null);
@@ -72,7 +73,7 @@ export default function LogadoPage({ params }) {
       <nav className="bg-purple-700 text-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div
-            onClick={() => router.push(`/${slug}/logado`)}
+            onClick={() => router.push(`/${slug}/minha-conta`)}
             className="flex items-center gap-2 cursor-pointer"
           >
             <img
@@ -84,7 +85,7 @@ export default function LogadoPage({ params }) {
           </div>
           <div className="flex gap-4 items-center">
             <button
-              onClick={() => router.push(`/${slug}/logado`)}
+              onClick={() => router.push(`/${slug}/minha-conta`)}
               className={`hover:underline font-semibold`}
             >
               Início
@@ -96,7 +97,7 @@ export default function LogadoPage({ params }) {
               Agendar
             </button>
             <button
-              onClick={() => router.push(`/${slug}/logado/agendamentos`)}
+              onClick={() => router.push(`/${slug}/minha-conta/agendamentos`)}
               className="hover:underline"
             >
               Meus Agendamentos
@@ -146,7 +147,7 @@ export default function LogadoPage({ params }) {
                 Agendar Agora
               </button>
               <button
-                onClick={() => router.push(`/${slug}/logado/agendamentos`)}
+                onClick={() => router.push(`/${slug}/minha-conta/agendamentos`)}
                 className="border border-white px-6 py-3 rounded-lg font-semibold hover:bg-white hover:text-purple-700 transition"
               >
                 Meus Agendamentos

@@ -101,7 +101,7 @@ app.get('/funcionario', checkAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'funcionario.html'));
 });
 // Rota para a página inicial logada
-app.get('/logado', (req, res) => {
+app.get('/minha-conta', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'logado.html'), {
     headers: {
       'Content-Type': 'text/html',
@@ -110,7 +110,7 @@ app.get('/logado', (req, res) => {
   });
 });
 
-app.get('/logado/agendamentos', (req, res) => {
+app.get('/minha-conta/agendamentos', (req, res) => {
   // Verifique se o usuário está autenticado
   if (!req.session.user) {
     return res.redirect('/login');
@@ -158,7 +158,7 @@ app.use('/api/categories', appointmentCategoryRouter);
 app.use('/api/employees', appointmentEmployeeRouter);
 app.use('/api/available-times', availableTimesRouter); 
 app.use('/api/appointments', appointmentsRouter); 
-app.use('/api/logado', loggedInUserRouter);
+app.use('/api/minha-conta', loggedInUserRouter);
 app.use('/api/services', appointmentServicesRouter);
 app.use('/api/admin/categories', categoryRouter);
 app.use('/api/admin/services', serviceRouter);
