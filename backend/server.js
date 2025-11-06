@@ -51,6 +51,7 @@ import { corsOptions } from './utils/corsOptions.js'
 import { googleRouter } from './routes/googleRoutes.js'
 import { landingPageRouter } from './routes/landingPagesRoutes.js'
 import { authRouter } from './routes/authRoutes.js'
+import { organizationRouter } from './routes/organizationRoutes.js'
 import passport from './lib/passport.js';
 
 
@@ -172,6 +173,7 @@ app.use('/api/coupons', couponRouter);
 app.use('/api/admin/revenue', revenueRouter) 
 app.use('/api/landing-page', landingPageRouter)
 app.use('/api/auth', authRouter)
+app.use('/api/organizations', organizationRouter)
 
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
