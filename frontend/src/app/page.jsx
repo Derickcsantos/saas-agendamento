@@ -186,9 +186,8 @@ export default function MarcafyLanding() {
           <Chip>Plataforma brasileira de agendamentos</Chip>
 
           <h1 className="mt-5 text-5xl font-extrabold leading-[1.1] tracking-tight md:text-6xl">
-            Mais tempo{" "}
-            <span style={{ color: BRAND }}>livre.</span> Mais clientes {" "}
-            <span style={{ color: BRAND }}>satisfeitos</span>.
+            Otimize sua agenda e aumente seus {" "}
+            <span style={{ color: BRAND }}>resultados.</span>
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-7 text-neutral-700">
@@ -237,11 +236,11 @@ export default function MarcafyLanding() {
           className="relative flex items-center justify-center"
         >
           <motion.img
-            src="/mobile.avif" // coloque o arquivo em /public/mobile.avif
+            src="/mockupCelular.png" // coloque o arquivo em /public/mobile.avif
             alt="App Marcafy no celular"
             className="w-[290px] md:w-[360px] rounded-[36px] border"
             style={{
-              borderColor: "#eaeaea",
+              borderColor: "#ffffff",
               boxShadow:
                 "0 8px 18px rgba(0,0,0,0.05), 0 30px 60px rgba(0,0,0,0.06)",
             }}
