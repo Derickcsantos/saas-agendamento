@@ -27,8 +27,8 @@ export default function LoginPage({ slug }) {
         if (res.ok && data.authenticated && data.user) {
           const tipo = data.user.tipo;
           if (tipo === "admin") router.push(`/${slug}/admin`);
-          else if (tipo === "funcionario") router.push(`/${slug}/funcionario`);
-          else router.push(`/${slug}/logado`);
+          else if (tipo === "funcionario") router.push(`/${slug}/painel`);
+          else router.push(`/${slug}/minha-conta`);
           return;
         }
       } catch (err) {
@@ -72,8 +72,8 @@ export default function LoginPage({ slug }) {
 
       setTimeout(() => {
         if (tipo === "admin") router.push(`/${slug}/admin`);
-        else if (tipo === "funcionario") router.push(`/${slug}/funcionario`);
-        else router.push(`/${slug}/logado`);
+        else if (tipo === "funcionario") router.push(`/${slug}/painel`);
+        else router.push(`/${slug}/minha-conta`);
       }, 1000);
     } catch (err) {
       setErrorMsg(err.message || "Erro ao efetuar login");
