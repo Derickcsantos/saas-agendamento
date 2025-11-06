@@ -6,7 +6,7 @@ export async function getOrganizations(req, res) {
   try {
     const { data, error } = await supabase
       .from('organizations')
-      .select('id, name, email, phone, adress, is_active, logo_organization, created_at, updated_at')
+      .select('id, name, email, phone, address, is_active, logo_organization, slug_organization, created_at, updated_at')
       .order('created_at', { ascending: true });
 
     if (error) throw error;
@@ -22,7 +22,7 @@ export async function getOrganizationById(req, res) {
     const { id } = req.params;
     const { data, error } = await supabase
       .from('organizations')
-      .select('id, name, email, phone, adress, is_active, logo_organization, created_at, updated_at')
+      .select('id, name, email, phone, address, is_active, logo_organization, slug_organization, created_at, updated_at')
       .eq('id', id)
       .single();
 
@@ -38,8 +38,29 @@ export async function getOrganizationById(req, res) {
 
 export async function createOrganization(req, res) {
   try {
-    const { name, email, phone, adress} = req.body;
+    const {
+      name,
+      email,
+      phone,
+      address,
+      slug_organization,
+      is_active
+    } = req.body;
 
+    // 🔧 Parse de tipos
+    const parsedIsActive =
+      typeof is_active === 'boolean'
+        ? is_active
+        : is_active === 'true' || is_active === true;
+
+    const parsedPhone =
+      typeof phone === 'string' && !isNaN(Number(phone))
+        ? Number(phone)
+        : phone;
+
+    let imagePath = null;
+
+    // 🔧 Upload da imagem
     if (req.file) {
       const buffer = await sharp(req.file.buffer)
         .resize({ width: 600 })
@@ -64,15 +85,17 @@ export async function createOrganization(req, res) {
       imagePath = publicUrl.publicUrl;
     }
 
+    // 🔧 Inserção
     const { data, error } = await supabase
-      .from('categories')
+      .from('organizations')
       .insert([
         {
-          name, 
-          email, 
-          phone, 
-          adress, 
-          is_active: true,
+          name,
+          email,
+          phone: parsedPhone,
+          address,
+          slug_organization,
+          is_active: parsedIsActive,
           logo_organization: imagePath,
         },
       ])
@@ -81,7 +104,7 @@ export async function createOrganization(req, res) {
     if (error) throw error;
     res.status(201).json(data[0]);
   } catch (error) {
-    console.error('Error creating category:', error);
+    console.error('Error creating organization:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 }
@@ -89,7 +112,26 @@ export async function createOrganization(req, res) {
 export async function updateOrganization(req, res) {
   try {
     const { id } = req.params;
-    const { name, email, phone, adress, is_active } = req.body;
+    const {
+      name,
+      email,
+      phone,
+      address,
+      slug_organization,
+      is_active
+    } = req.body;
+
+    // 🔧 Parse de tipos
+    const parsedIsActive =
+      typeof is_active === 'boolean'
+        ? is_active
+        : is_active === 'true' || is_active === true;
+
+    const parsedPhone =
+      typeof phone === 'string' && !isNaN(Number(phone))
+        ? Number(phone)
+        : phone;
+
     let imageUrl = null;
 
     if (req.file) {
@@ -117,11 +159,12 @@ export async function updateOrganization(req, res) {
     }
 
     const updateData = {
-      name, 
-      email, 
-      phone, 
-      adress, 
-      is_active,
+      name,
+      email,
+      phone: parsedPhone,
+      address,
+      slug_organization,
+      is_active: parsedIsActive,
       ...(imageUrl && { logo_organization: imageUrl }),
     };
 
