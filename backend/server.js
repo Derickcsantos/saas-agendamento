@@ -53,6 +53,7 @@ import { landingPageRouter } from './routes/landingPagesRoutes.js'
 import { authRouter } from './routes/authRoutes.js'
 import { organizationRouter } from './routes/organizationRoutes.js'
 import passport from './lib/passport.js';
+import { redis } from './lib/redis.js'
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -144,6 +145,8 @@ cron.schedule('0 3 * * *', async () => {
     console.error('Erro na tarefa agendada:', result.error);
   }
 });
+
+
 
 app.use('/api/contato', emailContactRouter)
 app.use('/api/forgot-password', forgotPasswordRouter) 
