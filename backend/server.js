@@ -54,6 +54,7 @@ import { authRouter } from './routes/authRoutes.js'
 import { organizationRouter } from './routes/organizationRoutes.js'
 import passport from './lib/passport.js';
 import { redis } from './lib/redis.js'
+import { organizationColorsRouter } from './routes/organizationColorsRoutes.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -177,6 +178,7 @@ app.use('/api/admin/revenue', revenueRouter)
 app.use('/api/landing-page', landingPageRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/organizations', organizationRouter)
+app.use('/api/organization-colors', organizationColorsRouter)
 
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
