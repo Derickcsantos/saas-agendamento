@@ -183,7 +183,7 @@ export default function MarcafyLanding() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <Chip>Plataforma brasileira de agendamentos</Chip>
+          <Chip>O sistema de agendamento que trabalha por você.</Chip>
 
           <h1 className="mt-5 text-5xl font-extrabold leading-[1.1] tracking-tight md:text-6xl">
             Otimize sua agenda e aumente seus {" "}
