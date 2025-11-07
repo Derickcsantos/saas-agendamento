@@ -38,7 +38,7 @@ import { appointmentsRouter } from './routes/appointmentsRoutes.js'
 import { adminAppointmentRouter } from './routes/adminAppointmentRoutes.js';
 import { adminEmployeeRouter } from './routes/adminEmployeeRoutes.js';
 import { employeeServicesRouter } from './routes/employeeServicesRoutes.js';
-import { galeryRouter } from './routes/galeryRoutes.js';
+import { galleryRouter } from './routes/galleryRoutes.js';
 import { availableTimesRouter } from './routes/availableTimesRoutes.js'
 import { revenueRouter } from './routes/revenueRouter.js'
 import { employeeScheduleRouter } from './routes/employeeScheduleRoutes.js'
@@ -169,7 +169,7 @@ app.use('/api/admin/services', serviceRouter);
 app.use('/api/admin/appointments', adminAppointmentRouter); 
 app.use('/api/admin/employees', adminEmployeeRouter); 
 app.use('/api/employee-services/', employeeServicesRouter) ;
-app.use('/api/galeria', galeryRouter);
+app.use('/api/galeria', galleryRouter);
 app.use("/api/schedules", employeeScheduleRouter)
 app.use('/api/admin/dashboard', dashboardDataRouter) 
 app.use('/api/coupons', couponRouter); 

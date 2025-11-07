@@ -27,7 +27,7 @@ export default function LoginPage({ slug }) {
         if (res.ok && data.authenticated && data.user) {
           const tipo = data.user.tipo;
           if (tipo === "admin") router.push(`/${slug}/admin`);
-          else if (tipo === "funcionario") router.push(`/${slug}/painel`);
+          else if (tipo === "funcionario") router.push(`/${slug}/profissional`);
           else router.push(`/${slug}/minha-conta`);
           return;
         }
@@ -72,7 +72,7 @@ export default function LoginPage({ slug }) {
 
       setTimeout(() => {
         if (tipo === "admin") router.push(`/${slug}/admin`);
-        else if (tipo === "funcionario") router.push(`/${slug}/painel`);
+        else if (tipo === "funcionario") router.push(`/${slug}/profissional`);
         else router.push(`/${slug}/minha-conta`);
       }, 1000);
     } catch (err) {

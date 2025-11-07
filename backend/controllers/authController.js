@@ -13,3 +13,18 @@ export const checkAuth =  async (req, res) => {
     return res.status(401).json({ authenticated: false });
   }
 };
+
+export const logout = async (req, res) => {
+  try {
+    res.clearCookie("token", {
+      path: "/", // 🔥 importante
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+    return res.status(200).json({ message: "Logout realizado com sucesso" });
+  } catch (error) {
+    console.error("Erro no logout:", error);
+    return res.status(500).json({ error: "Erro ao encerrar sessão" });
+  }
+};
