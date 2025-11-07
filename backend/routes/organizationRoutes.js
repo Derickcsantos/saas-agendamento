@@ -57,7 +57,8 @@ organizationRouter.get('/:id', getOrganizationById);
  * @swagger
  * /api/organizations:
  *   post:
-*     summary: Cria uma nova organização
+ *     summary: Cria uma nova organização
+ *     tags: [Organizações]
  *     requestBody:
  *       required: true
  *       content:
@@ -71,8 +72,13 @@ organizationRouter.get('/:id', getOrganizationById);
  *                 type: string
  *               phone:
  *                 type: string
- *               adress:
+ *               slug_organization:
  *                 type: string
+ *               address:
+ *                 type: string
+ *               image:
+ *                 type: string
+ *                 format: binary
  *     responses:
  *       201:
  *         description: Categoria cadastrada com sucesso
@@ -107,8 +113,13 @@ organizationRouter.post('/', upload.single('image'), createOrganization);
  *                 type: string
  *               phone:
  *                 type: string
- *               adress:
+ *               slug_organization:
  *                 type: string
+ *               address:
+ *                 type: string
+ *               image:
+ *                 type: string
+ *                 format: binary
  *     responses:
  *       200:
  *         description: Organização atualizada com sucesso

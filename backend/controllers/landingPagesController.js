@@ -14,7 +14,8 @@ export const getLandingPageBySlug = async (req, res) => {
           name,
           email,
           phone,
-          address
+          address,
+          logo_organization
         )
       `)
       .eq("slug", slug)

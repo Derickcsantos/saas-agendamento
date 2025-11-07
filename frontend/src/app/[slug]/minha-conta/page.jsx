@@ -5,7 +5,7 @@ import { useRouter, usePathname, useParams } from "next/navigation";
 import Footer from "../../components/Footer";
 import ProfileModal from "../../components/ProfileModal";
 
-export default function LogadoPage() {
+export default function MyAccountPage() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams()
@@ -42,9 +42,7 @@ export default function LogadoPage() {
     checkAuth();
   }, [router, slug]);
 
-  // =========================
-  // 2️⃣ Tema e logout
-  // =========================
+  
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
@@ -52,7 +50,10 @@ export default function LogadoPage() {
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   const logout = async () => {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, { credentials: "include" });
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, { 
+      method: "POST",
+      credentials: "include" 
+    });
     router.push(`/${slug}/login`);
   };
 
