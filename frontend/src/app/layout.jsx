@@ -82,19 +82,13 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
-      <head>
-        {/* 👇 Verificação do Google Search Console */}
-        <meta 
-          name="google-site-verification" 
-          content="sNtwo4Z6g55l1VJEWL_o12paE3w76edq2h7o5xVsNE8" 
-        />
-        
-
-        <Script 
-          async 
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {/* ✅ Google Analytics - deve estar no body, não no <head> */}
+        <Script
+          async
           src="https://www.googletagmanager.com/gtag/js?id=G-FBE5HVNY0J"
+          strategy="afterInteractive"
         />
-
         <Script id="google-analytics" strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
@@ -104,10 +98,6 @@ export default function RootLayout({ children }) {
           `}
         </Script>
 
-      </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
         {children}
       </body>
     </html>
