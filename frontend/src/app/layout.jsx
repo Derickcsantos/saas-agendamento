@@ -1,7 +1,7 @@
 // src/app/layout.jsx
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Script from "next/script"; 
+import GoogleAnalytics from "./GoogleAnalytics"; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +36,7 @@ export const metadata = {
   creator: "Marcafy",
   publisher: "Marcafy",
   metadataBase: new URL("https://www.marcafy.com.br"),
+  category: "software",
   alternates: {
     canonical: "https://www.marcafy.com.br",
   },
@@ -88,20 +89,7 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {/* ✅ Google Analytics - deve estar no body, não no <head> */}
-        <Script
-          async
-          src="https://www.googletagmanager.com/gtag/js?id=G-FBE5HVNY0J"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-FBE5HVNY0J');
-          `}
-        </Script>
-
+        <GoogleAnalytics />
         {children}
       </body>
     </html>
