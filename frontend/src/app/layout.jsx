@@ -34,7 +34,7 @@ export const metadata = {
   authors: [{ name: "Marcafy" }],
   creator: "Marcafy",
   publisher: "Marcafy",
-  metadataBase: new URL("www.marcafy.com.br"),
+  metadataBase: new URL("https://www.marcafy.com.br"),
   alternates: {
     canonical: "/",
   },
