@@ -1,6 +1,7 @@
 // src/app/layout.jsx
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Script from "next/script"; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,13 +37,13 @@ export const metadata = {
   publisher: "Marcafy",
   metadataBase: new URL("https://www.marcafy.com.br"),
   alternates: {
-    canonical: "/",
+    canonical: "https://www.marcafy.com.br",
   },
   openGraph: {
     title: "Marcafy - Simplifique sua rotina",
     description:
       "Sistema de agendamento online feito para simplificar sua rotina e aumentar seus resultados.",
-    url: "https://marcafy.vercel.app",
+    url: "https://www.marcafy.com.br",
     siteName: "Marcafy",
     locale: "pt_BR",
     type: "website",
@@ -66,6 +67,9 @@ export const metadata = {
   robots: {
     index: true,
     follow: true,
+  },
+  verification: {
+    google: "sNtwo4Z6g55l1VJEWL_o12paE3w76edq2h7o5xVsNE8",
   },
   icons: {
     icon: "/marcafy-logo.jpg",
