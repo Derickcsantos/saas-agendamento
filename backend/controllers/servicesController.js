@@ -52,6 +52,41 @@ export const getServiceById = async (req, res) => {
   }
 };
 
+export const getServicesBySlug = async (req, res) => {
+  try{ 
+    const { slug } = req.params
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    // Busca o organization_id correspondente ao slug
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
+    const { data, error } = await supabase
+      .from('services')
+      .select('id, name, category_id, duration, price, categories(name)')
+      .eq('organization_id', orgData.id)
+
+
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Serviço não encontrado' });
+    
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching service:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
 export const createService = async (req, res) => {
   try {
     const { category_id, name, description, duration, price } = req.body;

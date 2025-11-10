@@ -4,6 +4,7 @@ import multer from 'multer';
 const upload = multer(); 
 import {
   getServices,
+  getServicesBySlug,
   getServiceById,
   createService,
   updateService,
@@ -32,6 +33,8 @@ export const serviceRouter = Router();
  *         description: Erro interno do servidor
  */
 serviceRouter.get('/', authenticateJWT, extractOrganizationId, getServices);
+
+serviceRouter.get('/slug/:slug', authenticateJWT, getServicesBySlug)
 
 /**
  * @swagger

@@ -3,17 +3,32 @@ import express from 'express'
 
 export const getDashboardData = async (req, res) => {
   try {
-    // 1. Contagem básica de funcionários, categorias, serviços e agendamentos
+    const { slug } = req.params
+    
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
     const [
       { count: employeesCount },
       { count: categoriesCount },
       { count: servicesCount },
       { count: appointmentsCount }
     ] = await Promise.all([
-      supabase.from('employees').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId), 
-      supabase.from('categories').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId), 
-      supabase.from('services').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId), 
-      supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('organization_id', req.organizationId).eq('status', 'confirmed') 
+      supabase.from('employees').select('*', { count: 'exact', head: true }).eq('organization_id', orgData.id), 
+      supabase.from('categories').select('*', { count: 'exact', head: true }).eq('organization_id', orgData.id), 
+      supabase.from('services').select('*', { count: 'exact', head: true }).eq('organization_id', orgData.id), 
+      supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('organization_id', orgData.id).eq('status', 'confirmed') 
     ]);
 
     // 2. Dados detalhados para os gráficos
@@ -23,10 +38,10 @@ export const getDashboardData = async (req, res) => {
       { data: couponsData, error: couponsError },
       { data: appointmentsData, error: appointmentsError }
     ] = await Promise.all([
-      supabase.from('employees').select('is_active').eq('organization_id', req.organizationId), 
-      supabase.from('users').select('tipo').eq('organization_id', req.organizationId), 
-      supabase.from('coupons').select('is_active').eq('organization_id', req.organizationId), 
-      supabase.from('appointments').select('appointment_date').eq('organization_id', req.organizationId).eq('status', 'confirmed') 
+      supabase.from('employees').select('is_active').eq('organization_id', orgData.id), 
+      supabase.from('users').select('tipo').eq('organization_id', orgData.id), 
+      supabase.from('coupons').select('is_active').eq('organization_id',orgData.id), 
+      supabase.from('appointments').select('appointment_date').eq('organization_id', orgData.id).eq('status', 'confirmed') 
     ]);
 
     // Verificar erros nas consultas
