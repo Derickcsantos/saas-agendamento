@@ -11,6 +11,7 @@ export default function LoginPage({ slug }) {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [palette, setPalette] = useState(null);
 
   // ==============================
   // 1️⃣ Verifica se já está autenticado
@@ -40,6 +41,31 @@ export default function LoginPage({ slug }) {
 
     checkAuth();
   }, [router, slug]);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // Executa ambas as chamadas em paralelo
+        const [colorRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`, {
+            credentials: "include",
+          }),
+        ]);
+  
+        if (!colorRes.ok) throw new Error("Palette not found");
+  
+        const paletteData = await colorRes.json();
+  
+        setPalette(paletteData); 
+  
+      } catch (err) {
+        console.error("Erro ao buscar dados:", err);
+        setNotFound(true);
+      }
+    }
+  
+    if (slug) fetchData();
+  }, [slug]);
 
   // ========================
   // LOGIN NORMAL
@@ -101,7 +127,7 @@ export default function LoginPage({ slug }) {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full bg-white rounded-xl shadow-md p-8">
-        <h1 className="text-2xl text-green-500 font-semibold text-center mb-6">
+        <h1 className="text-2xl font-semibold text-center mb-6" style={{color: palette?.strong_color}}>
           Login — {slug}
         </h1>
 
@@ -137,7 +163,8 @@ export default function LoginPage({ slug }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-green-500 hover:bg-green-700 text-white py-2 rounded-md font-medium transition"
+            className="w-full text-white py-2 rounded-md font-medium transition"
+            style={{backgroundColor: palette?.strong_color}}
           >
             {loading ? "Entrando..." : "Entrar"}
           </button>

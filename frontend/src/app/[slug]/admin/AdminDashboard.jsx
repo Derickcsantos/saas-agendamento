@@ -26,14 +26,15 @@ export default function AdminDashboard({ slug }) {
     async function fetchData() {
       try {
         const [orgRes, statsRes] = await Promise.all([
-          fetch(`http://localhost:3000/api/organizations/slug/beleza-pura`),
-          fetch(`http://localhost:3000/api/admin/dashboard/beleza-pura`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${slug}`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard/${slug}`),
         ]);
 
         const orgData = await orgRes.json();
         const statsData = await statsRes.json();
 
         setOrg(orgData);
+        console.log(orgData)
         setStats(statsData);
       } catch (err) {
         console.error(err);
@@ -110,9 +111,9 @@ export default function AdminDashboard({ slug }) {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <Sidebar org={org} setActiveTab={setActiveTab} activeTab={activeTab} />
+      <Sidebar org={org} slug={slug} setActiveTab={setActiveTab} activeTab={activeTab} />
       <div className="flex-1 flex flex-col">
-        <Topbar org={org} />
+        <Topbar org={org} slug={slug} />
         <main className="flex-1 p-6 space-y-6 overflow-y-auto">{renderContent()}</main>
       </div>
     </div>

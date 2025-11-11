@@ -11,6 +11,8 @@ export default function AppointmentPage({ slug }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const [palette, setPalette] = useState(null);
+  const [org, setOrg] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
@@ -65,6 +67,41 @@ export default function AppointmentPage({ slug }) {
     };
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // Executa ambas as chamadas em paralelo
+        const [orgRes, colorRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${slug}`, {
+            credentials: 'include',
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`, {
+            credentials: "include",
+          }),
+        ]);
+
+        // Se alguma falhar, lança erro
+        if (!orgRes.ok) throw new Error("Landing not found");
+        if (!colorRes.ok) throw new Error("Palette not found");
+
+        // Converte ambas as respostas
+        const orgData = await orgRes.json();
+        const paletteData = await colorRes.json();
+
+        // Armazena nos estados (ou constantes)
+        setOrg(orgData);
+        setPalette(paletteData); // <- crie um useState pra isso
+
+      } catch (err) {
+        console.error("Erro ao buscar dados:", err);
+        setNotFound(true);
+      }
+    }
+
+    if (slug) fetchData();
+  }, [slug]);
+   
 
   // ================================
   // 3️⃣ LOAD CATEGORIES
@@ -310,9 +347,10 @@ export default function AppointmentPage({ slug }) {
       <header className="flex justify-between items-center p-4 border-b bg-white shadow-sm">
         <div
           onClick={() => router.push(`/${slug}`)}
-          className="text-xl font-semibold text-purple-600 cursor-pointer flex items-center gap-2"
+          className="text-xl font-semibold cursor-pointer flex items-center gap-2"
+          style={{color: palette?.strong_color}}
         >
-          <i className="bi bi-house-door"></i> Marcafy
+          <i className="bi bi-house-door"></i> {org?.name}
         </div>
         {authenticated? (
           <button
@@ -324,7 +362,8 @@ export default function AppointmentPage({ slug }) {
         ) : (
           <button
             onClick={() => router.push(`/${slug}/login`)}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-all"
+            className="text-white px-4 py-2 rounded-lg transition-all"
+            style={{backgroundColor: palette?.strong_color}}
           >
             Login
           </button>
@@ -694,6 +733,7 @@ export default function AppointmentPage({ slug }) {
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "bg-purple-600 text-white hover:bg-purple-700"
             }`}
+            style={{backgroundColor: palette?.strong_color}}
           >
             Próximo
           </button>
