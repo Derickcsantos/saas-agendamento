@@ -15,6 +15,7 @@ export default function SignInPage({ slug }) {
     confirmPassword: "",
   });
 
+  const [palette, setPalette] = useState(null);
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -48,6 +49,31 @@ export default function SignInPage({ slug }) {
 
     checkAuth();
   }, [router, slug]);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // Executa ambas as chamadas em paralelo
+        const [colorRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`, {
+            credentials: "include",
+          }),
+        ]);
+  
+        if (!colorRes.ok) throw new Error("Palette not found");
+  
+        const paletteData = await colorRes.json();
+  
+        setPalette(paletteData); 
+  
+      } catch (err) {
+        console.error("Erro ao buscar dados:", err);
+        setNotFound(true);
+      }
+    }
+  
+    if (slug) fetchData();
+  }, [slug]);
 
   // ==========================
   // 2️⃣ Envia cadastro
@@ -111,7 +137,7 @@ export default function SignInPage({ slug }) {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full bg-white rounded-xl shadow-md p-8">
-        <h1 className="text-2xl text-green-500 font-semibold text-center mb-6">
+        <h1 className="text-2xl font-semibold text-center mb-6" style={{color: palette?.strong_color}}>
           Criar Conta — {slug}
         </h1>
 
@@ -191,7 +217,8 @@ export default function SignInPage({ slug }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-md font-medium transition"
+            className="w-full hover:bg-green-700 text-white py-2 rounded-md font-medium transition"
+            style={{backgroundColor: palette?.strong_color}}
           >
             {loading ? "Cadastrando..." : "Cadastrar"}
           </button>
@@ -208,7 +235,8 @@ export default function SignInPage({ slug }) {
           Já tem conta?{" "}
           <button
             onClick={() => router.push(`/${slug}/login`)}
-            className="text-green-600 hover:underline"
+            className=" hover:underline"
+            style={{color: palette?.strong_color}}
           >
             Faça login
           </button>
