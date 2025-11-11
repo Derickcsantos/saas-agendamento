@@ -97,4 +97,4 @@ export const dashboardDataRouter = Router()
  *                 details:
  *                   type: string
  */
-dashboardDataRouter.get('/', extractOrganizationId, authenticateJWT, getDashboardData)
+dashboardDataRouter.get('/:slug', authenticateJWT, getDashboardData)

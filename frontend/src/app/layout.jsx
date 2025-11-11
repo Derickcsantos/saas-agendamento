@@ -1,7 +1,7 @@
 // src/app/layout.jsx
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import GoogleAnalytics from "./GoogleAnalytics"; 
+import GoogleAnalytics from "./components/common/GoogleAnalytics"; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

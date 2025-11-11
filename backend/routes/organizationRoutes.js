@@ -3,6 +3,7 @@ import multer from 'multer';
 import {
   getOrganizations,
   getOrganizationById,
+  getOrganizationBySlug,
   createOrganization,
   updateOrganization,
   deleteOrganization,
@@ -52,6 +53,8 @@ organizationRouter.get('/', getOrganizations);
  *         description: Organização não encontrada
  */
 organizationRouter.get('/:id', getOrganizationById);
+
+organizationRouter.get('/slug/:slug', getOrganizationBySlug);
 
 /**
  * @swagger

@@ -40,8 +40,6 @@ export const viewport = {
 
 export default function SlugLayout({ children }) {
   return (
-    <html lang="pt-BR">
-      <body>{children}</body>
-    </html>
+      <div>{children}</div>
   );
 }

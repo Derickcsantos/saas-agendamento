@@ -36,6 +36,48 @@ export async function getOrganizationById(req, res) {
   }
 }
 
+// No seu organizationsController.js
+export async function getOrganizationBySlug(req, res) {
+  try {
+    const { slug } = req.params;
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    // Faça apenas UMA consulta, buscando direto pelo slug
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('id, name, email, phone, address, is_active, logo_organization, slug_organization, created_at, updated_at')
+      .eq('slug_organization', slug) // Busca direto pelo slug
+      .maybeSingle(); // Use .maybeSingle() para não dar erro se não achar
+
+    // Se deu erro na consulta (exceto "não encontrado")
+    if (error) {
+      throw error;
+    }
+
+    // Se não encontrou dados
+    if (!data) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
+    // Sucesso
+    res.json(data);
+
+  } catch (error) {
+    console.error('Error fetching organization by slug:', error);
+
+    // Se o erro for de sintaxe (ex: coluna slug é uuid), ele apareceria aqui
+    if (error.code === '22P02') {
+       return res.status(400).json({ error: 'Tipo de dado inválido para o slug.' });
+    }
+
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+
 export async function createOrganization(req, res) {
   try {
     const {
