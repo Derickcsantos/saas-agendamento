@@ -182,42 +182,36 @@ useEffect(() => {
             </a>
           </div>
           <div className="col-span-6 text-center md:text-left md:col-span-3">
-            <p className="pb-1 text-lg font-medium">Category</p>
+            <p className="pb-1 text-lg font-medium">Acesso rápido</p>
             <ul>
               <li>
-                <a rel="noopener noreferrer" href="#" className="hover:dark:text-violet-600">Link</a>
+                <a rel="noopener noreferrer" href={`/${slug}/`} className="hover:dark:text-violet-600">Home</a>
               </li>
               <li>
-                <a rel="noopener noreferrer" href="#" className="hover:dark:text-violet-600">Link</a>
+                <a rel="noopener noreferrer" href={`/${slug}/agendar`} className="hover:dark:text-violet-600">agendar</a>
               </li>
               <li>
-                <a rel="noopener noreferrer" href="#" className="hover:dark:text-violet-600">Link</a>
+                <a rel="noopener noreferrer" href={`/${slug}/galeria`} className="hover:dark:text-violet-600">Galeria</a>
               </li>
               <li>
-                <a rel="noopener noreferrer" href="#" className="hover:dark:text-violet-600">Link</a>
-              </li>
-              <li>
-                <a rel="noopener noreferrer" href="#" className="hover:dark:text-violet-600">Link</a>
+                <a rel="noopener noreferrer" href={`/${slug}/login`} className="hover:dark:text-violet-600">login</a>
               </li>
             </ul>
           </div>
           <div className="col-span-6 text-center md:text-left md:col-span-3">
-            <p className="pb-1 text-lg font-medium">Category</p>
+            <p className="pb-1 text-lg font-medium">Redes sociais</p>
             <ul>
               <li>
-                <a rel="noopener noreferrer" href="#" className="hover:dark:text-violet-600">Link</a>
+                <a rel="noopener noreferrer" href={`https://wa.me/${landing.whatsapp}`}className="hover:dark:text-violet-600">Whatsapp</a>
               </li>
               <li>
-                <a rel="noopener noreferrer" href="#" className="hover:dark:text-violet-600">Link</a>
+                <a rel="noopener noreferrer" href={landing.instagram}className="hover:dark:text-violet-600">Instagram</a>
               </li>
               <li>
-                <a rel="noopener noreferrer" href="#" className="hover:dark:text-violet-600">Link</a>
+                <a rel="noopener noreferrer" href={landing.email}className="hover:dark:text-violet-600">Email</a>
               </li>
               <li>
-                <a rel="noopener noreferrer" href="#" className="hover:dark:text-violet-600">Link</a>
-              </li>
-              <li>
-                <a rel="noopener noreferrer" href="#" className="hover:dark:text-violet-600">Link</a>
+                <a rel="noopener noreferrer" href={landing.telefone}className="hover:dark:text-violet-600">Telefone</a>
               </li>
             </ul>
           </div>
