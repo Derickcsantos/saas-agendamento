@@ -6,7 +6,7 @@ import {
   updateEmployee,
   deleteEmployee
 } from '../controllers/adminEmployeesController.js';  
-import { extractOrganizationId } from '../middlewares/authMiddleware.js';
+import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddleware.js';
 import { create } from 'domain';
 import multer from 'multer';
 const upload = multer(); 
@@ -49,7 +49,7 @@ export const adminEmployeeRouter = Router();
  *                 details:
  *                   type: string
  */
-adminEmployeeRouter.get('/', extractOrganizationId, getEmployees);
+adminEmployeeRouter.get('/:slug', authenticateJWT, getEmployees);
 
 /**
  * @swagger
