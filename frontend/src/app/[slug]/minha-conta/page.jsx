@@ -105,7 +105,7 @@ export default function MyAccountPage() {
   // 3️⃣ Render
   // =========================
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors">
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:text-gray-800 transition-colors">
       {/* NAVBAR */}
       <nav className="shadow-md" style={{backgroundColor: palette?.strong_color || '#dfdfdf', color: palette?.text_light_color || '#ffffff'}}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
