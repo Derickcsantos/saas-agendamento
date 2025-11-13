@@ -2,6 +2,7 @@
 import { supabase } from '../lib/supabase.js';
 import generateAccessToken from '../utils/jwt.js';
 import setTokenCookie from '../utils/setTokenCookie.js';
+import { verifyPassword } from '../utils/password.js';
 
 export const login = async (req, res) => {
   const { login, password } = req.body;
@@ -15,10 +16,9 @@ export const login = async (req, res) => {
   }
 
   try {
-
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, username, email, aniversario, password_plaintext, phone, tipo')
+      .select('id, username, email, aniversario, password, phone, tipo')
       .eq('organization_id', req.organizationId)
       .or(`username.eq.${login},email.eq.${login}`)
       .single();
@@ -28,8 +28,8 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: 'Credenciais inválidas.' });
     }
 
-
-    if (user.password_plaintext !== password) {
+    const passwordMatches = await verifyPassword(password, user.password);
+    if (!passwordMatches) {
       return res.status(401).json({ error: 'Senha incorreta.' });
     }
 
@@ -61,7 +61,6 @@ export const loginBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    // Busca a organização pelo slug
     const { data: org, error } = await supabase
       .from("organizations")
       .select("id")
@@ -72,10 +71,7 @@ export const loginBySlug = async (req, res) => {
       return res.status(404).json({ error: "Organização não encontrada." });
     }
 
-    // Injeta o organization_id para o controller de login
     req.organizationId = org.id;
-
-    // Chama o controller original
     return login(req, res);
   } catch (err) {
     console.error("Erro ao processar login multi-tenant:", err);

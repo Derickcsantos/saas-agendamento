@@ -8,15 +8,17 @@ export const registerUserRouter = Router();
  * @swagger
  * tags:
  *   name: Autenticação
- *   description: Endpoints para registro e login de usuários
+ *   description: Endpoints para registro de usuários
  */
 
 /**
  * @swagger
  * /api/register:
  *   post:
- *     summary: Cadastra um novo usuário no sistema
+ *     summary: Cadastra um novo usuário na organização extraída do token
  *     tags: [Autenticação]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -26,7 +28,6 @@ export const registerUserRouter = Router();
  *             required:
  *               - username
  *               - email
- *               - aniversario
  *               - password_plaintext
  *             properties:
  *               username:
@@ -36,19 +37,23 @@ export const registerUserRouter = Router();
  *               email:
  *                 type: string
  *                 format: email
- *                 description: E-mail válido do usuário
+ *                 description: E-mail do usuário
  *                 example: "derick@exemplo.com"
  *               aniversario:
  *                 type: string
  *                 format: date
- *                 description: Data de nascimento no formato YYYY-MM-DD
+ *                 description: Data de nascimento (opcional)
  *                 example: "1990-01-15"
+ *               phone:
+ *                 type: string
+ *                 description: Telefone do usuário (opcional)
+ *                 example: "+55 11 99999-9999"
  *               password_plaintext:
  *                 type: string
- *                 description: Senha em texto puro (em produção deve ser criptografada)
+ *                 description: Senha em texto puro
  *                 example: "senhaSegura123"
  *     responses:
- *       200:
+ *       201:
  *         description: Usuário cadastrado com sucesso
  *         content:
  *           application/json:
@@ -57,7 +62,9 @@ export const registerUserRouter = Router();
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Usuário cadastrado com sucesso!"
  *                 user:
  *                   type: object
  *                   properties:
@@ -69,21 +76,68 @@ export const registerUserRouter = Router();
  *                       type: string
  *                     aniversario:
  *                       type: string
+ *                       nullable: true
+ *                     phone:
+ *                       type: string
+ *                       nullable: true
  *                     created_at:
  *                       type: string
  *       400:
- *         description: Erro na requisição (usuário ou e-mail já cadastrado)
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "Usuário ou email já cadastrado"
+ *         description: Dados inválidos ou usuário já existe
  *       500:
  *         description: Erro interno do servidor
  */
+
 registerUserRouter.post('/', extractOrganizationId, registerUser);
 
+/**
+ * @swagger
+ * /api/register/{slug}:
+ *   post:
+ *     summary: Cadastra um usuário em uma organização identificada pelo slug
+ *     tags: [Autenticação]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Slug público da organização
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - email
+ *               - password_plaintext
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: "novo_usuario"
+ *               email:
+ *                 type: string
+ *                 example: "email@empresa.com"
+ *               aniversario:
+ *                 type: string
+ *                 format: date
+ *                 nullable: true
+ *               phone:
+ *                 type: string
+ *                 example: "+55 11 98888-7777"
+ *               password_plaintext:
+ *                 type: string
+ *                 example: "senhaForte123"
+ *     responses:
+ *       201:
+ *         description: Usuário criado com sucesso
+ *       404:
+ *         description: Organização não encontrada
+ *       400:
+ *         description: Usuário ou email já cadastrado
+ *       500:
+ *         description: Erro interno do servidor
+ */
 registerUserRouter.post('/:slug', registerBySlug)

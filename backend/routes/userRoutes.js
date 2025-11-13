@@ -16,19 +16,13 @@ export const userRouter = Router();
  * @swagger
  * /api/users:
  *   get:
- *     summary: Retorna todos os usuários em uma organização
+ *     summary: Retorna todos os usuários da organização do token
  *     tags: [Users]
- *     parameters:
- *       - in: query
- *         name: organization_id
- *         schema:
- *           type: string
- *           format: uuid
- *         required: true
- *         description: ID da organização
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista de todos os usuários
+ *         description: Lista de todos os usuários da organização autenticada
  *         content:
  *           application/json:
  *             schema:
@@ -44,31 +38,26 @@ userRouter.get('/', authenticateJWT, extractOrganizationId, getUsers)
  * @swagger
  * /api/users/{id}:
  *   get:
- *     summary: Retorna um usuário específico em uma organização
+ *     summary: Retorna um usuário específico da organização autenticada
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         schema:
  *           type: string
  *         required: true
- *         description: ID do usuário
- *       - in: query
- *         name: organization_id
- *         schema:
- *           type: string
- *           format: uuid
- *         required: true
- *         description: ID da organização
+ *         description: ID do usuário a ser consultado
  *     responses:
  *       200:
- *         description: Dados do usuário
+ *         description: Dados do usuário encontrado
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/User'
  *       404:
- *         description: Usuário não encontrado
+ *         description: Usuário não encontrado na organização
  *       500:
  *         description: Erro interno do servidor
  */
@@ -80,8 +69,10 @@ userRouter.get('/:id', authenticateJWT, extractOrganizationId, getUserById)
  * @swagger
  * /api/users:
  *   post:
- *     summary: Cria um novo usuário em uma organização
+ *     summary: Cria um novo usuário dentro da organização autenticada
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -89,32 +80,35 @@ userRouter.get('/:id', authenticateJWT, extractOrganizationId, getUserById)
  *           schema:
  *             $ref: '#/components/schemas/UserInput'
  *     responses:
- *       200:
+ *       201:
  *         description: Usuário criado com sucesso
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/User'
  *       400:
- *         description: Usuário ou email já cadastrado
+ *         description: Campos obrigatórios ausentes ou usuário já existente
  *       500:
  *         description: Erro interno do servidor
  */
+
 userRouter.post('/', authenticateJWT, extractOrganizationId, createUser)
 
 /**
  * @swagger
  * /api/users/{id}:
  *   put:
- *     summary: Atualiza um usuário existente em uma organização
+ *     summary: Atualiza um usuário existente dentro da organização autenticada
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         schema:
  *           type: string
  *         required: true
- *         description: ID do usuário
+ *         description: ID do usuário a ser atualizado
  *     requestBody:
  *       required: true
  *       content:
@@ -129,9 +123,9 @@ userRouter.post('/', authenticateJWT, extractOrganizationId, createUser)
  *             schema:
  *               $ref: '#/components/schemas/User'
  *       400:
- *         description: Nome de usuário e e-mail são obrigatórios
+ *         description: Dados inválidos ou ausentes
  *       404:
- *         description: Usuário não encontrado
+ *         description: Usuário não encontrado na organização
  *       500:
  *         description: Erro interno do servidor
  */
@@ -142,22 +136,17 @@ userRouter.put('/:id', authenticateJWT, extractOrganizationId, updateUser)
  * @swagger
  * /api/users/{id}:
  *   delete:
- *     summary: Remove um usuário em uma organização
+ *     summary: Remove um usuário da organização autenticada
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         schema:
  *           type: string
  *         required: true
- *         description: ID do usuário
- *       - in: query
- *         name: organization_id
- *         schema:
- *           type: string
- *           format: uuid
- *         required: false
- *         description: Organização do usuário
+ *         description: ID do usuário a ser removido
  *     responses:
  *       200:
  *         description: Usuário removido com sucesso
@@ -170,7 +159,7 @@ userRouter.put('/:id', authenticateJWT, extractOrganizationId, updateUser)
  *                   type: boolean
  *                   example: true
  *       404:
- *         description: Usuário não encontrado
+ *         description: Usuário não encontrado na organização
  *       500:
  *         description: Erro interno do servidor
  */
