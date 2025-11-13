@@ -6,11 +6,12 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
   const items = [
     { name: "Visão Geral", key: "overview", icon: "bi-house-door" },
     { name: "Categorias", key: "categories", icon: "bi-tags" },
-    { name: "Serviços", key: "services", icon: "bi-scissors" },
+    { name: "Serviços", key: "services", icon: "bi-grid" },
     { name: "Funcionários", key: "employees", icon: "bi-people" },
     { name: "Agendamentos", key: "appointments", icon: "bi-calendar-check" },
     { name: "Clientes", key: "clients", icon: "bi-person" },
-    { name: "Cupons", key: "coupons", icon: "bi-calendar-check" },
+    { name: "Receitas", key: "revenues", icon: "bi bi-cash-coin" },
+    { name: "Cupons", key: "coupons", icon: "bi bi-wallet" },
   ];
   const [palette, setPalette] = useState(null);
 
