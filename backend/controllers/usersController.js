@@ -1,5 +1,6 @@
 import express from 'express'
 import { supabase } from '../lib/supabase.js';
+import { hashPassword } from '../utils/password.js';
 
 export const getUsers = async (req, res) => {
   try {
@@ -37,60 +38,76 @@ export const getUserById = async (req, res) => {
   }
 };
 
+
 export const createUser = async (req, res) => {
   const { username, email, password_plaintext, tipo = 'comum', id_employee } = req.body;
 
-  // console.log("EU SOU O REQ ORGANIZATIONID: ",req.organizationId)
-  // console.log("EU SOU O REQ BODY ORGANIZATIONID: ",req.body.organizationId)
-
   try {
+    if (!req.organizationId) {
+      return res.status(400).json({ error: 'Organização não identificada.' });
+    }
+
+    if (!username || !email || !password_plaintext) {
+      return res.status(400).json({ error: 'Campos obrigatórios ausentes.' });
+    }
+
+    // Verifica se usuário já existe
     const { data: existingUsers, error: userError } = await supabase
       .from('users')
       .select('id')
-      .eq('organization_id', req.organizationId)    // ALTERADO
+      .eq('organization_id', req.organizationId)
       .or(`username.eq.${username},email.eq.${email}`);
 
     if (userError) throw userError;
 
     if (existingUsers && existingUsers.length > 0) {
-      return res.status(400).json({
-        error: 'Usuário ou email já cadastrado'
-      });
+      return res.status(400).json({ error: 'Usuário ou email já cadastrado.' });
     }
+
+    // Gera hash da senha antes de inserir
+    const password_hash = await hashPassword(password_plaintext);
 
     const { data: newUser, error: insertError } = await supabase
       .from('users')
-      .insert([{
-        organization_id: req.organizationId,  // ALTERADO
-        username,
-        email,
-        password_plaintext,
-        tipo,
-        id_employee: tipo === 'funcionario' ? id_employee : null,
-        created_at: new Date().toISOString()
-      }])
+      .insert([
+        {
+          organization_id: req.organizationId,
+          username,
+          email,
+          password_hash, // salva apenas o hash
+          tipo,
+          id_employee: tipo === 'funcionario' ? id_employee : null,
+          created_at: new Date().toISOString(),
+        },
+      ])
       .select('*')
       .single();
 
     if (insertError) throw insertError;
 
-    res.json(newUser);
+    res.status(201).json(newUser);
   } catch (err) {
     console.error('Erro ao cadastrar usuário:', err);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    res.status(500).json({ error: 'Erro interno do servidor.' });
   }
 };
+
 
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const { username, email, password_plaintext, phone, aniversario, tipo, id_employee } = req.body;
-    const organization_id = req.organizationId
+    const organization_id = req.organizationId;
 
-    if (!username || !email) {
-      return res.status(400).json({ error: 'Nome de usuário e e-mail são obrigatórios' });
+    if (!organization_id) {
+      return res.status(400).json({ error: 'Organização não identificada.' });
     }
 
+    if (!username || !email) {
+      return res.status(400).json({ error: 'Nome de usuário e e-mail são obrigatórios.' });
+    }
+
+    // Monta dados de atualização
     const updateData = {
       username,
       email,
@@ -98,9 +115,13 @@ export const updateUser = async (req, res) => {
       aniversario,
       updated_at: new Date().toISOString(),
       ...(tipo && { tipo }),
-      ...(password_plaintext && { password_plaintext }),
-      id_employee: tipo === 'funcionario' ? id_employee : null
+      id_employee: tipo === 'funcionario' ? id_employee : null,
     };
+
+    // Se veio senha nova, gera o hash
+    if (password_plaintext) {
+      updateData.password_hash = await hashPassword(password_plaintext);
+    }
 
     const { data, error } = await supabase
       .from('users')
@@ -111,10 +132,11 @@ export const updateUser = async (req, res) => {
       .single();
 
     if (error) throw error;
+
     res.json(data);
   } catch (error) {
-    console.error('Error updating user:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Erro ao atualizar usuário:', error);
+    res.status(500).json({ error: 'Erro interno do servidor.' });
   }
 };
 

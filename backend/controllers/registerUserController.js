@@ -1,5 +1,7 @@
+// backend/controllers/registerController.js
 import express from 'express';
 import { supabase } from '../lib/supabase.js';
+import { hashPassword } from '../utils/password.js';
 
 export const registerUser = async (req, res) => {
   const { username, email, aniversario, phone, password_plaintext } = req.body;
@@ -13,7 +15,7 @@ export const registerUser = async (req, res) => {
   }
 
   try {
-    // Verifica se já existe usuário
+    // Verifica existência (mesma lógica)
     const { data: existing, error: existingError } = await supabase
       .from('users')
       .select('id')
@@ -26,7 +28,10 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ error: 'Usuário ou email já cadastrado.' });
     }
 
-    // Insere novo usuário (criptografia virá depois)
+    // Hash da senha antes de inserir
+    const password_hash = await hashPassword(password_plaintext);
+
+    // Insere novo usuário (não salvar password_plaintext)
     const { data: newUser, error: insertError } = await supabase
       .from('users')
       .insert([
@@ -35,7 +40,7 @@ export const registerUser = async (req, res) => {
           email,
           aniversario,
           phone,
-          password_plaintext,
+          password_hash,
           tipo: 'comum',
           organization_id: req.organizationId,
           created_at: new Date().toISOString(),
@@ -57,12 +62,10 @@ export const registerUser = async (req, res) => {
   }
 };
 
-
 export const registerBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    // Busca a organização pelo slug
     const { data: org, error } = await supabase
       .from("organizations")
       .select("id")
