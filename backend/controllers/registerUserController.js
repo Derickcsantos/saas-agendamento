@@ -40,7 +40,7 @@ export const registerUser = async (req, res) => {
           email,
           aniversario,
           phone,
-          password_hash,
+          password: password_hash,
           tipo: 'comum',
           organization_id: req.organizationId,
           created_at: new Date().toISOString(),

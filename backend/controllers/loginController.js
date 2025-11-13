@@ -18,7 +18,7 @@ export const login = async (req, res) => {
   try {
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, username, email, aniversario, password_hash, phone, tipo')
+      .select('id, username, email, aniversario, password, phone, tipo')
       .eq('organization_id', req.organizationId)
       .or(`username.eq.${login},email.eq.${login}`)
       .single();
@@ -28,7 +28,7 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: 'Credenciais inválidas.' });
     }
 
-    const passwordMatches = await verifyPassword(password, user.password_hash);
+    const passwordMatches = await verifyPassword(password, user.password);
     if (!passwordMatches) {
       return res.status(401).json({ error: 'Senha incorreta.' });
     }
