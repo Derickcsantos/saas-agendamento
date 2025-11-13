@@ -80,5 +80,4 @@
  *         email: "john.updated@example.com"
  *         password_plaintext: "nova_senha123"
  *         tipo: "admin"
- *         organization_id: "11111111-1111-1111-1111-111111111111"
  */

@@ -32,7 +32,7 @@ export const userRouter = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-userRouter.get('/', authenticateJWT, extractOrganizationId, getUsers)
+userRouter.get('/', authenticateJWT, getUsers)
 
 /**
  * @swagger
@@ -62,7 +62,7 @@ userRouter.get('/', authenticateJWT, extractOrganizationId, getUsers)
  *         description: Erro interno do servidor
  */
 
-userRouter.get('/:id', authenticateJWT, extractOrganizationId, getUserById)
+userRouter.get('/:id', authenticateJWT, getUserById)
 
 
 /**
@@ -92,7 +92,7 @@ userRouter.get('/:id', authenticateJWT, extractOrganizationId, getUserById)
  *         description: Erro interno do servidor
  */
 
-userRouter.post('/', authenticateJWT, extractOrganizationId, createUser)
+userRouter.post('/', authenticateJWT, createUser)
 
 /**
  * @swagger
@@ -129,7 +129,7 @@ userRouter.post('/', authenticateJWT, extractOrganizationId, createUser)
  *       500:
  *         description: Erro interno do servidor
  */
-userRouter.put('/:id', authenticateJWT, extractOrganizationId, updateUser)
+userRouter.put('/:id', authenticateJWT, updateUser)
 
 
 /**
@@ -163,5 +163,5 @@ userRouter.put('/:id', authenticateJWT, extractOrganizationId, updateUser)
  *       500:
  *         description: Erro interno do servidor
  */
-userRouter.delete('/:id', authenticateJWT, extractOrganizationId, deleteUser)
+userRouter.delete('/:id', authenticateJWT, deleteUser)
 
