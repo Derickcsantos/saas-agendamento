@@ -154,19 +154,6 @@ useEffect(() => {
       <p>Os serviços serão listados aqui futuramente.</p>
     </section>
 
-    {/* <footer
-      className="py-8 text-center transition-colors duration-300"
-      style={{
-        backgroundColor: palette?.strong_color || "#5E3BEE",
-        color: palette?.background_color_main || "#FFFFFF",
-      }}
-    >
-      <p className="font-semibold">{org?.name}</p>
-      <p>{landing.endereco}</p>
-      <p>
-        {landing.telefone} | {landing.email}
-      </p>
-    </footer> */}
     <footer className="py-6 dark:text-gray-900" style={{
         backgroundColor: palette?.strong_color || "#5E3BEE",
         color: palette?.background_color_main || "#FFFFFF",

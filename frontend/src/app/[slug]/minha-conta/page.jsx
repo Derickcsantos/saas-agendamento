@@ -10,6 +10,8 @@ export default function MyAccountPage() {
   const pathname = usePathname();
   const params = useParams()
   const slug = params?.slug;
+  const [palette, setPalette] = useState(null)
+  const [orgData, setOrgData] = useState(null)
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +49,40 @@ export default function MyAccountPage() {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
+  useEffect(() => {
+  async function fetchData() {
+    try {
+      // Executa ambas as chamadas em paralelo
+      const [landingRes, colorRes] = await Promise.all([
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/landing-page/${slug}`, {
+          credentials: "include",
+        }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`, {
+          credentials: "include",
+        }),
+      ]);
+
+      // Se alguma falhar, lança erro
+      if (!landingRes.ok) throw new Error("Landing not found");
+      if (!colorRes.ok) throw new Error("Palette not found");
+
+      // Converte ambas as respostas
+      const landingData = await landingRes.json();
+      const paletteData = await colorRes.json();
+
+      // Armazena nos estados (ou constantes)
+      setOrgData(landingData);
+      setPalette(paletteData); // <- crie um useState pra isso
+    } catch (err) {
+      console.error("Erro ao buscar dados:", err);
+      setNotFound(true);
+    }
+  }
+
+  if (slug) fetchData();
+}, [slug]);
+
+
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   const logout = async () => {
@@ -71,14 +107,14 @@ export default function MyAccountPage() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors">
       {/* NAVBAR */}
-      <nav className="bg-purple-700 text-white shadow-md">
+      <nav className="shadow-md" style={{backgroundColor: palette?.strong_color || '#dfdfdf', color: palette?.text_light_color || '#ffffff'}}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div
             onClick={() => router.push(`/${slug}/minha-conta`)}
             className="flex items-center gap-2 cursor-pointer"
           >
             <img
-              src="/img/LogoPaulaTrancas.png"
+              src={orgData?.organizations.logo_organization || "/img/LogoPaulaTrancas.png"}
               alt="Logo"
               className="w-10 h-10 rounded-full border border-white"
             />
@@ -106,7 +142,8 @@ export default function MyAccountPage() {
 
             <button
               onClick={toggleTheme}
-              className="text-white bg-purple-900 hover:bg-purple-800 px-3 py-1 rounded-lg transition"
+              className="px-3 py-1 rounded-lg transition"
+              style={{backgroundColor: palette?.strong_color || '#dfdfdf', color: palette?.text_light_color || '#ffffff'}}
               title="Alternar tema"
             >
               {theme === "dark" ? "☀️" : "🌙"}
@@ -132,7 +169,7 @@ export default function MyAccountPage() {
       {/* CONTEÚDO PRINCIPAL */}
       <main className="flex-grow py-10">
         <section className="max-w-5xl mx-auto text-center">
-          <div className="bg-purple-700 text-white rounded-3xl p-10 shadow-lg">
+          <div className="rounded-3xl p-10 shadow-lg" style={{backgroundColor: palette?.strong_color || '#dfdfdf', color: palette?.text_light_color || '#ffffff'}}>
             <h1 className="text-3xl md:text-4xl font-bold mb-4">
               Bem-vindo(a), {user?.username}
             </h1>

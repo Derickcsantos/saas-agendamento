@@ -60,7 +60,6 @@
  *         email: "john@example.com"
  *         password_plaintext: "senha123"
  *         tipo: "comum"
- *         organization_id: "11111111-1111-1111-1111-111111111111"
  * 
  *     UserUpdate:
  *       type: object

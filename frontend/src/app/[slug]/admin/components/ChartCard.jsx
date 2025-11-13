@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import { Chart } from "chart.js/auto";
 
-export default function ChartCard({ title, id }) {
+export default function ChartCard({ title, id, status }) {
   const chartInstance = useRef(null);
 
   useEffect(() => {
@@ -13,6 +13,7 @@ export default function ChartCard({ title, id }) {
     if (chartInstance.current) {
       chartInstance.current.destroy();
     }
+
 
     chartInstance.current = new Chart(ctx, {
       type: "bar",

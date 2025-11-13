@@ -4,11 +4,23 @@ import sharp from 'sharp';
 
 export const getEmployees = async (req, res) => {
   try {
+    const { slug } = req.params
+
+    const { data: org, error } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (error || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
     // Buscar funcionários
     const { data: employees, error: employeesError } = await supabase
       .from('employees')
       .select('name, email, phone, comissao, is_active, id')
-      .eq('organization_id', req.organizationId)
+      .eq('organization_id', org.id)
       .order('created_at', { ascending: false });
 
     if (employeesError) throw employeesError;

@@ -27,7 +27,9 @@ export default function AdminDashboard({ slug }) {
       try {
         const [orgRes, statsRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${slug}`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard/${slug}`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard/${slug}`, {
+            credentials: 'include',
+          }),
         ]);
 
         const orgData = await orgRes.json();
@@ -36,6 +38,7 @@ export default function AdminDashboard({ slug }) {
         setOrg(orgData);
         console.log(orgData)
         setStats(statsData);
+        console.log(statsData)
       } catch (err) {
         console.error(err);
       } finally {
@@ -88,7 +91,7 @@ export default function AdminDashboard({ slug }) {
             </section>
 
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-              <ChartCard title="Agendamentos por mês" id="appointmentsChart" />
+              <ChartCard status={stats?.monthlyAppointments} title="Agendamentos por mês" id="appointmentsChart" />
               <ChartCard title="Serviços mais populares" id="servicesChart" />
             </section>
 
