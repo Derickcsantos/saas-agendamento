@@ -99,6 +99,8 @@ export const updateUser = async (req, res) => {
     const { username, email, password_plaintext, phone, aniversario, tipo, id_employee } = req.body;
     const organization_id = req.organizationId;
 
+    console.log(organization_id)
+
     if (!organization_id) {
       return res.status(400).json({ error: 'Organização não identificada.' });
     }
@@ -118,9 +120,11 @@ export const updateUser = async (req, res) => {
       id_employee: tipo === 'funcionario' ? id_employee : null,
     };
 
+    console.log(updateData.password)
+
     // Se veio senha nova, gera o hash
     if (password_plaintext) {
-      updateData.password_hash = await hashPassword(password_plaintext);
+      updateData.password = await hashPassword(password_plaintext);
     }
 
     const { data, error } = await supabase
