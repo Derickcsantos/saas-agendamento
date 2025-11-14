@@ -4,10 +4,22 @@ import { hashPassword } from '../utils/password.js';
 
 export const getUsers = async (req, res) => {
   try {
+    const { slug } = req.params;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
     const { data, error } = await supabase
       .from('users')
       .select('id, username, email, tipo, created_at')
-      .eq('organization_id', req.organizationId)
+      .eq('organization_id', org.id)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -40,11 +52,18 @@ export const getUserById = async (req, res) => {
 
 
 export const createUser = async (req, res) => {
-  const { username, email, password_plaintext, tipo = 'comum', id_employee } = req.body;
-
   try {
-    if (!req.organizationId) {
-      return res.status(400).json({ error: 'Organização não identificada.' });
+    const { username, email, password_plaintext, tipo = 'comum', id_employee } = req.body;
+    const { slug } = req.params;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
     }
 
     if (!username || !email || !password_plaintext) {
@@ -55,7 +74,7 @@ export const createUser = async (req, res) => {
     const { data: existingUsers, error: userError } = await supabase
       .from('users')
       .select('id')
-      .eq('organization_id', req.organizationId)
+      .eq('organization_id', org.id)
       .or(`username.eq.${username},email.eq.${email}`);
 
     if (userError) throw userError;
@@ -71,7 +90,7 @@ export const createUser = async (req, res) => {
       .from('users')
       .insert([
         {
-          organization_id: req.organizationId,
+          organization_id: org.id,
           username,
           email,
           password_hash, // salva apenas o hash
@@ -97,7 +116,17 @@ export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const { username, email, password_plaintext, phone, aniversario, tipo, id_employee } = req.body;
-    const organization_id = req.organizationId;
+    const { slug } = req.params;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
 
     console.log(organization_id)
 
@@ -131,7 +160,7 @@ export const updateUser = async (req, res) => {
       .from('users')
       .update(updateData)
       .eq('id', id)
-      .eq('organization_id', organization_id)
+      .eq('organization_id', org.id)
       .select('*')
       .single();
 
@@ -147,13 +176,23 @@ export const updateUser = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const organization_id = req.organizationId
+    const { slug } = req.params;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
 
     const { data: existingUser, error: userError } = await supabase
       .from('users')
       .select('id')
       .eq('id', id)
-      .eq('organization_id', organization_id)
+      .eq('organization_id', org.id)
       .single();
 
     if (userError || !existingUser) {
@@ -164,7 +203,7 @@ export const deleteUser = async (req, res) => {
       .from('users')
       .delete()
       .eq('id', id)
-      .eq('organization_id', organization_id);
+      .eq('organization_id', org.id);
 
     if (deleteError) throw deleteError;
 

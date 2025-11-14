@@ -32,7 +32,7 @@ export const userRouter = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-userRouter.get('/', authenticateJWT, getUsers)
+userRouter.get('/:slug', authenticateJWT, getUsers)
 
 /**
  * @swagger
@@ -92,7 +92,7 @@ userRouter.get('/:id', authenticateJWT, getUserById)
  *         description: Erro interno do servidor
  */
 
-userRouter.post('/', authenticateJWT, createUser)
+userRouter.post('/:slug', authenticateJWT, createUser)
 
 /**
  * @swagger

@@ -32,7 +32,7 @@ export const serviceRouter = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-serviceRouter.get('/', authenticateJWT, extractOrganizationId, getServices);
+serviceRouter.get('/', authenticateJWT, getServices);
 
 serviceRouter.get('/slug/:slug', authenticateJWT, getServicesBySlug)
 
@@ -61,7 +61,7 @@ serviceRouter.get('/slug/:slug', authenticateJWT, getServicesBySlug)
  *       500:
  *         description: Erro interno do servidor
  */
-serviceRouter.get('/:id', authenticateJWT, extractOrganizationId, getServiceById); 
+serviceRouter.get('/:id', authenticateJWT, getServiceById); 
 
 /**
  * @swagger
@@ -121,7 +121,7 @@ serviceRouter.get('/:id', authenticateJWT, extractOrganizationId, getServiceById
  *         description: Erro interno do servidor
  */
 // Rota POST de serviços
-serviceRouter.post('/', upload.single('image'), authenticateJWT, extractOrganizationId, createService);
+serviceRouter.post('/:slug', upload.single('image'), authenticateJWT, createService);
 
 /**
  * @swagger
@@ -176,7 +176,7 @@ serviceRouter.post('/', upload.single('image'), authenticateJWT, extractOrganiza
  *       500:
  *         description: Erro interno do servidor
  */
-serviceRouter.put('/:id', upload.single('image'), authenticateJWT, extractOrganizationId, updateService);
+serviceRouter.put('/:id', upload.single('image'), authenticateJWT, updateService);
 
 /**
  * @swagger
@@ -199,4 +199,4 @@ serviceRouter.put('/:id', upload.single('image'), authenticateJWT, extractOrgani
  *       500:
  *         description: Erro interno do servidor
  */
-serviceRouter.delete('/:id', authenticateJWT, extractOrganizationId, deleteService); 
+serviceRouter.delete('/:slug/:id', authenticateJWT, deleteService); 

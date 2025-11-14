@@ -146,7 +146,7 @@ export async function updateCategory(req, res) {
 
     const updateData = {
       name,
-      ...(imageUrl && { imagem_category: imageUrl }),
+      ...(imageUrl && { imagem_category: imageUrl } || { imagem_category: 'https://static.vecteezy.com/system/resources/thumbnails/000/584/379/small/Abstract_white_background_15.jpg' } ),
     };
 
     const { data, error } = await supabase

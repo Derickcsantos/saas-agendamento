@@ -30,7 +30,7 @@ export const appointmentServicesRouter = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-appointmentServicesRouter.get('/', extractOrganizationId, getAppointmentServices);
+appointmentServicesRouter.get('/', getAppointmentServices);
 
 /**
  * @swagger

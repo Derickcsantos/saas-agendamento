@@ -1,8 +1,7 @@
-// UsersTab.jsx - React component version of users.js with enhanced UI
-// NOTE: This file is generated based on your users.js logic and modernized into React.
-// It includes full CRUD, profile editing, employee linking, toast system, loading states and improved visuals.
+'use client';
 
 import { useEffect, useState } from "react";
+import { toast } from 'react-toastify'
 
 export default function UsersTab({ org }) {
   const [users, setUsers] = useState([]);
@@ -14,25 +13,18 @@ export default function UsersTab({ org }) {
   const API = process.env.NEXT_PUBLIC_API_URL;
   const orgSlug = org.slug_organization;
 
-  const showToast = (message, type = "success") => {
-    const id = Date.now();
-    const toast = document.createElement("div");
-    toast.className = `fixed right-4 top-4 z-50 px-4 py-3 rounded shadow text-white bg-${type === "error" ? "red" : "green"}-600 animate-slide-in opacity-0`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => (toast.style.opacity = 1), 50);
-    setTimeout(() => toast.remove(), 4000);
-  };
 
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API}/api/users?organization_id=${org.id}`);
+      const res = await fetch(`${API}/api/users/${orgSlug}`, {
+        credentials: 'include'
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao carregar usuários");
       setUsers(data);
     } catch (err) {
-      showToast(err.message, "error");
+      toast.error("Não foi possivel carregar os dados");
     } finally {
       setLoading(false);
     }
@@ -40,7 +32,7 @@ export default function UsersTab({ org }) {
 
   const loadEmployees = async () => {
     try {
-      const res = await fetch(`${API}/api/employees?organization_id=${org.id}`);
+      const res = await fetch(`${API}/api/employees/${orgSlug}`);
       const data = await res.json();
       setEmployees(data);
     } catch (_) {}
@@ -76,12 +68,13 @@ export default function UsersTab({ org }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao salvar usuário");
 
-      showToast(editing ? "Usuário atualizado!" : "Usuário criado!");
+      toast.success("Sucesso na operação!");
       setEditing(null);
       setForm({ username: "", email: "", tipo: "comum", password: "", id_employee: "" });
       loadUsers();
     } catch (err) {
-      showToast(err.message, "error");
+      toast.error("Falha ao enviar formulário");
+      console.log(err.message)
     }
   };
 
@@ -100,8 +93,8 @@ export default function UsersTab({ org }) {
     if (!confirm("Deseja excluir este usuário?")) return;
     const res = await fetch(`${API}/api/users/${id}?organization_id=${org.id}`, { method: "DELETE" });
     const data = await res.json();
-    if (!res.ok) return showToast(data.error, "error");
-    showToast("Usuário excluído!");
+    if (!res.ok) return toast.error("Falha ao deletar usuário");
+    toast.success("Usuário excluído!");
     loadUsers();
   };
 

@@ -6,11 +6,22 @@ import sharp from 'sharp';
 export const getServices = async (req, res) => {
   try {
     const { name } = req.query;
+    const { slug } = req.params;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
 
     let query = supabase
       .from('services')
       .select('id, name, category_id, duration, price, categories(name)')
-      .eq('organization_id', req.organizationId)
+      .eq('organization_id', org.id)
       .order('name', { ascending: true });
 
     // Se o parâmetro `name` for fornecido, aplica o filtro
@@ -90,7 +101,23 @@ export const getServicesBySlug = async (req, res) => {
 export const createService = async (req, res) => {
   try {
     const { category_id, name, description, duration, price } = req.body;
+    const { slug } = req.params;
     let imageUrl = null;
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    // Busca o organization_id correspondente ao slug
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
 
     if (req.file) {
       const buffer = await sharp(req.file.buffer)
@@ -126,6 +153,7 @@ export const createService = async (req, res) => {
         name, 
         description, 
         duration, 
+        organization_id: orgData.id,
         price,
         imagem_service: imageUrl // agora salva só a URL pública
       }])
