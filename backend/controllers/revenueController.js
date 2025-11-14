@@ -5,13 +5,24 @@ import ExcelJS from 'exceljs';
 export const getRevenues = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
+    const { slug } = req.params
+
+    const { data: org, error } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (error || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
     
     // 1. Buscar todos os agendamentos concluídos
     let appointmentsQuery = supabase
       .from('appointments')
       .select('id, final_price, appointment_date, employee_id, employees(id, name, comissao)')
       .eq('status', 'completed')
-      .eq('organization_id', req.organizationId);; // Considerar apenas agendamentos confirmados
+      .eq('organization_id', org.id); // Considerar apenas agendamentos confirmados
     
     // Aplicar filtro de datas se existir (corrigido para usar appointment_date)
     if (start_date && end_date) {
@@ -27,7 +38,7 @@ export const getRevenues = async (req, res) => {
     const { data: employees, error: employeesError } = await supabase
       .from('employees')
       .select('id, name, comissao')
-      .eq('organization_id', req.organizationId);
+      .eq('organization_id', org.id);
     
     if (employeesError) throw employeesError;
     
