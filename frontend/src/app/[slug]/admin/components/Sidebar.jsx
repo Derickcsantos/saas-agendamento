@@ -12,6 +12,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
     { name: "Clientes", key: "clients", icon: "bi-person" },
     { name: "Receitas", key: "revenues", icon: "bi bi-cash-coin" },
     { name: "Cupons", key: "coupons", icon: "bi bi-wallet" },
+    { name: "Usuários", key: "users", icon: "bi-people" },
   ];
   const [palette, setPalette] = useState(null);
 

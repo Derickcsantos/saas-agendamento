@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { toast } from 'react-toastify'
 
 export default function ServicesTab({ org }) {
   const [services, setServices] = useState([]);
@@ -22,7 +23,9 @@ export default function ServicesTab({ org }) {
 
   async function loadCategories() {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/categories`
+      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/categories/${org.slug_organization}`, {
+        credentials: 'include',
+      }
     );
     const data = await res.json();
     setCategories(data);
@@ -30,7 +33,9 @@ export default function ServicesTab({ org }) {
 
   async function loadServices() {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/services`
+      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/services/slug/${org.slug_organization}`, {
+        credentials: 'include',
+      }
     );
     const data = await res.json();
     setServices(data);
@@ -45,10 +50,14 @@ export default function ServicesTab({ org }) {
 
       const method = form.id ? "PUT" : "POST";
       const url = form.id
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/services/${form.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/services`;
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/admin/services/${org.slug_organization}/${form.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/admin/services/${org.slug_organization}`;
 
-      const res = await fetch(url, { method, body: formData });
+      const res = await fetch(url, { 
+        method, 
+        body: formData, 
+        credentials: 'include'
+      });
       if (!res.ok) throw new Error("Erro ao salvar serviço");
 
       setForm({
@@ -61,9 +70,11 @@ export default function ServicesTab({ org }) {
       });
       setPreview("");
       setImage(null);
+      toast.success('Enviado com sucesso!')
       loadServices();
     } catch (err) {
-      alert(err.message);
+      toast.error('Não foi possível salvar');
+      console.log(err.message)
     }
   };
 
@@ -82,7 +93,7 @@ export default function ServicesTab({ org }) {
   const handleDelete = async (id) => {
     if (!confirm("Deseja realmente excluir este serviço?")) return;
     await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/services/${id}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/services/${org.slug_organization}/${id}`,
       { method: "DELETE" }
     );
     loadServices();

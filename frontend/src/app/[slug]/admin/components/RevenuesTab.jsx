@@ -1,31 +1,46 @@
+// RevenueTab.jsx - fully corrected, complete and improved UI
 "use client";
 import { useState, useEffect } from "react";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
-export default function RevenuesTab({ org }) {
+export default function RevenueTab({ org }) {
   const [data, setData] = useState(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const API = process.env.NEXT_PUBLIC_API_URL;
+  const slug = org.slug_organization;
+
   const formatCurrency = (value) =>
     new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
-    }).format(value);
+    }).format(value || 0);
 
-  const formatPeriod = (start, end) => {
-    if (!start || !end) return "Todos os períodos";
-    return `${new Date(start).toLocaleDateString("pt-BR")} a ${new Date(
-      end
+  const formatPeriod = () => {
+    if (!startDate || !endDate) return "Todos os períodos";
+    return `${new Date(startDate).toLocaleDateString("pt-BR")} a ${new Date(
+      endDate
     ).toLocaleDateString("pt-BR")}`;
+  };
+
+  const showToast = (message, type = "success") => {
+    const toast = document.createElement("div");
+    toast.className = `fixed right-6 top-6 z-50 px-4 py-3 rounded shadow text-white bg-${
+      type === "error" ? "red" : "green"
+    }-600 animate-slide-in opacity-0`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => (toast.style.opacity = 1), 80);
+    setTimeout(() => toast.remove(), 4000);
   };
 
   const loadRevenue = async (start = null, end = null) => {
     try {
       setLoading(true);
-      let url = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/revenue`;
+      let url = `${API}/api/admin/revenue/${slug}`;
       const params = new URLSearchParams();
       if (start) params.append("start_date", start);
       if (end) params.append("end_date", end);
@@ -36,7 +51,7 @@ export default function RevenuesTab({ org }) {
       if (!res.ok) throw new Error(json.error || "Erro ao carregar dados");
       setData(json);
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, "error");
     } finally {
       setLoading(false);
     }
@@ -44,7 +59,7 @@ export default function RevenuesTab({ org }) {
 
   const handleExportExcel = async () => {
     try {
-      let url = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/revenue/export`;
+      let url = `${API}/api/admin/${slug}/revenue/export`;
       const params = new URLSearchParams();
       if (startDate) params.append("start_date", startDate);
       if (endDate) params.append("end_date", endDate);
@@ -52,6 +67,7 @@ export default function RevenuesTab({ org }) {
 
       const res = await fetch(url);
       if (!res.ok) throw new Error("Erro ao exportar relatório");
+
       const blob = await res.blob();
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -61,12 +77,14 @@ export default function RevenuesTab({ org }) {
         .split("T")[0]}.xlsx`;
       a.click();
       URL.revokeObjectURL(downloadUrl);
+      showToast("Excel exportado com sucesso!");
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, "error");
     }
   };
 
   const handleExportPDF = () => {
+    if (!data) return;
     try {
       const doc = new jsPDF();
       doc.setFont("helvetica");
@@ -74,20 +92,12 @@ export default function RevenuesTab({ org }) {
       doc.text("Relatório de Receitas", 105, 15, { align: "center" });
 
       doc.setFontSize(12);
-      doc.text(formatPeriod(startDate, endDate), 14, 25);
+      doc.text(formatPeriod(), 14, 25);
 
       doc.setFontSize(11);
       doc.text(`Total de Agendamentos: ${data.total_appointments}`, 14, 35);
-      doc.text(
-        `Faturamento Total: ${formatCurrency(data.total_revenue)}`,
-        14,
-        40
-      );
-      doc.text(
-        `Total de Comissões: ${formatCurrency(data.total_commissions)}`,
-        14,
-        45
-      );
+      doc.text(`Faturamento Total: ${formatCurrency(data.total_revenue)}`, 14, 40);
+      doc.text(`Total de Comissões: ${formatCurrency(data.total_commissions)}`, 14, 45);
 
       const headers = [
         "Profissional",
@@ -97,6 +107,7 @@ export default function RevenuesTab({ org }) {
         "Valor Comissão",
         "Lucro Líquido",
       ];
+
       const body = data.details.map((d) => [
         d.name,
         d.appointments_count,
@@ -111,10 +122,7 @@ export default function RevenuesTab({ org }) {
         body,
         startY: 55,
         theme: "grid",
-        headStyles: {
-          fillColor: [41, 128, 185],
-          textColor: 255,
-        },
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
         styles: { fontSize: 9 },
       });
 
@@ -129,8 +137,10 @@ export default function RevenuesTab({ org }) {
           .toLocaleDateString("pt-BR")
           .replace(/\//g, "-")}.pdf`
       );
+
+      showToast("PDF gerado com sucesso!");
     } catch (err) {
-      alert("Erro ao gerar PDF: " + err.message);
+      showToast("Erro ao gerar PDF: " + err.message, "error");
     }
   };
 
@@ -140,10 +150,10 @@ export default function RevenuesTab({ org }) {
 
   return (
     <div className="space-y-6">
-      {/* filtros */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border flex flex-wrap gap-4 items-end">
+      {/* FILTROS */}
+      <div className="bg-white p-5 rounded-lg shadow-sm border flex flex-wrap gap-4 items-end">
         <div>
-          <label className="block text-sm text-gray-600">Data inicial</label>
+          <label className="block text-sm text-gray-600">Data Inicial</label>
           <input
             type="date"
             value={startDate}
@@ -152,7 +162,7 @@ export default function RevenuesTab({ org }) {
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-600">Data final</label>
+          <label className="block text-sm text-gray-600">Data Final</label>
           <input
             type="date"
             value={endDate}
@@ -160,54 +170,59 @@ export default function RevenuesTab({ org }) {
             className="border p-2 rounded-md"
           />
         </div>
+
         <button
           onClick={() => loadRevenue(startDate, endDate)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-md"
+          className="bg-indigo-600 text-white px-4 py-2 rounded-md shadow"
         >
           Aplicar Filtro
         </button>
+
         <button
           onClick={() => {
             setStartDate("");
             setEndDate("");
             loadRevenue();
           }}
-          className="border px-4 py-2 rounded-md"
+          className="border px-4 py-2 rounded-md shadow"
         >
           Limpar
         </button>
+
         <div className="ml-auto flex gap-2">
           <button
             onClick={handleExportExcel}
-            className="bg-green-600 text-white px-3 py-2 rounded-md text-sm"
+            className="bg-green-600 text-white px-3 py-2 rounded-md text-sm shadow"
           >
             Exportar Excel
           </button>
           <button
             onClick={handleExportPDF}
-            className="bg-red-600 text-white px-3 py-2 rounded-md text-sm"
+            className="bg-red-600 text-white px-3 py-2 rounded-md text-sm shadow"
           >
             Exportar PDF
           </button>
         </div>
       </div>
 
-      {/* cards resumo */}
+      {/* CARDS RESUMO */}
       {data && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white p-4 rounded-lg border text-center">
+          <div className="bg-white p-5 rounded-lg border shadow-sm text-center">
             <p className="text-sm text-gray-500">Total de Agendamentos</p>
             <h3 className="text-2xl font-semibold text-indigo-600">
               {data.total_appointments}
             </h3>
           </div>
-          <div className="bg-white p-4 rounded-lg border text-center">
+
+          <div className="bg-white p-5 rounded-lg border shadow-sm text-center">
             <p className="text-sm text-gray-500">Faturamento Total</p>
             <h3 className="text-2xl font-semibold text-green-600">
               {formatCurrency(data.total_revenue)}
             </h3>
           </div>
-          <div className="bg-white p-4 rounded-lg border text-center">
+
+          <div className="bg-white p-5 rounded-lg border shadow-sm text-center">
             <p className="text-sm text-gray-500">Total de Comissões</p>
             <h3 className="text-2xl font-semibold text-red-600">
               {formatCurrency(data.total_commissions)}
@@ -216,18 +231,16 @@ export default function RevenuesTab({ org }) {
         </div>
       )}
 
-      {/* tabela */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border">
+      {/* TABELA */}
+      <div className="bg-white p-5 rounded-lg shadow-sm border">
         <h4 className="font-semibold text-gray-700 mb-4">
-          Relatório — {formatPeriod(startDate, endDate)}
+          Relatório — {formatPeriod()}
         </h4>
 
         {loading ? (
           <p>Carregando...</p>
         ) : !data?.details?.length ? (
-          <p className="text-gray-500 text-center py-6">
-            Nenhum dado encontrado
-          </p>
+          <p className="text-gray-500 text-center py-6">Nenhum dado encontrado</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
@@ -243,19 +256,13 @@ export default function RevenuesTab({ org }) {
               </thead>
               <tbody>
                 {data.details.map((d, i) => (
-                  <tr key={i} className="border-b">
+                  <tr key={i} className="border-b hover:bg-gray-50 transition">
                     <td className="px-3 py-2">{d.name}</td>
                     <td className="px-3 py-2">{d.appointments_count}</td>
-                    <td className="px-3 py-2">
-                      {formatCurrency(d.total_revenue)}
-                    </td>
+                    <td className="px-3 py-2">{formatCurrency(d.total_revenue)}</td>
                     <td className="px-3 py-2">{d.commission_rate}%</td>
-                    <td className="px-3 py-2">
-                      {formatCurrency(d.commission_value)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {formatCurrency(d.net_profit)}
-                    </td>
+                    <td className="px-3 py-2">{formatCurrency(d.commission_value)}</td>
+                    <td className="px-3 py-2">{formatCurrency(d.net_profit)}</td>
                   </tr>
                 ))}
               </tbody>

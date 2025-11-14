@@ -17,6 +17,7 @@ import {
   CloudUpload,
 } from "lucide-react";
 
+
 const BRAND = "#5E3BEE"; // cor principal
 
 // Badge minimalista de seção

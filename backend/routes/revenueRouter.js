@@ -14,7 +14,7 @@ export const revenueRouter = Router()
 
 /**
  * @swagger
- * /api/admin/revenue:
+ * /api/admin/revenue/{slug}:
  *   get:
  *     summary: Relatório de receitas detalhado
  *     description: |
@@ -95,7 +95,7 @@ export const revenueRouter = Router()
  *       500:
  *         description: Erro interno do servidor
  */
-revenueRouter.get('/', extractOrganizationId, getRevenues)
+revenueRouter.get('/:slug', getRevenues)
 
 
 /**

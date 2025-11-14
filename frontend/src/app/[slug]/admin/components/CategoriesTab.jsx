@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
+import { toast } from 'react-toastify'
 
 export default function CategoriesTab({ org }) {
   const [categories, setCategories] = useState([]);
+  const [categoryId, setCategoryId] = useState(0)
   const [editing, setEditing] = useState(null);
   const [name, setName] = useState("");
   const [image, setImage] = useState(null);
@@ -14,13 +16,17 @@ export default function CategoriesTab({ org }) {
     try {
       setLoading(true);
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/categories`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/categories/${org.slug_organization}`, {
+          credentials: 'include'
+        }
       );
-      if (!res.ok) throw new Error("Erro ao carregar categorias");
+      if (!res.ok) console.log("Erro ao carregar categorias", org.slug_organization);
       const data = await res.json();
       setCategories(data);
+      console.log(data)
     } catch (err) {
-      alert(err.message);
+      toast.error('Não foi possivel buscar as categorias');
+      console.error('Não foi possivel buscar categorias', err.message)
     } finally {
       setLoading(false);
     }
@@ -38,27 +44,40 @@ export default function CategoriesTab({ org }) {
       formData.append("name", name);
       if (image) formData.append("image", image);
 
-      const method = editing ? "PUT" : "POST";
-      const url = editing
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/categories/${editing}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/categories`;
+      console.log(categoryId)
 
-      const res = await fetch(url, { method, body: formData });
-      if (!res.ok) throw new Error("Erro ao salvar categoria");
+      const method = editing ? "PUT" : "POST";
+      
+      const url = editing
+      ? `${process.env.NEXT_PUBLIC_API_URL}/api/admin/categories/${org.slug_organization}/${categoryId}`
+      : `${process.env.NEXT_PUBLIC_API_URL}/api/admin/categories/${org.slug_organization}`;
+
+      // 2. Monte o objeto de opções separado
+      const options = {
+        method,
+        body: formData,
+        credentials: 'include' // 3. Adicione a opção 'credentials' aqui
+      };
+
+      // 4. Faça o fetch com a URL (string) e as opções (objeto)
+      const res = await fetch(url, options);
+        if (!res.ok) throw new Error("Erro ao salvar categoria");
 
       setName("");
       setImage(null);
       setPreview("");
-      setEditing(null);
+      setCategoryId(0);
+      toast.success('Enviado com sucesso')
       loadCategories();
     } catch (err) {
-      alert(err.message);
+      toast.error('Não foi possivel enviar os dados');
     }
   };
 
   // ======== Editar / Excluir ========
   const handleEdit = (cat) => {
-    setEditing(cat.id);
+    setEditing(true);
+    setCategoryId(cat.id);
     setName(cat.name);
     setPreview(cat.imagem_category || "");
   };
@@ -66,8 +85,8 @@ export default function CategoriesTab({ org }) {
   const handleDelete = async (id) => {
     if (!confirm("Deseja realmente excluir esta categoria?")) return;
     await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/categories/${id}`,
-      { method: "DELETE" }
+      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/categories/${org.slug_organization}/${id}`,
+      { method: "DELETE", credentials: 'include' }
     );
     loadCategories();
   };

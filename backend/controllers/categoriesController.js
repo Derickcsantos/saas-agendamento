@@ -4,10 +4,26 @@ import { v4 as uuidv4 } from 'uuid';
 
 export async function getAllCategories(req, res) {
   try {
+    const { slug } = req.params;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
     const { data, error } = await supabase
       .from('categories')
-      .select('id, name')
-      .eq('organization_id', req.organizationId)
+      .select(`
+        id, 
+        name, 
+        imagem_category  
+      `)
+      .eq('organization_id', org.id)
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -41,6 +57,18 @@ export async function getCategoryById(req, res) {
 export async function createCategory(req, res) {
   try {
     const { name } = req.body;
+    const { slug } = req.params;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
     let imagePath = null;
 
     if (req.file) {
@@ -71,7 +99,7 @@ export async function createCategory(req, res) {
       .from('categories')
       .insert([
         {
-          organization_id: req.organizationId,
+          organization_id: org.id,
           name,
           imagem_category: imagePath,
         },
@@ -88,7 +116,7 @@ export async function createCategory(req, res) {
 
 export async function updateCategory(req, res) {
   try {
-    const { id } = req.params;
+    const { id, slug } = req.params;
     const { name } = req.body;
     let imageUrl = null;
 
@@ -118,7 +146,7 @@ export async function updateCategory(req, res) {
 
     const updateData = {
       name,
-      ...(imageUrl && { imagem_category: imageUrl }),
+      ...(imageUrl && { imagem_category: imageUrl } || { imagem_category: 'https://static.vecteezy.com/system/resources/thumbnails/000/584/379/small/Abstract_white_background_15.jpg' } ),
     };
 
     const { data, error } = await supabase
@@ -141,7 +169,7 @@ export async function updateCategory(req, res) {
 
 export async function deleteCategory(req, res) {
   try {
-    const { id } = req.params;
+    const { id, slug } = req.params;
     const { error } = await supabase.from('categories').delete().eq('id', id);
 
     if (error) throw error;

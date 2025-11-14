@@ -48,7 +48,8 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       500:
  *         description: Erro interno do servidor
  */
-categoryRouter.get('/', authenticateJWT, extractOrganizationId, getAllCategories);
+categoryRouter.get('/:slug', authenticateJWT, getAllCategories);
+
 
 /**
  * @swagger
@@ -81,7 +82,7 @@ categoryRouter.get('/', authenticateJWT, extractOrganizationId, getAllCategories
  *       500:
  *         description: Erro interno do servidor
  */
-categoryRouter.get('/:id', authenticateJWT, extractOrganizationId, getCategoryById);
+categoryRouter.get('/:id', authenticateJWT, getCategoryById);
 
 /**
  * @swagger
@@ -127,7 +128,7 @@ categoryRouter.get('/:id', authenticateJWT, extractOrganizationId, getCategoryBy
  *       500:
  *         description: Erro interno do servidor
  */
-categoryRouter.post('/', authenticateJWT, extractOrganizationId, upload.single('image'), createCategory);
+categoryRouter.post('/:slug', authenticateJWT, upload.single('image'), createCategory);
 
 /**
  * @swagger
@@ -177,7 +178,7 @@ categoryRouter.post('/', authenticateJWT, extractOrganizationId, upload.single('
  *       500:
  *         description: Erro interno do servidor
  */
-categoryRouter.put('/:id', authenticateJWT, extractOrganizationId, upload.single('image'), updateCategory);
+categoryRouter.put('/:slug/:id', authenticateJWT,  upload.single('image'), updateCategory);
 
 /**
  * @swagger
@@ -210,4 +211,4 @@ categoryRouter.put('/:id', authenticateJWT, extractOrganizationId, upload.single
  *       500:
  *         description: Erro interno do servidor
  */
-categoryRouter.delete('/:id', authenticateJWT, extractOrganizationId, deleteCategory);
+categoryRouter.delete('/:slug/:id', authenticateJWT, deleteCategory);

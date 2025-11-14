@@ -13,6 +13,7 @@ import AppointmentsTab from "./components/AppointmentsTab";
 import ClientsTab from "./components/ClientsTab";
 import RevenuesTab from './components/RevenuesTab';
 import CouponsTab from "./components/CouponsTab";
+import UsersTab from "./components/UsersTab";
 
 export default function AdminDashboard({ slug }) {
   const [org, setOrg] = useState(null);
@@ -83,6 +84,8 @@ export default function AdminDashboard({ slug }) {
         return <RevenuesTab org={org} />;
       case "coupons":
         return <CouponsTab org={org} />;
+      case "users":
+        return <UsersTab org={org} />;
       default:
         return (
           <>
