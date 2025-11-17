@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-
+import { toast } from 'react-toastify'
 // ===============================
 // APPOINTMENT PAGE
 // ===============================
@@ -111,7 +111,7 @@ export default function AppointmentPage({ slug }) {
       try {
         setLoading(true);
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/categories/${slug}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/categories/${slug}`
         );
         const data = await res.json();
         setCategories(
@@ -135,7 +135,7 @@ export default function AppointmentPage({ slug }) {
     try {
       setLoading(true);
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/services/${categoryId}/${slug}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/services/${categoryId}/${slug}`
       );
       const data = await res.json();
       setServices(data || []);
@@ -153,7 +153,7 @@ export default function AppointmentPage({ slug }) {
     try {
       setLoading(true);
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/employees/${serviceId}/${slug}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/employees/${serviceId}/${slug}`
       );
       const data = await res.json();
       setEmployees((data || []).filter((e) => e.is_active));
@@ -174,7 +174,7 @@ export default function AppointmentPage({ slug }) {
     try {
       setLoading(true);
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/available-times/${slug}?employeeId=${selected.employee.id}&date=${selected.date}&duration=${selected.service.duration}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/available-times/${slug}?employeeId=${selected.employee.id}&date=${selected.date}&duration=${selected.service.duration}`
       );
 
       const data = await res.json();
@@ -251,7 +251,7 @@ export default function AppointmentPage({ slug }) {
   // ================================
   const handleConfirmAppointment = async (clientData) => {
     if (!selected.service || !selected.employee || !selected.time || !selected.date) {
-      alert("Preencha todos os dados do agendamento antes de confirmar.");
+      toast.info("Preencha todos os dados do agendamento antes de confirmar.");
       return;
     }
 
@@ -295,16 +295,16 @@ export default function AppointmentPage({ slug }) {
 
       if (!res.ok) {
         console.error("Erro ao criar agendamento:", data);
-        alert(data.error || "Erro ao confirmar o agendamento.");
+        toast.error("Erro ao confirmar o agendamento.");
         return;
       }
 
       setAppointmentResult(data);
-      alert("Agendamento confirmado com sucesso!");
+      toast.success("Agendamento confirmado com sucesso!");
       setStep(7); // já está no 7, mas mantém consistência
     } catch (err) {
       console.error("Erro ao confirmar agendamento:", err);
-      alert("Erro interno. Tente novamente mais tarde.");
+      toast.error("Erro interno. Tente novamente mais tarde.");
     } finally {
       setLoading(false);
     }

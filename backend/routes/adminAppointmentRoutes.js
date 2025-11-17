@@ -8,7 +8,7 @@ import {
   getAdminAppointmentsByEmployee,
   getCancelledAppointments
 } from '../controllers/adminAppointmentsController.js';
-import { extractOrganizationId } from '../middlewares/authMiddleware.js';
+import { extractOrganizationId, authenticateJWT } from '../middlewares/authMiddleware.js';
 
 export const adminAppointmentRouter = Router();
 
@@ -47,7 +47,7 @@ export const adminAppointmentRouter = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-adminAppointmentRouter.get('/', extractOrganizationId, getAdminAppointments);
+adminAppointmentRouter.get('/', authenticateJWT, getAdminAppointments);
 
 
 /**
@@ -94,7 +94,7 @@ adminAppointmentRouter.get('/', extractOrganizationId, getAdminAppointments);
  *       500:
  *         description: Erro interno do servidor
  */
-adminAppointmentRouter.get('/:id', extractOrganizationId, getAdminAppointmentById);
+adminAppointmentRouter.get('/:id', authenticateJWT, getAdminAppointmentById);
 
 /**
  * @swagger
@@ -122,7 +122,7 @@ adminAppointmentRouter.get('/:id', extractOrganizationId, getAdminAppointmentByI
  *       500:
  *         description: Erro interno do servidor
  */
-adminAppointmentRouter.put('/:id/complete', extractOrganizationId, updateAdminAppointmentToCompleted);
+adminAppointmentRouter.put('/:id/complete', authenticateJWT, updateAdminAppointmentToCompleted);
 
 
 adminAppointmentRouter.put('/complete-yesterday', updateAdminAppointmentToCompletedYesterday);
@@ -181,6 +181,6 @@ adminAppointmentRouter.put('/:id/cancel', updateAdminAppointmentToCanceled);
  *       500:
  *         description: Erro interno do servidor
  */
-adminAppointmentRouter.get('/by-employee', extractOrganizationId, getAdminAppointmentsByEmployee);
+adminAppointmentRouter.get('/by-employee', authenticateJWT, getAdminAppointmentsByEmployee);
 
 adminAppointmentRouter.get('/canceled_appointments', getCancelledAppointments)
