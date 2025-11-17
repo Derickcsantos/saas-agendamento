@@ -5,6 +5,7 @@ import updateYesterdayAppointmentsToCompleted from '../utils/confirmAppointments
 export const getAdminAppointments = async (req, res) => {
   try {
     const { search, date, employee, start_date, end_date } = req.query;
+
     let query = supabase
       .from('appointments')
       .select(`

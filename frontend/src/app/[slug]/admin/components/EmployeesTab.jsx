@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { toast } from 'react-toastify'
 
 export default function EmployeesTab({ org }) {
   const [employees, setEmployees] = useState([]);
@@ -94,7 +95,8 @@ export default function EmployeesTab({ org }) {
       setSchedules([{ day_of_week: 1, start_time: "08:00", end_time: "17:00" }]);
       loadEmployees();
     } catch (err) {
-      alert(err.message);
+      toast.error('Erro ao enviar dados');
+      console.log('Erro ao enviar dados', err)
     }
   };
 
@@ -171,7 +173,7 @@ export default function EmployeesTab({ org }) {
       }
     );
 
-    alert("Serviços atualizados com sucesso!");
+    toast.success("Serviços atualizados com sucesso!");
     setShowServicesModal(false);
   };
 

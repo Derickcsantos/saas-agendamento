@@ -11,7 +11,7 @@ export default function AppointmentsTab({ org }) {
     setLoading(true);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/appointments`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}`
       );
       const data = await res.json();
       setAppointments(data);

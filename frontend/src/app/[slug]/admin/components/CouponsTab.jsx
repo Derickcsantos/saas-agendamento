@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { toast } from 'react-toastify'
 
 export default function CouponsTab({ org }) {
   const [coupons, setCoupons] = useState([]);
@@ -28,8 +29,8 @@ export default function CouponsTab({ org }) {
 
   async function loadCoupons() {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/coupons`,
-      { cache: "no-store" }
+      `${process.env.NEXT_PUBLIC_API_URL}/api/coupons/${org.slug_organization}`,
+      { cache: "no-store", credentials: 'include'}
     );
     const data = await res.json();
     setCoupons(data);
@@ -44,8 +45,8 @@ export default function CouponsTab({ org }) {
 
     const method = form.id ? "PUT" : "POST";
     const url = form.id
-      ? `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/coupons/${form.id}`
-      : `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/coupons`;
+      ? `${process.env.NEXT_PUBLIC_API_URL}/api/coupons/${org.slug_organization}/${form.id}`
+      : `${process.env.NEXT_PUBLIC_API_URL}/api/coupons/${org.slug_organization}`;
 
     const res = await fetch(url, {
       method,
@@ -56,7 +57,7 @@ export default function CouponsTab({ org }) {
     setLoading(false);
 
     if (!res.ok) {
-      alert("Erro ao salvar cupom");
+      toast.error("Erro ao salvar cupom");
       return;
     }
 
@@ -94,12 +95,12 @@ export default function CouponsTab({ org }) {
     if (!confirm("Deseja realmente excluir este cupom?")) return;
 
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/coupons/${id}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/coupons/${org.slug_organization}/${id}`,
       { method: "DELETE" }
     );
 
     if (!res.ok) {
-      alert("Erro ao excluir cupom");
+      toast.error("Erro ao excluir cupom");
       return;
     }
 

@@ -19,9 +19,6 @@ import setupSwagger from './swagger.js';
 import { supabase } from './lib/supabase.js';
 import { emailContactRouter } from './routes/contatoRoutes.js';
 import { categoryRouter } from './routes/categoryRoutes.js';
-import generateAccessToken  from './utils/jwt.js';
-import jwt from 'jsonwebtoken';
-import { authenticateJWT, extractOrganizationId } from './middlewares/authMiddleware.js';
 import { whatsappRouter } from './routes/whatsappRoutes.js';
 import { userRouter } from './routes/userRoutes.js';
 import { checkAuth } from './utils/checkAuth.js';
@@ -30,16 +27,12 @@ import { verifyUserRouter } from './routes/verifyUserRoutes.js';
 import { couponRouter } from './routes/couponRoutes.js';
 import { serviceRouter } from './routes/ServiceRoutes.js';
 import updateYesterdayAppointmentsToCompleted from './utils/confirmAppointments.js';
-import { appointmentServicesRouter } from './routes/appointmentServicesRoutes.js'
 import { registerUserRouter } from './routes/registerUserRoutes.js';
-import { appointmentCategoryRouter } from './routes/appointmentCategoryRoutes.js'
-import { appointmentEmployeeRouter } from './routes/appointmentEmployeeRoutes.js'
 import { appointmentsRouter } from './routes/appointmentsRoutes.js'
 import { adminAppointmentRouter } from './routes/adminAppointmentRoutes.js';
 import { adminEmployeeRouter } from './routes/adminEmployeeRoutes.js';
 import { employeeServicesRouter } from './routes/employeeServicesRoutes.js';
 import { galleryRouter } from './routes/galleryRoutes.js';
-import { availableTimesRouter } from './routes/availableTimesRoutes.js'
 import { revenueRouter } from './routes/revenueRouter.js'
 import { employeeScheduleRouter } from './routes/employeeScheduleRoutes.js'
 import { loginRouter } from './routes/loginRoutes.js'
@@ -53,8 +46,8 @@ import { landingPageRouter } from './routes/landingPagesRoutes.js'
 import { authRouter } from './routes/authRoutes.js'
 import { organizationRouter } from './routes/organizationRoutes.js'
 import passport from './lib/passport.js';
-import { redis } from './lib/redis.js'
 import { organizationColorsRouter } from './routes/organizationColorsRoutes.js';
+import { appointmentProcessRouter } from './routes/appointmentsProcessRoutes.js'
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -147,7 +140,7 @@ cron.schedule('0 3 * * *', async () => {
   }
 });
 
-
+app.use('/api/appointments', appointmentProcessRouter);
 
 app.use('/api/contato', emailContactRouter)
 app.use('/api/forgot-password', forgotPasswordRouter) 
@@ -159,12 +152,8 @@ app.use('/api/register', registerUserRouter);
 app.use('/api/login', loginRouter) 
 app.use('/auth/google', googleRouter);
 app.use('/api/verifica-usuario', verifyUserRouter); 
-app.use('/api/categories', appointmentCategoryRouter); 
-app.use('/api/employees', appointmentEmployeeRouter);
-app.use('/api/available-times', availableTimesRouter); 
 app.use('/api/appointments', appointmentsRouter); 
 app.use('/api/minha-conta', loggedInUserRouter);
-app.use('/api/services', appointmentServicesRouter);
 app.use('/api/admin/categories', categoryRouter);
 app.use('/api/admin/services', serviceRouter);
 app.use('/api/admin/appointments', adminAppointmentRouter); 
