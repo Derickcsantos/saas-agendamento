@@ -28,7 +28,7 @@ export default function FasterScheduleTab({ org }) {
 
   async function loadCategories() {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/categories/${org.slug_organization}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/categories/${org.slug_organization}`,
       { cache: "no-store" }
     );
     setCategories(await res.json());
@@ -36,14 +36,14 @@ export default function FasterScheduleTab({ org }) {
 
   async function loadServices(categoryId) {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/services/${categoryId}/${org.slug_organization}`
+      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/services/${categoryId}/${org.slug_organization}`
     );
     setServices(await res.json());
   }
 
   async function loadEmployees(serviceId) {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/employees/${serviceId}/${org.slug_organization}`
+      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/employees/${serviceId}/${org.slug_organization}`
     );
     setEmployees(await res.json());
   }
@@ -51,7 +51,7 @@ export default function FasterScheduleTab({ org }) {
   async function loadSlots() {
     if (!form.employee_id || !form.date || !selectedService?.duration) return;
 
-    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/available-times/${org.slug_organization}?employeeId=${form.employee_id}&date=${form.date}&duration=${selectedService.duration}`;
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/available-times/${org.slug_organization}?employeeId=${form.employee_id}&date=${form.date}&duration=${selectedService.duration}`;
 
     const res = await fetch(url);
     setSlots(await res.json());
@@ -116,7 +116,7 @@ export default function FasterScheduleTab({ org }) {
     };
 
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/${org.slug_organization}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

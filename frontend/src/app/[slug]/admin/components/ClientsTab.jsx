@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { toast } from 'react-toastify'
 
 export default function ClientsTab({ org }) {
   const [clients, setClients] = useState([]);
@@ -43,7 +44,7 @@ export default function ClientsTab({ org }) {
     e.preventDefault();
 
     if (!form.name.trim()) {
-      alert("O nome do cliente é obrigatório.");
+      toast.info("O nome do cliente é obrigatório.");
       return;
     }
 
@@ -61,8 +62,8 @@ export default function ClientsTab({ org }) {
       await loadClients();
       resetForm();
     } catch (err) {
-      console.error("Erro ao salvar cliente:", err);
-      alert("Erro ao salvar cliente: " + err.message);
+      console.log("Erro ao salvar cliente: " + err.message);
+      toast.error('Erro ao salvar dados')
     }
   }
 
@@ -85,7 +86,7 @@ export default function ClientsTab({ org }) {
       await loadClients();
     } catch (err) {
       console.error("Erro ao excluir cliente:", err);
-      alert("Erro ao excluir cliente: " + err.message);
+      toast.error("Erro ao excluir cliente: ");
     }
   }
 

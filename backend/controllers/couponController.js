@@ -3,10 +3,27 @@ import { supabase } from '../lib/supabase.js';
 
 export const getCoupons = async (req, res) => {
   try {
+    const { slug } = req.params
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    // Busca o organization_id correspondente ao slug
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
     const { data, error } = await supabase
       .from('coupons')
       .select('*')
-      .eq('organization_id', req.organizationId)
+      .eq('organization_id', orgData.id)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -18,11 +35,28 @@ export const getCoupons = async (req, res) => {
 
 export const getCouponById = async (req, res) => {
   try {
+    const { slug, id } = req.params
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    // Busca o organization_id correspondente ao slug
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
     const { data, error } = await supabase
       .from('coupons')
       .select('*')
-      .eq('id', req.params.id)
-      .eq('organization_id', req.organizationId)
+      .eq('id', id)
+      .eq('organization_id', orgData.id)
       .single();
     
     if (error) throw error;
@@ -34,10 +68,29 @@ export const getCouponById = async (req, res) => {
 
 export const createCoupon = async (req, res) => {
   try {
+    const { slug } = req.params
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    // Busca o organization_id correspondente ao slug
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
     const couponData = {
       ...req.body,
-      code: req.body.code.toUpperCase()
+      code: req.body.code.toUpperCase(),
+      organization_id: orgData.id
     };
+
     
     const { data, error } = await supabase
       .from('coupons')
@@ -54,10 +107,27 @@ export const createCoupon = async (req, res) => {
 
 export const updateCoupon = async (req, res) => {
   try {
+    const { slug, id } = req.params
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    // Busca o organization_id correspondente ao slug
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+  
     const { data, error } = await supabase
       .from('coupons')
       .update(req.body)
-      .eq('id', req.params.id)
+      .eq('id', id)
       .select()
       .single();
     
@@ -70,10 +140,28 @@ export const updateCoupon = async (req, res) => {
 
 export const deleteCoupon = async (req, res) => {
   try {
+    const { slug, id } = req.params;
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    // Busca o organization_id correspondente ao slug
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
     const { error } = await supabase
       .from('coupons')
       .delete()
-      .eq('id', req.params.id);
+      .eq('organization_id', orgData.id)
+      .eq('id', id);
     
     if (error) throw error;
     res.status(204).end();

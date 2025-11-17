@@ -37,7 +37,7 @@ export const couponRouter = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-couponRouter.get('/', authenticateJWT, extractOrganizationId, getCoupons);
+couponRouter.get('/:slug', authenticateJWT, getCoupons);
 
 /**
  * @swagger
@@ -64,7 +64,7 @@ couponRouter.get('/', authenticateJWT, extractOrganizationId, getCoupons);
  *       500:
  *         description: Erro interno do servidor
  */
-couponRouter.get('/:id', authenticateJWT, extractOrganizationId, getCouponById);
+couponRouter.get('/:slug/:id', authenticateJWT, getCouponById);
 
 /**
  * @swagger
@@ -90,7 +90,7 @@ couponRouter.get('/:id', authenticateJWT, extractOrganizationId, getCouponById);
  *       500:
  *         description: Erro interno do servidor
  */
-couponRouter.post('/', authenticateJWT, extractOrganizationId, createCoupon);
+couponRouter.post('/:slug', authenticateJWT, createCoupon);
 
 /**
  * @swagger
@@ -123,7 +123,7 @@ couponRouter.post('/', authenticateJWT, extractOrganizationId, createCoupon);
  *       500:
  *         description: Erro interno do servidor
  */
-couponRouter.put('/:id', authenticateJWT, extractOrganizationId, updateCoupon);
+couponRouter.put('/:id', authenticateJWT, updateCoupon);
 
 /**
  * @swagger
@@ -146,7 +146,7 @@ couponRouter.put('/:id', authenticateJWT, extractOrganizationId, updateCoupon);
  *       500:
  *         description: Erro interno do servidor
  */
-couponRouter.delete('/:id', authenticateJWT, extractOrganizationId, deleteCoupon);
+couponRouter.delete('/:slug/:id', authenticateJWT, deleteCoupon);
 
 /**
  * @swagger
