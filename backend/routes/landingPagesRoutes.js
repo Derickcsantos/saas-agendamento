@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { getLandingPageBySlug } from '../controllers/landingPagesController.js';
+import { getLandingPageBySlug, createLandingPage, updateLandingPage } from '../controllers/landingPagesController.js';
+import { authenticateJWT } from '../middlewares/authMiddleware.js';
 
 export const landingPageRouter = Router()
 
@@ -53,3 +54,7 @@ export const landingPageRouter = Router()
  *         description: Erro interno no servidor
  */
 landingPageRouter.get("/:slug", getLandingPageBySlug)
+
+landingPageRouter.post("/:slug", authenticateJWT, createLandingPage)
+
+landingPageRouter.put("/:slug", authenticateJWT, updateLandingPage)
