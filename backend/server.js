@@ -39,15 +39,16 @@ import { loginRouter } from './routes/loginRoutes.js'
 import { emailRouter } from './routes/emailRoutes.js'
 import { dashboardDataRouter } from './routes/dashboardDataRoutes.js'
 import { checkHealthRouter } from './routes/checkHealthRoutes.js'
-import { loggedInUserRouter } from './routes/loggedInUserRoutes.js'
-import { corsOptions } from './utils/corsOptions.js'
-import { googleRouter } from './routes/googleRoutes.js'
-import { landingPageRouter } from './routes/landingPagesRoutes.js'
-import { authRouter } from './routes/authRoutes.js'
-import { organizationRouter } from './routes/organizationRoutes.js'
+import { loggedInUserRouter } from './routes/loggedInUserRoutes.js';
+import { corsOptions } from './utils/corsOptions.js';
+import { googleRouter } from './routes/googleRoutes.js';
+import { landingPageRouter } from './routes/landingPagesRoutes.js';
+import { authRouter } from './routes/authRoutes.js';
+import { organizationRouter } from './routes/organizationRoutes.js';
 import passport from './lib/passport.js';
 import { organizationColorsRouter } from './routes/organizationColorsRoutes.js';
-import { appointmentProcessRouter } from './routes/appointmentsProcessRoutes.js'
+import { appointmentProcessRouter } from './routes/appointmentsProcessRoutes.js';
+import { organizationPoliciesRouter } from "./routes/organizationPoliciesRoutes.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -168,6 +169,7 @@ app.use('/api/landing-page', landingPageRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/organizations', organizationRouter)
 app.use('/api/organization-colors', organizationColorsRouter)
+app.use("/api/organization-policies", organizationPoliciesRouter);
 
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);

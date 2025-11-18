@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter} from "next/navigation";
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import Card from "./components/Card";
@@ -16,16 +17,39 @@ import CouponsTab from "./components/CouponsTab";
 import UsersTab from "./components/UsersTab";
 import FasterScheduleTab from "./components/FasterScheduleTab";
 import SiteTab from './components/SiteTab';
+import SettingsTab from "./components/SettingsTab";
 
 export default function AdminDashboard({ slug }) {
+  const router = useRouter();
   const [org, setOrg] = useState(null);
   const [stats, setStats] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
-  // ======================
-  // Buscar dados iniciais
-  // ======================
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/check`, {
+          credentials: "include",
+        });
+        const data = await res.json();
+
+        if (!data.authenticated) {
+          router.push(`/${slug}/login`);
+          return;
+        }
+        setUser(data.user);
+      } catch (error) {
+        console.error("Erro ao verificar autenticação:", error);
+        router.push(`/${slug}/login`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkAuth();
+  }, [router, slug]);
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -92,6 +116,8 @@ export default function AdminDashboard({ slug }) {
         return <FasterScheduleTab org={org} />;
       case "site":
         return <SiteTab org={org} />;
+      case "settings":
+        return <SettingsTab org={org} />;
       default:
         return (
           <>

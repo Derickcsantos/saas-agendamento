@@ -15,6 +15,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
     { name: "Cupons", key: "coupons", icon: "bi bi-wallet" },
     { name: "Usuários", key: "users", icon: "bi-people" },
     { name: "Site", key: "site", icon: "bi bi-wallet" },
+    { name: "Configurações", key: "settings", icon: "bi bi-wallet" },
   ];
   const [palette, setPalette] = useState(null);
 
