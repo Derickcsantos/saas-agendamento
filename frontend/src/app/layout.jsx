@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import GoogleAnalytics from "./components/common/GoogleAnalytics"; 
 import ToastProvider from "./components/ToastProvider";
+import { Analytics } from "@vercel/analytics/next"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -91,6 +92,7 @@ export default function RootLayout({ children }) {
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {/* ✅ Google Analytics - deve estar no body, não no <head> */}
         <GoogleAnalytics />
+        <Analytics/>
         <ToastProvider />
         {children}
       </body>
