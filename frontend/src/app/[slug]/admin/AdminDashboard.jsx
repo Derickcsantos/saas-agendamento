@@ -15,6 +15,7 @@ import RevenuesTab from './components/RevenuesTab';
 import CouponsTab from "./components/CouponsTab";
 import UsersTab from "./components/UsersTab";
 import FasterScheduleTab from "./components/FasterScheduleTab";
+import SiteTab from './components/SiteTab';
 
 export default function AdminDashboard({ slug }) {
   const [org, setOrg] = useState(null);
@@ -89,6 +90,8 @@ export default function AdminDashboard({ slug }) {
         return <UsersTab org={org} />;
       case "faster-schedule":
         return <FasterScheduleTab org={org} />;
+      case "site":
+        return <SiteTab org={org} />;
       default:
         return (
           <>
