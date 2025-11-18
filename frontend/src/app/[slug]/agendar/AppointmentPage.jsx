@@ -16,6 +16,7 @@ export default function AppointmentPage({ slug }) {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
+  const [policies, setPolicies] = useState(null);
 
   // Steps
   const [step, setStep] = useState(1);
@@ -72,11 +73,14 @@ export default function AppointmentPage({ slug }) {
     async function fetchData() {
       try {
         // Executa ambas as chamadas em paralelo
-        const [orgRes, colorRes] = await Promise.all([
+        const [orgRes, colorRes, policiesRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${slug}`, {
             credentials: 'include',
           }),
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`, {
+            credentials: "include",
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${slug}`, {
             credentials: "include",
           }),
         ]);
@@ -84,14 +88,17 @@ export default function AppointmentPage({ slug }) {
         // Se alguma falhar, lança erro
         if (!orgRes.ok) throw new Error("Landing not found");
         if (!colorRes.ok) throw new Error("Palette not found");
+        if (!policiesRes.ok) throw new Error("Policies not found");
 
         // Converte ambas as respostas
         const orgData = await orgRes.json();
         const paletteData = await colorRes.json();
+        const policiesData = await policiesRes.json();
 
         // Armazena nos estados (ou constantes)
         setOrg(orgData);
         setPalette(paletteData); // <- crie um useState pra isso
+        setPolicies(policiesData);
 
       } catch (err) {
         console.error("Erro ao buscar dados:", err);
@@ -341,6 +348,14 @@ export default function AppointmentPage({ slug }) {
     "Confirmação",
   ];
 
+  const today = new Date();
+  const minDate = today.toISOString().split("T")[0];
+
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + (policies?.max_schedule_days || 30));
+  const maxDateStr = maxDate.toISOString().split("T")[0];
+
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* HEADER */}
@@ -512,10 +527,22 @@ export default function AppointmentPage({ slug }) {
                 </h2>
                 <input
                   type="date"
+                  min={minDate}
+                  max={maxDateStr}
+                  value={selected.date}
                   className="border rounded-lg text-gray-700 p-3 w-full"
-                  onChange={(e) =>
-                    handleSelect("date", e.target.value)
-                  }
+                  onChange={(e) => {
+                    const selectedDate = e.target.value;
+
+                    if (selectedDate > maxDateStr) {
+                      toast.info(
+                        `Esta organização permite agendamentos até ${policies.max_schedule_days} dias`
+                      );
+                      return;
+                    }
+
+                    handleSelect("date", selectedDate);
+                  }}
                 />
               </motion.div>
             )}
