@@ -131,7 +131,7 @@ organizationRouter.post('/', upload.single('image'), createOrganization);
  *       500:
  *         description: Erro interno do servidor
  */
-organizationRouter.put('/:id', upload.single('image'), updateOrganization);
+organizationRouter.put('/:slug', upload.single('image'), updateOrganization);
 
 /**
  * @swagger

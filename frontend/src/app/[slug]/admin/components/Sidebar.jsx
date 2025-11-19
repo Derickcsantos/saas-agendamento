@@ -10,7 +10,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
     { name: "Funcionários", key: "employees", icon: "bi-people" },
     { name: "Agendamentos", key: "appointments", icon: "bi-calendar-check" },
     { name: "Agendamento rápido", key: "faster-schedule", icon: "bi-calendar-check" },
-    { name: "Clientes", key: "clients", icon: "bi-person" },
+    // { name: "Clientes", key: "clients", icon: "bi-person" },
     { name: "Receitas", key: "revenues", icon: "bi bi-cash-coin" },
     { name: "Cupons", key: "coupons", icon: "bi bi-wallet" },
     { name: "Usuários", key: "users", icon: "bi-people" },
