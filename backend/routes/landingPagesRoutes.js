@@ -19,7 +19,7 @@ export const landingPageRouter = Router()
  *         required: true
  *         schema:
  *           type: string
- *         description: Slug da organização (ex: "paulatrancas")
+ *         description: Slug da organização
  *     responses:
  *       200:
  *         description: Dados da landing page da organização

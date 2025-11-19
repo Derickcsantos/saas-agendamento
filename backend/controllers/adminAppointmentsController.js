@@ -5,6 +5,17 @@ import updateYesterdayAppointmentsToCompleted from '../utils/confirmAppointments
 export const getAdminAppointments = async (req, res) => {
   try {
     const { search, date, employee, start_date, end_date } = req.query;
+    const { slug } = req.params;
+
+    const { data: org, error: orgErr } = await supabase
+      .from('organizations')
+      .select('id, name, logo_organization')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgErr || !org) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
 
     let query = supabase
       .from('appointments')
@@ -13,7 +24,7 @@ export const getAdminAppointments = async (req, res) => {
         services:service_id (name, price),
         employees:employee_id (name)
       `)
-      .eq('organization_id', req.organizationId)
+      .eq('organization_id', org.id)
       .order('appointment_date', { ascending: true })
       .order('start_time', { ascending: true });
 
@@ -59,7 +70,18 @@ export const getAdminAppointments = async (req, res) => {
 
 export const getAdminAppointmentById = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { slug, id } = req.params;
+
+    const { data: org, error: orgErr } = await supabase
+      .from('organizations')
+      .select('id, name, logo_organization')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgErr || !org) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
     const { data, error } = await supabase
       .from('appointments')
       .select(`
@@ -68,7 +90,7 @@ export const getAdminAppointmentById = async (req, res) => {
         employees(name)
       `)
       .eq('id', id)
-      .eq('organization_id', req.organizationId)
+      .eq('organization_id', org.id)
       .single();
 
     if (error) throw error;
@@ -93,14 +115,25 @@ export const getAdminAppointmentById = async (req, res) => {
 
 export const updateAdminAppointmentToCompleted = async (req, res) => {
   try {
-    const { id } = req.params;
-    
+    const { id, slug } = req.params;
+
+    const { data: org, error: orgErr } = await supabase
+      .from('organizations')
+      .select('id, name, logo_organization')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgErr || !org) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
+
     // Verificar se o agendamento existe E pertence à organização correta
     const { data: appointmentData, error: fetchError } = await supabase
       .from('appointments')
       .select('status')
       .eq('id', id)
-      .eq('organization_id', req.organizationId) // Filtro por organization_id
+      .eq('organization_id', org.id) // Filtro por organization_id
       .single();
 
     if (fetchError) throw fetchError;
@@ -121,7 +154,7 @@ export const updateAdminAppointmentToCompleted = async (req, res) => {
         status: 'completed'
       })
       .eq('id', id)
-      .eq('organization_id', req.organizationId) // Filtro por organization_id
+      .eq('organization_id', org.id) // Filtro por organization_id
       .select();
 
     if (error) {
@@ -169,8 +202,19 @@ export const updateAdminAppointmentToCompletedYesterday = async (req, res) => {
 };
 
 export const updateAdminAppointmentToCanceled = async (req, res) => {
-  const { id } = req.params;
   const { cancel_reason } = req.body || null;
+  const { slug } = req.params;
+
+    const { data: org, error: orgErr } = await supabase
+      .from('organizations')
+      .select('id, name, logo_organization')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgErr || !org) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
 
   try {
     // 1. Buscar agendamento pelo id
@@ -178,7 +222,7 @@ export const updateAdminAppointmentToCanceled = async (req, res) => {
       .from('appointments')
       .select('*')
       .eq('id', id)
-      .eq('organization_id', req.organizationId)
+      .eq('organization_id', org.id)
       .single();
 
     if (fetchError) throw fetchError;

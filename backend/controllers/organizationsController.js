@@ -153,7 +153,7 @@ export async function createOrganization(req, res) {
 
 export async function updateOrganization(req, res) {
   try {
-    const { id } = req.params;
+    const { slug } = req.params;
     const {
       name,
       email,
@@ -162,6 +162,16 @@ export async function updateOrganization(req, res) {
       slug_organization,
       is_active
     } = req.body;
+
+    const { data: org, error: orgErr } = await supabase
+      .from('organizations')
+      .select('id, name, logo_organization')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgErr || !org) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
 
     // 🔧 Parse de tipos
     const parsedIsActive =
@@ -213,7 +223,7 @@ export async function updateOrganization(req, res) {
     const { data, error } = await supabase
       .from('organizations')
       .update(updateData)
-      .eq('id', id)
+      .eq('id', org.id)
       .select();
 
     if (error) throw error;
@@ -230,11 +240,22 @@ export async function updateOrganization(req, res) {
 
 export async function deleteOrganization(req, res) {
   try {
-    const { id } = req.params;
+    const { slug } = req.params;
+
+    const { data: org, error: orgErr } = await supabase
+      .from('organizations')
+      .select('id, name, logo_organization')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgErr || !org) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
     const { error } = await supabase
       .from('organizations')
       .delete()
-      .eq('id', id);
+      .eq('id', org.id);
 
     if (error) throw error;
     res.status(204).send();

@@ -117,14 +117,14 @@ export default function SettingsTab({ org }) {
     if (!file) return;
 
     const formData = new FormData();
-    formData.append("logo", file);
+    formData.append("image", file);
 
     try {
       setSavingField("logo_organization");
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/organizations/upload-logo/${org.slug_organization}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`,
         {
-          method: "POST",
+          method: "PUT",
           body: formData,
           credentials: "include",
         }
@@ -196,7 +196,7 @@ export default function SettingsTab({ org }) {
           <Input
             label="Nome da Organização"
             field="name"
-            api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/update/${org.slug_organization}`}
+            api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`}
             value={settings.name}
             onChange={(v) => setSettings({ ...settings, name: v })}
           />
@@ -204,7 +204,7 @@ export default function SettingsTab({ org }) {
           <Input
             label="Slug da Organização"
             field="slug_organization"
-            api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/update/${org.slug_organization}`}
+            api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`}
             value={settings.slug_organization}
             onChange={(v) => setSettings({ ...settings, slug_organization: v })}
           />
@@ -212,7 +212,7 @@ export default function SettingsTab({ org }) {
           <Input
             label="Email"
             field="email"
-            api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/update/${org.slug_organization}`}
+            api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`}
             value={settings.email}
             onChange={(v) => setSettings({ ...settings, email: v })}
           />
@@ -220,7 +220,7 @@ export default function SettingsTab({ org }) {
           <Input
             label="Telefone"
             field="phone"
-            api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/update/${org.slug_organization}`}
+            api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`}
             value={settings.phone}
             onChange={(v) => setSettings({ ...settings, phone: v })}
           />
@@ -228,7 +228,7 @@ export default function SettingsTab({ org }) {
           <Input
             label="Timezone"
             field="timezone"
-            api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/update/${org.slug_organization}`}
+            api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`}
             value={settings.timezone}
             onChange={(v) => setSettings({ ...settings, timezone: v })}
           />
@@ -253,24 +253,6 @@ export default function SettingsTab({ org }) {
             value={policies.min_hours_before_booking}
             onChange={(v) => setPolicies({ ...policies, min_hours_before_booking: Number(v) })}
           />
-
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={policies.allow_same_day}
-              onChange={(e) => {
-                const val = e.target.checked;
-                setPolicies({ ...policies, allow_same_day: val });
-                updateField(
-                  "allow_same_day",
-                  val,
-                  `${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`
-                );
-              }}
-              style={{ accentColor: strongColor }}
-            />
-            <span className="text-gray-700">Permitir agendamento no mesmo dia</span>
-          </div>
 
           {/* PLAN CARD */}
           <div className="p-6 border rounded-xl shadow-sm bg-gradient-to-br from-white to-gray-50">
