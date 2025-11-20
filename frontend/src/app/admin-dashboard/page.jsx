@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useState } from 'react'
 
 // Next.js page: /pages/admin/dashboard.jsx
