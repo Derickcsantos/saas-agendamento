@@ -49,6 +49,7 @@ import passport from './lib/passport.js';
 import { organizationColorsRouter } from './routes/organizationColorsRoutes.js';
 import { appointmentProcessRouter } from './routes/appointmentsProcessRoutes.js';
 import { organizationPoliciesRouter } from "./routes/organizationPoliciesRoutes.js";
+import { pagarmeRouter } from './routes/pagarmeRoutes.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -170,6 +171,7 @@ app.use('/api/auth', authRouter)
 app.use('/api/organizations', organizationRouter)
 app.use('/api/organization-colors', organizationColorsRouter)
 app.use("/api/organization-policies", organizationPoliciesRouter);
+app.use('/api/pagarme', pagarmeRouter)
 
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);

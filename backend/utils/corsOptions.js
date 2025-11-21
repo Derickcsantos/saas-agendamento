@@ -5,4 +5,6 @@ export const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'organization-id', 'organization_id', 'Accept'],
   credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
 };
