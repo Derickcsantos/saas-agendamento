@@ -92,7 +92,7 @@ userRouter.get('/:id', authenticateJWT, getUserById)
  *         description: Erro interno do servidor
  */
 
-userRouter.post('/:slug', authenticateJWT, createUser)
+userRouter.post('/:slug', createUser)
 
 /**
  * @swagger

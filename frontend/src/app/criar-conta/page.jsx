@@ -9,21 +9,22 @@ export default function CreateOrganization() {
   const [step, setStep] = useState(1);
 
   const [orgData, setOrgData] = useState({
-    nome_negocio: "",
+    name: "",
     setor: "",
-    tipo_doc: "cpf",
-    documento: "",
-    cor_primaria: "",
-    cor_secundaria: "",
-    logo: null,
-    endereco: "",
+    document_type: "cpf",
+    document_number: "",
+    strong_color: "",
+    light_color: "",
+    image: null,
+    address: "",
   });
 
   const [repData, setRepData] = useState({
-    nome: "",
-    telefone: "",
+    username: "",
+    phone: "",
     email: "",
-    senha: "",
+    password: "",
+    tipo: 'admin',
   });
 
   const [logoPreview, setLogoPreview] = useState(null);
@@ -44,33 +45,105 @@ export default function CreateOrganization() {
 
   const handleLogoUpload = (e) => {
     const file = e.target.files[0];
-    setOrgData((prev) => ({ ...prev, logo: file }));
+    setOrgData((prev) => ({ ...prev, image: file }));
     setLogoPreview(URL.createObjectURL(file));
   };
 
   const submitAll = async () => {
     try {
-      // 1️⃣ envio da organização
+      // GERA SLUG LOCALMENTE
+      const localSlug = orgData.name.toLowerCase().replace(/\s+/g, "-");
+
+      // ----------------------------
+      // 1️⃣ ENVIO DA ORGANIZAÇÃO
+      // ----------------------------
       const formData = new FormData();
+
+      // LOGO
+      if (orgData.image) {
+        formData.append("image", orgData.image);
+      }
+
+      // CAMPOS DA ORGANIZAÇÃO
       Object.keys(orgData).forEach((key) => {
-        formData.append(key, orgData[key]);
+        if (key !== "image") {
+          formData.append(key, orgData[key]);
+        }
       });
-      Object.keys(repData).forEach((key) =>
-        formData.append(`representante_${key}`, repData[key])
+
+      // ENVIAR TAMBÉM O SLUG NO BODY
+      formData.append("slug_organization", localSlug);
+      formData.append("phone", repData.phone);
+      formData.append("email", repData.email);
+
+      // CAMPOS DO REPRESENTANTE COMO PARTE DA ORGANIZAÇÃO
+      Object.keys(repData).forEach((key) => {
+        formData.append(`representante_${key}`, repData[key]);
+      });
+
+      // ENVIAR ORGANIZAÇÃO
+      const orgResponse = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/organizations`,
+        formData
       );
 
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations`, formData);
+      // SE A API RETORNAR UM SLUG FINAL, USE ELE. CASO CONTRÁRIO, USE O LOCAL.
+      const returnedSlug = orgResponse.data?.slug_organization || localSlug;
 
-      // 2️⃣ envio do representante
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/users`, repData);
+      // ----------------------------
+      // 2️⃣ ENVIO DO REPRESENTANTE
+      // ----------------------------
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/users/${returnedSlug}`,
+        repData
+      );
+
+      // ----------------------------
+      // 3️⃣ ENVIO DAS CORES (opcional)
+      // ----------------------------
+      const hasColors =
+        orgData.strong_color.trim() !== "" ||
+        orgData.light_color.trim() !== "";
+
+      if (hasColors) {
+        try {
+          await axios.post(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${returnedSlug}`,
+            {
+              strong_color: orgData.strong_color || '#5E3BEE',
+              light_color: orgData.light_color || '#FFFFFF',
+            }
+          );
+        } catch (err) {
+          console.warn("Falha ao salvar cores, tentando novamente...");
+
+          // 🔁 SEGUNDA TENTATIVA
+          try {
+            await axios.post(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${returnedSlug}`,
+              {
+                strong_color: orgData.strong_color || '#5E3BEE',
+                light_color: orgData.light_color || '#FFFFFF',
+              }
+            );
+          } catch (err2) {
+            console.error("Falha ao salvar cores mesmo após nova tentativa.");
+            // ❗ Não quebra o fluxo. A conta é criada mesmo sem as cores.
+          }
+        }
+      }
+
 
       toast.success("Conta criada com sucesso!");
       setIsReviewOpen(false);
+
     } catch (error) {
       console.error(error);
       toast.error("Erro ao criar conta.");
     }
   };
+
+
 
   const steps = [
     "Informações do Negócio",
@@ -127,8 +200,8 @@ export default function CreateOrganization() {
                   <label className="font-semibold text-gray-950 text-sm">Nome do Negócio</label>
                   <input
                     type="text"
-                    name="nome_negocio"
-                    value={orgData.nome_negocio}
+                    name="name"
+                    value={orgData.name}
                     onChange={handleOrgChange}
                     className="w-full text-gray-950 mt-1 border rounded-lg p-3 focus:outline-[#5E3BEE]"
                   />
@@ -146,8 +219,9 @@ export default function CreateOrganization() {
                     <option value="Beleza">Beleza</option>
                     <option value="Estética">Estética</option>
                     <option value="Barbearia">Barbearia</option>
-                    <option value="Sublimação">Sublimação</option>
+                    <option value="Atendimento">Atendimento</option>
                     <option value="Consultoria">Consultoria</option>
+                    <option value="Clinica">Clinica</option>
                     <option value="Educação">Educação</option>
                   </select>
                 </div>
@@ -156,8 +230,8 @@ export default function CreateOrganization() {
                   <label className="font-semibold text-gray-950 text-sm">CPF ou CNPJ</label>
                   <div className="flex gap-3 mt-1">
                     <select
-                      name="tipo_doc"
-                      value={orgData.tipo_doc}
+                      name="document_type"
+                      value={orgData.document_type}
                       onChange={handleOrgChange}
                       className="border text-gray-950 rounded-lg p-3 w-32"
                     >
@@ -167,8 +241,8 @@ export default function CreateOrganization() {
 
                     <input
                       type="text"
-                      name="documento"
-                      value={orgData.documento}
+                      name="document_number"
+                      value={orgData.document_number}
                       onChange={handleOrgChange}
                       placeholder="Digite o número"
                       className="flex-1 text-gray-950 border rounded-lg p-3"
@@ -196,16 +270,16 @@ export default function CreateOrganization() {
                   <label className="font-semibold text-gray-950 text-sm">Cor Primária</label>
                   <input
                     type="color"
-                    name="cor_primaria"
-                    value={orgData.cor_primaria}
+                    name="strong_color"
+                    value={orgData.strong_color}
                     onChange={handleOrgChange}
                     className="w-16 text-gray-950 h-10 mt-1 rounded"
                   />
                   <input
                     type="text"
                     placeholder="#HEX"
-                    name="cor_primaria"
-                    value={orgData.cor_primaria}
+                    name="strong_color"
+                    value={orgData.strong_color}
                     onChange={handleOrgChange}
                     className="border text-gray-950 p-3 rounded-lg w-full mt-2"
                   />
@@ -215,16 +289,16 @@ export default function CreateOrganization() {
                   <label className="font-semibold text-gray-950 text-sm">Cor Secundária</label>
                   <input
                     type="color"
-                    name="cor_secundaria"
-                    value={orgData.cor_secundaria}
+                    name="light_color"
+                    value={orgData.light_color}
                     onChange={handleOrgChange}
                     className="w-16 text-gray-950 h-10 mt-1 rounded"
                   />
                   <input
                     type="text"
                     placeholder="#HEX"
-                    name="cor_secundaria"
-                    value={orgData.cor_secundaria}
+                    name="light_color"
+                    value={orgData.light_color}
                     onChange={handleOrgChange}
                     className="border text-gray-950 p-3 rounded-lg w-full mt-2"
                   />
@@ -278,13 +352,13 @@ export default function CreateOrganization() {
             {step === 3 && (
               <div className="space-y-5">
                 <div>
-                  <label className="font-semibold text-sm">Endereço</label>
+                  <label className="font-semibold text-gray-950 text-sm">Endereço</label>
                   <input
                     type="text"
-                    name="endereco"
-                    value={orgData.endereco}
+                    name="address"
+                    value={orgData.address}
                     onChange={handleOrgChange}
-                    className="w-full mt-1 border rounded-lg p-3"
+                    className="w-full mt-1 text-gray-950 border rounded-lg p-3"
                   />
                 </div>
 
@@ -310,46 +384,46 @@ export default function CreateOrganization() {
             {step === 4 && (
               <div className="space-y-5">
                 <div>
-                  <label className="font-semibold text-sm">Nome do Representante</label>
+                  <label className="font-semibold text-gray-950 text-sm">Nome do Representante</label>
                   <input
                     type="text"
-                    name="nome"
-                    value={repData.nome}
+                    name="username"
+                    value={repData.username}
                     onChange={handleRepChange}
-                    className="w-full mt-1 border rounded-lg p-3"
+                    className="w-full mt-1 text-gray-950 border rounded-lg p-3"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-sm">Telefone</label>
+                  <label className="font-semibold text-gray-950 text-sm">Telefone</label>
                   <input
                     type="text"
-                    name="telefone"
-                    value={repData.telefone}
+                    name="phone"
+                    value={repData.phone}
                     onChange={handleRepChange}
-                    className="w-full mt-1 border rounded-lg p-3"
+                    className="w-full text-gray-950 mt-1 border rounded-lg p-3"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-sm">E-mail</label>
+                  <label className="font-semibold text-gray-950 text-sm">E-mail</label>
                   <input
                     type="email"
                     name="email"
                     value={repData.email}
                     onChange={handleRepChange}
-                    className="w-full mt-1 border rounded-lg p-3"
+                    className="w-full text-gray-950 mt-1 border rounded-lg p-3"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-sm">Senha</label>
+                  <label className="font-semibold text-gray-950 text-sm">Senha</label>
                   <input
                     type="password"
-                    name="senha"
-                    value={repData.senha}
+                    name="password"
+                    value={repData.password}
                     onChange={handleRepChange}
-                    className="w-full mt-1 border rounded-lg p-3"
+                    className="w-full text-gray-950 mt-1 border rounded-lg p-3"
                   />
                 </div>
 
@@ -381,18 +455,18 @@ export default function CreateOrganization() {
             </h2>
 
             <div className="space-y-3 text-sm text-gray-700">
-              <p><strong>Slug:</strong> {orgData.nome_negocio.toLowerCase().replace(/\s+/g, "-")}</p>
-              <p><strong>Nome do Negócio:</strong> {orgData.nome_negocio}</p>
+              <p><strong>Slug:</strong> {orgData.name.toLowerCase().replace(/\s+/g, "-")}</p>
+              <p><strong>Nome do Negócio:</strong> {orgData.name}</p>
               <p><strong>Setor:</strong> {orgData.setor}</p>
-              <p><strong>Documento:</strong> {orgData.tipo_doc.toUpperCase()} - {orgData.documento}</p>
-              <p><strong>Endereço:</strong> {orgData.endereco}</p>
+              <p><strong>Documento:</strong> {orgData.document_type.toUpperCase()} - {orgData.document_number}</p>
+              <p><strong>Endereço:</strong> {orgData.address}</p>
 
-              {orgData.cor_primaria && (
-                <p><strong>Cor Primária:</strong> {orgData.cor_primaria}</p>
+              {orgData.strong_color && (
+                <p><strong>Cor Primária:</strong> {orgData.strong_color}</p>
               )}
 
-              {orgData.cor_secundaria && (
-                <p><strong>Cor Secundária:</strong> {orgData.cor_secundaria}</p>
+              {orgData.light_color && (
+                <p><strong>Cor Secundária:</strong> {orgData.light_color}</p>
               )}
 
               {logoPreview && (
@@ -405,8 +479,8 @@ export default function CreateOrganization() {
               <hr className="my-4" />
 
               <h3 className="font-bold text-[#5E3BEE]">Representante:</h3>
-              <p><strong>Nome:</strong> {repData.nome}</p>
-              <p><strong>Telefone:</strong> {repData.telefone}</p>
+              <p><strong>Nome:</strong> {repData.username}</p>
+              <p><strong>Telefone:</strong> {repData.phone}</p>
               <p><strong>Email:</strong> {repData.email}</p>
             </div>
 

@@ -85,6 +85,8 @@ export async function createOrganization(req, res) {
       email,
       phone,
       address,
+      document_type,
+      document_number,
       slug_organization,
       is_active
     } = req.body;
@@ -138,12 +140,76 @@ export async function createOrganization(req, res) {
           address,
           slug_organization,
           is_active: parsedIsActive,
+          document_type,
+          document_number,
           logo_organization: imagePath,
         },
       ])
       .select();
 
-    if (error) throw error;
+      if (error) throw error;
+
+    // 💾 1ª TENTATIVA DE INSERIR organization_landing
+      let landingOrganizationError = null;
+      let landingOrganizationResult = null;
+
+      try {
+        const { data: insertedLanding, error: insertLandingError } = await supabase
+          .from("organization_landing")
+          .insert({
+            slug: slug_organization,
+            meta_title: `${name}`,
+            meta_description: `Site, galeria e sistema da ${name}`,
+            meta_keywords: "agenda online, agenda",
+            whatsapp: phone,
+            instagram: "sem instagram",
+            email: email,
+            endereco: address,
+            telefone: phone,
+          })
+          .select()
+          .single();
+
+        landingOrganizationResult = insertedLanding;
+        landingOrganizationError = insertLandingError;
+      } catch (err) {
+        landingOrganizationError = err;
+      }
+
+      // ❗ Se falhou, tenta novamente
+      if (landingOrganizationError) {
+        console.warn("⚠ Falha ao criar organization_landing. Tentando novamente...");
+
+        try {
+          const { data: retryLanding, error: retryError } = await supabase
+            .from("organization_landing")
+            .insert({
+              slug: slug_organization,
+              meta_title: `${name}`,
+              meta_description: `Site, galeria e sistema da ${name}`,
+              meta_keywords: "agenda online, agenda",
+              whatsapp: phone,
+              instagram: "sem instagram",
+              email: email,
+              endereco: address,
+              telefone: phone,
+            })
+            .select()
+            .single();
+
+          landingOrganizationResult = retryLanding;
+
+          if (retryError) {
+            console.error("❌ Falhou novamente ao criar organization_landing:", retryError);
+          }
+        } catch (err2) {
+          console.error("❌ Erro crítico na segunda tentativa organization_landing:", err2);
+        }
+      }
+
+      console.log("Landing Organization criada:", landingOrganizationResult);
+
+
     res.status(201).json(data[0]);
   } catch (error) {
     console.error('Error creating organization:', error);

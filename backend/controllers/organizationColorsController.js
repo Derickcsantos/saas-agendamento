@@ -87,7 +87,7 @@ export const getColorsByOrgId = async (req, res) => {
         organization_id: id,
         strong_color: '#5E3BEE',
         light_color: '#FFFFFF',
-        text_color: '#111',
+        text_dark_color: '#111',
         text_light_color: '#ffffff',
         background_color_main: "#ffffff",
         from_defaults: true
@@ -101,18 +101,13 @@ export const getColorsByOrgId = async (req, res) => {
   }
 };
 
-/**
- * POST /api/organization-colors/:slug
- * Cria a paleta (falha se já existir).
- * body: { strong_color?, light_color?, text_color? }
- */
 export const createColorsBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
     let { strong_color = '#5E3BEE', light_color = '#FFFFFF', text_dark_color = '#111', text_light_color = '#ffffff', background_color_main = '#ffffff' } = req.body;
 
     // validação
-    if (!isHex(strong_color) || !isHex(light_color) || !isHex(text_color)) {
+    if (!isHex(strong_color) || !isHex(light_color) || !isHex(text_light_color) || !isHex(text_dark_color)) {
       return res.status(400).json({ error: 'Cores devem estar em formato HEX (#RRGGBB ou #RGB)' });
     }
 
@@ -137,7 +132,9 @@ export const createColorsBySlug = async (req, res) => {
     }
 
     // cria
-    const { error: insErr } = await supabase.from('organizations_colors').insert({
+    const { error: insErr } = await supabase
+    .from('organizations_colors')
+    .insert({
       organization_id: org.id,
       strong_color,
       light_color,
@@ -163,11 +160,7 @@ export const createColorsBySlug = async (req, res) => {
   }
 };
 
-/**
- * PUT /api/organization-colors/:slug
- * Atualiza ou cria (upsert=true) a paleta.
- * body: { strong_color?, light_color?, text_color? }
- */
+
 export const upsertColorsBySlug = async (req, res) => {
   try {
     const { slug } = req.params;

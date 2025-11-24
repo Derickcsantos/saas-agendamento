@@ -53,7 +53,7 @@ export const getUserById = async (req, res) => {
 
 export const createUser = async (req, res) => {
   try {
-    const { username, email, password_plaintext, tipo = 'comum', id_employee } = req.body;
+    const { username, email, password, phone, tipo = 'comum', id_employee } = req.body;
     const { slug } = req.params;
 
     const { data: org, orgError } = await supabase
@@ -66,7 +66,7 @@ export const createUser = async (req, res) => {
       return res.status(404).json({ error: "Organização não encontrada" });
     }
 
-    if (!username || !email || !password_plaintext) {
+    if (!username || !email || !password) {
       return res.status(400).json({ error: 'Campos obrigatórios ausentes.' });
     }
 
@@ -84,7 +84,7 @@ export const createUser = async (req, res) => {
     }
 
     // Gera hash da senha antes de inserir
-    const password_hash = await hashPassword(password_plaintext);
+    const password_hash = await hashPassword(password);
 
     const { data: newUser, error: insertError } = await supabase
       .from('users')
@@ -93,7 +93,8 @@ export const createUser = async (req, res) => {
           organization_id: org.id,
           username,
           email,
-          password_hash, // salva apenas o hash
+          phone,
+          password: password_hash, // salva apenas o hash
           tipo,
           id_employee: tipo === 'funcionario' ? id_employee : null,
           created_at: new Date().toISOString(),

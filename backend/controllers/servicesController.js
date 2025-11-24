@@ -169,7 +169,8 @@ export const createService = async (req, res) => {
 
 export const updateService = async (req, res) => {
   try {
-    const { id } = req.params;
+    console.log('api funcionando')
+    const { slug, id } = req.params;
     const { category_id, name, description, duration, price } = req.body;
     let imageData = null;
 
