@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { FiPlus, FiEdit2, FiXCircle, FiTrash2 } from "react-icons/fi";
 import dynamic from "next/dynamic";
+import { toast } from 'react-toastify'
 
 const Modal = dynamic(() => import("./PagarmeTabModal"), { ssr: false });
 
 export default function PagarmeTab() {
-  const API = "http://localhost:3000/api/pagarme";
+  const API = `${process.env.NEXT_PUBLIC_API_URL}/api/pagarme`;
   const primary = "#711b96";
 
   // ================================
@@ -102,7 +103,7 @@ export default function PagarmeTab() {
       body: JSON.stringify(payload),
     });
 
-    if (!res.ok) return alert("Erro ao criar plano");
+    if (!res.ok) return toast.error("Erro ao criar plano");
 
     await fetchPlans();
     setShowCreatePlan(false);
@@ -138,7 +139,7 @@ export default function PagarmeTab() {
       body: JSON.stringify(payload),
     });
 
-    if (!res.ok) return alert("Erro ao atualizar plano");
+    if (!res.ok) return toast.error("Erro ao atualizar plano");
 
     await fetchPlans();
     setShowEditPlan(false);
@@ -152,13 +153,13 @@ export default function PagarmeTab() {
         method: "DELETE",
       });
 
-      if (!res.ok) return alert("Erro ao excluir plano.");
+      if (!res.ok) return toast.error("Erro ao excluir plano.");
 
       await fetchPlans();
-      alert("Plano excluído com sucesso.");
+      toast.success("Plano excluído com sucesso.");
     } catch (err) {
       console.error(err);
-      alert("Erro interno ao excluir plano.");
+      toast.error("Erro interno ao excluir plano.");
     }
   }
 
@@ -173,7 +174,7 @@ export default function PagarmeTab() {
     });
 
     fetchSubscriptions();
-    alert("Assinatura cancelada.");
+    toast.success("Assinatura cancelada.");
   }
 
   // ================================

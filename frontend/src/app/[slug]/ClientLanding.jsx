@@ -5,12 +5,13 @@ import { useEffect, useState } from "react";
 export default function ClientLanding({ slug }) {
   const [data, setData] = useState(null);
   const [palette, setPalette] = useState(null);
+  const [organizationData, setOrganizationData] = useState(null)
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [landingRes, colorRes] = await Promise.all([
+        const [landingRes, colorRes, orgDataRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/landing-page/${slug}`, {
             credentials: "include",
           }),
@@ -18,16 +19,23 @@ export default function ClientLanding({ slug }) {
             `${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`,
             { credentials: "include" }
           ),
+          fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${slug}`,
+            { credentials: "include" }
+          ),
         ]);
 
         if (!landingRes.ok) throw new Error("Landing not found");
         if (!colorRes.ok) throw new Error("Palette not found");
+        if (!orgDataRes.ok) throw new Error("Organization data not found");
 
         const landingData = await landingRes.json();
         const paletteData = await colorRes.json();
+        const organizationData = await orgDataRes.json();
 
         setData(landingData);
         setPalette(paletteData);
+        setOrganizationData(organizationData);
       } catch (err) {
         console.error("Erro ao buscar dados:", err);
         setNotFound(true);
@@ -45,7 +53,7 @@ export default function ClientLanding({ slug }) {
     );
   }
 
-  const org = data.organizations;
+  const org = organizationData;
   const landing = data;
 
   /* ==== BACKGROUND DINÂMICO (opção imagem / pattern / blur) ==== */
@@ -126,11 +134,11 @@ export default function ClientLanding({ slug }) {
             className="text-5xl md:text-6xl font-bold mb-6 drop-shadow-lg"
             style={{ color: "#FFF" }}
           >
-            {landing.hero_title}
+            {landing.hero_title || `Seja bem vindo!`}
           </h1>
 
           <p className="text-lg md:text-xl text-gray-100 mb-8 drop-shadow">
-            {landing.hero_subtitle}
+            {landing.hero_subtitle || 'Não perca tempo e reserve seu horário o quanto antes'}
           </p>
 
           <a
@@ -166,12 +174,12 @@ export default function ClientLanding({ slug }) {
               className="text-3xl md:text-4xl font-bold"
               style={{ color: palette?.strong_color || "#5E3BEE" }}
             >
-              {landing.about_title}
+              {landing.about_title || 'Sobre nós'}
             </h2>
 
             <p 
             className="text-lg leading-relaxed opacity-90">
-              {landing.about_text}
+              {landing.about_text || 'Somos uma empresa '}
             </p>
           </div>
         </div>

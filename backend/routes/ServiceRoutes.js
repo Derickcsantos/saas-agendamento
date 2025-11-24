@@ -176,7 +176,7 @@ serviceRouter.post('/:slug', upload.single('image'), authenticateJWT, createServ
  *       500:
  *         description: Erro interno do servidor
  */
-serviceRouter.put('/:id', upload.single('image'), authenticateJWT, updateService);
+serviceRouter.put('/:slug/:id', upload.single('image'), authenticateJWT, updateService);
 
 /**
  * @swagger
