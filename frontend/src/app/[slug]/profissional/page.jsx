@@ -35,7 +35,7 @@ export default function EmployeePanel() {
         });
         const data = await res.json();
 
-        if (!data.authenticated || data.user.tipo !== "funcionario") {
+        if (!data.authenticated || data.user.tipo == "comum" ) {
           router.push(`/${slug}/login`);
           return;
         }
