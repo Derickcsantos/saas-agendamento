@@ -68,7 +68,6 @@ app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
 
 
 app.use(passport.initialize());
-app.use(passport.session());
 
 app.post('/api/logout', (req, res) => {
   res.clearCookie('token', {
