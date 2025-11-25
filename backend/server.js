@@ -31,7 +31,7 @@ import { googleRouter } from './routes/googleRoutes.js';
 import { landingPageRouter } from './routes/landingPagesRoutes.js';
 import { authRouter } from './routes/authRoutes.js';
 import { organizationRouter } from './routes/organizationRoutes.js';
-import passport from './lib/passport.js';
+// import passport from './lib/passport.js';
 import { organizationColorsRouter } from './routes/organizationColorsRoutes.js';
 import { appointmentProcessRouter } from './routes/appointmentsProcessRoutes.js';
 import { organizationPoliciesRouter } from "./routes/organizationPoliciesRoutes.js";
@@ -57,7 +57,7 @@ setupSwagger(app)
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
 
 
-app.use(passport.initialize());
+// app.use(passport.initialize());
 
 cron.schedule('0 3 * * *', async () => {
   console.log('Executando atualização diária de agendamentos...');
@@ -78,7 +78,7 @@ app.use('/api/health', checkHealthRouter)
 app.use('/api/users', userRouter)
 app.use('/api/register', registerUserRouter);
 app.use('/api/login', loginRouter) 
-app.use('/auth/google', googleRouter);
+// app.use('/auth/google', googleRouter);
 app.use('/api/verifica-usuario', verifyUserRouter); 
 app.use('/api/appointments', appointmentsRouter); 
 app.use('/api/minha-conta', loggedInUserRouter);
