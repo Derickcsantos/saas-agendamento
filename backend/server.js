@@ -1,8 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
@@ -11,9 +9,7 @@ import fs from 'fs';
 const upload = multer(); 
 import schedule from 'node-schedule';
 import cron from 'node-cron';
-import session from 'express-session';
 import passportGoogleOauth20 from 'passport-google-oauth20';
-import { v4 as uuidv4 } from 'uuid'; 
 import setupSwagger from './swagger.js';
 // import { mongoURI } from './lib/mongo.js';
 import { supabase } from './lib/supabase.js';
@@ -51,11 +47,6 @@ import { appointmentProcessRouter } from './routes/appointmentsProcessRoutes.js'
 import { organizationPoliciesRouter } from "./routes/organizationPoliciesRoutes.js";
 import { pagarmeRouter } from './routes/pagarmeRoutes.js';
 
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const SESSION_DIR = path.join(__dirname, 'tokens');
-const SESSION_FILE = path.join(SESSION_DIR, 'salon-bot.json');
 const app = express();
 const port = process.env.PORT || 3333;
 
@@ -75,18 +66,6 @@ setupSwagger(app)
 
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
 
-// Criar diretório se não existir
-if (!fs.existsSync(SESSION_DIR)) {
-  fs.mkdirSync(SESSION_DIR, { recursive: true });
-}
-
-
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'secretao',
-  resave: false,
-  saveUninitialized: true
-}));
 
 app.use(passport.initialize());
 app.use(passport.session());
