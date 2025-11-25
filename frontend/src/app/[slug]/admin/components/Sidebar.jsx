@@ -64,7 +64,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
             className={`w-full flex items-center gap-2 p-2 rounded-md transition`}
             style={{
               backgroundColor: palette?.light_color || '#f4f4f4f4 ', 
-              color: palette?.text_dark_color || '#ffffff'}}
+              color: palette?.text_light_color || '#ffffff'}}
           >
             <i className={`bi ${item.icon}`}></i>
             <span>{item.name}</span>
