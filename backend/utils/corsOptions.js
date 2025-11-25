@@ -6,9 +6,8 @@ export const corsOptions = {
     'https://ubiquitous-train-v6pw96wx6v64h664v-3000.app.github.dev', 
     'https://marcafy.com.br', 
     'https://www.marcafy.com.br', 
-    'www.marcafy.com.br', 
-    'http://localhost:3001', 
-    'https://marcafybackend.up.railway.app', 
+    'https://www.marcafy.com.br', 
+    'http://localhost:3001',
     'https://marcafy.vercel.app'
   ], 
   methods: [
