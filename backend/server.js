@@ -24,7 +24,7 @@ import { employeeScheduleRouter } from './routes/employeeScheduleRoutes.js'
 import { loginRouter } from './routes/loginRoutes.js'
 import { emailRouter } from './routes/emailRoutes.js'
 import { dashboardDataRouter } from './routes/dashboardDataRoutes.js'
-import { checkHealthRouter } from './routes/checkHealthRoutes.js'
+// import { checkHealthRouter } from './routes/checkHealthRoutes.js'
 import { loggedInUserRouter } from './routes/loggedInUserRoutes.js';
 import { corsOptions } from './utils/corsOptions.js';
 import { googleRouter } from './routes/googleRoutes.js';
@@ -74,7 +74,7 @@ app.use('/api/appointments', appointmentProcessRouter);
 app.use('/api/forgot-password', forgotPasswordRouter) 
 app.use('/api/send-confirmation-email', emailRouter)
 app.use('/api/send-whatsapp-confirmation', whatsappRouter )
-app.use('/api/health', checkHealthRouter)
+// app.use('/api/health', checkHealthRouter)
 app.use('/api/users', userRouter)
 app.use('/api/register', registerUserRouter);
 app.use('/api/login', loginRouter) 
