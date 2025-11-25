@@ -60,14 +60,16 @@ const app = express();
 const port = process.env.PORT || 3333;
 
 app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
 app.use(express.json());
 app.use(cookieParser());
 
 
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Credentials', 'true'); // importante
-  next();
-});
+// app.use((req, res, next) => {
+//   res.header('Access-Control-Allow-Credentials', 'true'); // importante
+//   next();
+// });
 
 setupSwagger(app)
 
@@ -89,48 +91,11 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-
-app.get('/home', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
-app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
-app.get('/galeria', (req, res) => res.sendFile(path.join(__dirname, 'public', 'galeria.html')));
-app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
-// app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
-app.get('/admin', checkAuth, async (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-app.get('/funcionario', checkAuth, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'funcionario.html'));
-});
-// Rota para a página inicial logada
-app.get('/minha-conta', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'logado.html'), {
-    headers: {
-      'Content-Type': 'text/html',
-      'Cache-Control': 'no-cache'
-    }
-  });
-});
-
-app.get('/minha-conta/agendamentos', (req, res) => {
-  // Verifique se o usuário está autenticado
-  if (!req.session.user) {
-    return res.redirect('/login');
-  }
-  
-  // Envie o mesmo arquivo que a página principal, mas o JavaScript cuidará da exibição
-  res.sendFile(path.join(__dirname, 'public', 'logado.html'), {
-    headers: {
-      'Content-Type': 'text/html',
-      'Cache-Control': 'no-cache'
-    }
-  });
-});
-
 app.post('/api/logout', (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
-    sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'none',
+    secure: true,
   });
   res.json({ success: true, message: 'Logout realizado com sucesso' });
 });
