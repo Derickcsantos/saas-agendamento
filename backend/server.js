@@ -58,12 +58,18 @@ const SESSION_DIR = path.join(__dirname, 'tokens');
 const SESSION_FILE = path.join(SESSION_DIR, 'salon-bot.json');
 const app = express();
 const port = process.env.PORT || 3333;
-setupSwagger(app)
+
+app.use(cors(corsOptions));
+app.use(express.json());
+app.use(cookieParser());
+
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Credentials', 'true'); // importante
   next();
 });
+
+setupSwagger(app)
 
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
 
@@ -72,9 +78,7 @@ if (!fs.existsSync(SESSION_DIR)) {
   fs.mkdirSync(SESSION_DIR, { recursive: true });
 }
 
-app.use(cors(corsOptions));
-app.use(express.json());
-app.use(cookieParser());
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'secretao',
