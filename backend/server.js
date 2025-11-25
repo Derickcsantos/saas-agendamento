@@ -17,7 +17,7 @@ import { v4 as uuidv4 } from 'uuid';
 import setupSwagger from './swagger.js';
 // import { mongoURI } from './lib/mongo.js';
 import { supabase } from './lib/supabase.js';
-import { emailContactRouter } from './routes/contatoRoutes.js';
+// import { emailContactRouter } from './routes/contatoRoutes.js';
 import { categoryRouter } from './routes/categoryRoutes.js';
 import { whatsappRouter } from './routes/whatsappRoutes.js';
 import { userRouter } from './routes/userRoutes.js';
@@ -112,7 +112,7 @@ cron.schedule('0 3 * * *', async () => {
 
 app.use('/api/appointments', appointmentProcessRouter);
 
-app.use('/api/contato', emailContactRouter)
+// app.use('/api/contato', emailContactRouter)
 app.use('/api/forgot-password', forgotPasswordRouter) 
 app.use('/api/send-confirmation-email', emailRouter)
 app.use('/api/send-whatsapp-confirmation', whatsappRouter )
