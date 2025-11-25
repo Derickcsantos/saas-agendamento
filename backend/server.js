@@ -2,22 +2,12 @@ import dotenv from 'dotenv';
 dotenv.config();
 import express from 'express';
 import cors from 'cors';
-import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
-import multer from 'multer';
-import fs from 'fs';
-const upload = multer(); 
-import schedule from 'node-schedule';
 import cron from 'node-cron';
-import passportGoogleOauth20 from 'passport-google-oauth20';
 import setupSwagger from './swagger.js';
-// import { mongoURI } from './lib/mongo.js';
-import { supabase } from './lib/supabase.js';
-// import { emailContactRouter } from './routes/contatoRoutes.js';
 import { categoryRouter } from './routes/categoryRoutes.js';
 import { whatsappRouter } from './routes/whatsappRoutes.js';
 import { userRouter } from './routes/userRoutes.js';
-import { checkAuth } from './utils/checkAuth.js';
 import { forgotPasswordRouter } from './routes/forgotPasswordRoutes.js';
 import { verifyUserRouter } from './routes/verifyUserRoutes.js';
 import { couponRouter } from './routes/couponRoutes.js';
@@ -69,15 +59,6 @@ app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
 
 app.use(passport.initialize());
 
-app.post('/api/logout', (req, res) => {
-  res.clearCookie('token', {
-    httpOnly: true,
-    sameSite: 'none',
-    secure: true,
-  });
-  res.json({ success: true, message: 'Logout realizado com sucesso' });
-});
-
 cron.schedule('0 3 * * *', async () => {
   console.log('Executando atualização diária de agendamentos...');
   const result = await updateYesterdayAppointmentsToCompleted();
@@ -90,7 +71,6 @@ cron.schedule('0 3 * * *', async () => {
 
 app.use('/api/appointments', appointmentProcessRouter);
 
-// app.use('/api/contato', emailContactRouter)
 app.use('/api/forgot-password', forgotPasswordRouter) 
 app.use('/api/send-confirmation-email', emailRouter)
 app.use('/api/send-whatsapp-confirmation', whatsappRouter )
