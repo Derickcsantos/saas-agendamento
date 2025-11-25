@@ -6,7 +6,7 @@ import cookieParser from 'cookie-parser';
 import cron from 'node-cron';
 import setupSwagger from './swagger.js';
 import { categoryRouter } from './routes/categoryRoutes.js';
-import { whatsappRouter } from './routes/whatsappRoutes.js';
+// import { whatsappRouter } from './routes/whatsappRoutes.js';
 import { userRouter } from './routes/userRoutes.js';
 import { forgotPasswordRouter } from './routes/forgotPasswordRoutes.js';
 import { verifyUserRouter } from './routes/verifyUserRoutes.js';
@@ -22,7 +22,7 @@ import { galleryRouter } from './routes/galleryRoutes.js';
 import { revenueRouter } from './routes/revenueRouter.js'
 import { employeeScheduleRouter } from './routes/employeeScheduleRoutes.js'
 import { loginRouter } from './routes/loginRoutes.js'
-import { emailRouter } from './routes/emailRoutes.js'
+// import { emailRouter } from './routes/emailRoutes.js'
 import { dashboardDataRouter } from './routes/dashboardDataRoutes.js'
 // import { checkHealthRouter } from './routes/checkHealthRoutes.js'
 import { loggedInUserRouter } from './routes/loggedInUserRoutes.js';
@@ -54,9 +54,6 @@ app.use(cookieParser());
 
 setupSwagger(app)
 
-app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
-
-
 // app.use(passport.initialize());
 
 cron.schedule('0 3 * * *', async () => {
@@ -69,11 +66,11 @@ cron.schedule('0 3 * * *', async () => {
   }
 });
 
+app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
 app.use('/api/appointments', appointmentProcessRouter);
-
 app.use('/api/forgot-password', forgotPasswordRouter) 
-app.use('/api/send-confirmation-email', emailRouter)
-app.use('/api/send-whatsapp-confirmation', whatsappRouter )
+// app.use('/api/send-confirmation-email', emailRouter)
+// app.use('/api/send-whatsapp-confirmation', whatsappRouter )
 // app.use('/api/health', checkHealthRouter)
 app.use('/api/users', userRouter)
 app.use('/api/register', registerUserRouter);
