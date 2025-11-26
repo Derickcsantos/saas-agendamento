@@ -8,6 +8,7 @@ import {
   updateOrganization,
   deleteOrganization,
 } from '../controllers/organizationsController.js';
+import { authenticateJWT } from '../middlewares/authMiddleware.js';
 
 export const organizationRouter = Router();
 const upload = multer({ storage: multer.memoryStorage() });
