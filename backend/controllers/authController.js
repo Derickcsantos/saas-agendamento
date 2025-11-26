@@ -17,7 +17,7 @@ export const checkAuth =  async (req, res) => {
 export const logout = async (req, res) => {
   try {
     res.clearCookie("token", {
-      path: "/", // 🔥 importante
+      path: "/",
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "none",
