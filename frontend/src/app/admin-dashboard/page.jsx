@@ -1,17 +1,46 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter} from "next/navigation";
 import { FiHome, FiBarChart2, FiCreditCard, FiUsers } from "react-icons/fi";
 import dynamic from "next/dynamic";
 const PagarmeTab = dynamic(() => import('./components/PagarmeTab'), { ssr: false });
 
-// =========================
-// PREMIUM ADMIN DASHBOARD - STYLE STRIPE / VERCEL
-// =========================
-
 export default function AdminDashboard() {
-
   const [section, setSection] = useState("overview");
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/check`, {
+          credentials: "include",
+        });
+        const data = await res.json();
+
+        if (!data.authenticated) {
+          router.push(`/login`);
+          return;
+        }
+
+        if (data.user.tipo !== 'master') {
+          router.push(`/login`)
+          return
+        }
+
+        setUser(data.user);
+      } catch (error) {
+        console.error("Erro ao verificar autenticação:", error);
+        router.push(`/login`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkAuth();
+  }, [router]);
+  
 
   return (
     <div className="flex min-h-screen bg-[#f7f7f7]">
