@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { OrganizationSelector } from '@/app/components/OrganizationSelector'
 import {
   Calendar,
   Users,
@@ -533,6 +534,8 @@ export default function MarcafyLanding() {
           </div>
         </SoftCard>
       </section>
+
+      <OrganizationSelector />
 
       {/* FOOTER */}
       <footer className="border-t py-10" style={{ borderColor: `${BRAND}12` }}>

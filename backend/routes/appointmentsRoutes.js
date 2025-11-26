@@ -82,4 +82,4 @@ export const appointmentsRouter = Router();
  */
 appointmentsRouter.post('/:slug', createAppointment);
 
-appointmentsRouter.get('/by-employee/:employeeId', getAppointmentsByEmployee)
+appointmentsRouter.get('/by-employee/:userId', getAppointmentsByEmployee)

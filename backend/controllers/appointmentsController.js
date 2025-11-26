@@ -3,7 +3,28 @@ import express from 'express';
 
 export const getAppointmentsByEmployee = async (req, res) => {
   try {
-    const { employeeId } = req.params;
+    const { userId } = req.params;
+    console.log(`Id do usuário: ${userId}`)
+
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('email')
+      .eq('id', userId)
+      .single()
+
+    if (userError) throw new Error
+
+    console.log(`Email do usuário: ${userData.email}`)
+
+    const { data: employeeData, error: employeeError } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('email', userData.email)
+      .single()
+    
+    if (employeeError) throw new Error
+
+    console.log(`Id do funcionário: ${employeeData.id}`)
     
     const { data, error } = await supabase
       .from('appointments')
@@ -12,11 +33,13 @@ export const getAppointmentsByEmployee = async (req, res) => {
         services:service_id (name),
         employees:employee_id (name)
       `)
-      .eq('employee_id', employeeId)
+      .eq('employee_id', employeeData.id)
       .order('appointment_date', { ascending: true })
       .order('start_time', { ascending: true });
 
     if (error) throw error;
+
+    console.log(`agendamentos: ${data}`)
     
     res.json(data || []);
   } catch (error) {
