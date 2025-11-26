@@ -39,6 +39,17 @@ export default function AdminDashboard({ slug }) {
           router.push(`/${slug}/login`);
           return;
         }
+
+        if (data.user.tipo === 'comum') {
+          router.push(`/${slug}/minha-conta`)
+          return
+        }
+
+        if (data.user.tipo === 'funcionario') {
+          router.push(`/${slug}/profissional`)
+          return
+        }
+
         setUser(data.user);
       } catch (error) {
         console.error("Erro ao verificar autenticação:", error);

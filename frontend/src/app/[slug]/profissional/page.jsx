@@ -32,8 +32,13 @@ export default function EmployeePanel() {
         });
         const data = await res.json();
 
-        if (!data.authenticated || data.user.tipo === "comum") {
+        if (!data.authenticated) {
           router.push(`/${slug}/login`);
+          return;
+        }
+
+        if (data.user.tipo === "comum") {
+          router.push(`/${slug}/minha-conta`);
           return;
         }
 

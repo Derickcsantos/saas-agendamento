@@ -71,7 +71,7 @@ export function OrganizationSelector() {
     );
 
     setFiltered(results);
-    setPage(1); // <--- IMPORTANTÍSSIMO
+    setPage(1); 
   }, [query, organizations]);
 
 

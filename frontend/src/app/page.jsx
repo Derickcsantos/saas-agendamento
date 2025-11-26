@@ -167,13 +167,18 @@ export default function MarcafyLanding() {
             </a>
           </nav>
 
-          <a
-            href="https://wa.me/5511999999999"
-            className="rounded-full px-5 py-5 text-sm font-semibold text-white transition"
-            style={{ background: BRAND, boxShadow: "0 10px 22px rgba(94,59,238,0.25)" }}
-          >
-            Fale com a equipe
-          </a>
+          <div>
+            <a href="/login" className="text-sm mr-5 text-neutral-700 hover:opacity-70">
+              Entrar
+            </a>
+            <a
+              href="/criar-conta"
+              className="rounded-full px-5 py-5 ml-2.5 text-sm font-semibold text-white transition"
+              style={{ background: BRAND, boxShadow: "0 10px 22px rgba(94,59,238,0.25)" }}
+            >
+              Cadastre-se
+            </a>
+          </div>
         </div>
       </header>
 
