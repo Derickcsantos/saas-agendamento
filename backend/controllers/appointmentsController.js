@@ -4,49 +4,75 @@ import express from 'express';
 export const getAppointmentsByEmployee = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log(`Id do usuário: ${userId}`)
+    console.log(" Buscando agendamentos do usuário:", userId);
 
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('email')
-      .eq('id', userId)
-      .single()
+    // 1) Buscar email do usuário
+    const { data: user, error: userErr } = await supabase
+      .from("users")
+      .select("email")
+      .eq("id", userId)
+      .single();
 
-    if (userError) throw new Error
+    if (userErr || !user) {
+      console.error(" Usuário não encontrado:", userErr);
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
 
-    console.log(`Email do usuário: ${userData.email}`)
+    console.log("📧 Email do usuário:", user.email);
 
-    const { data: employeeData, error: employeeError } = await supabase
-      .from('employees')
-      .select('id')
-      .eq('email', userData.email)
-      .single()
-    
-    if (employeeError) throw new Error
+    // 2) Tentar buscar employee pelo user_id
+    let { data: employee, error: employeeErr } = await supabase
+      .from("employees")
+      .select("id")
+      .eq("user_id", userId)
+      .single();
 
-    console.log(`Id do funcionário: ${employeeData.id}`)
-    
-    const { data, error } = await supabase
-      .from('appointments')
+    // 3) Se não achar pelo user_id, tenta pelo email
+    if (!employee) {
+      console.warn("Funcionário não encontrado via user_id. Tentando via email...");
+
+      const empByEmail = await supabase
+        .from("employees")
+        .select("id")
+        .eq("email", user.email)
+        .single();
+
+      employee = empByEmail.data;
+
+      if (empByEmail.error || !employee) {
+        console.error(" Funcionário não encontrado pelo email:", empByEmail.error);
+        return res.status(404).json({ error: "Funcionário não encontrado" });
+      }
+    }
+
+    console.log(" ID do funcionário:", employee.id);
+
+    // 4) Buscar agendamentos do funcionário
+    const { data: appointments, error: apptErr } = await supabase
+      .from("appointments")
       .select(`
         *,
         services:service_id (name),
         employees:employee_id (name)
       `)
-      .eq('employee_id', employeeData.id)
-      .order('appointment_date', { ascending: true })
-      .order('start_time', { ascending: true });
+      .eq("employee_id", employee.id)
+      .order("appointment_date", { ascending: true })
+      .order("start_time", { ascending: true });
 
-    if (error) throw error;
+    if (apptErr) {
+      console.error(" Erro ao buscar agendamentos:", apptErr);
+      return res.status(500).json({ error: "Erro ao buscar agendamentos" });
+    }
 
-    console.log(`agendamentos: ${data}`)
-    
-    res.json(data || []);
+    console.log(`📅 Agendamentos encontrados: ${appointments.length}`);
+
+    res.json(appointments || []);
   } catch (error) {
-    console.error('Error fetching appointments:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error(" Erro inesperado:", error);
+    res.status(500).json({ error: "Erro interno no servidor" });
   }
 };
+
 
 export const createAppointment = async (req, res) => {
   try {
