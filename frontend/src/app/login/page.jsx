@@ -55,7 +55,6 @@ export default function GlobalLogin() {
     function handleClickOutside(event) {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
         setFiltered([]);
-        setQuery("");
         setPage(1);
       }
     }
