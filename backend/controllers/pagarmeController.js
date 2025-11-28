@@ -195,7 +195,16 @@ export const PagarmeController = {
   // =========================================
   async createSubscription(req, res) {
     try {
-      const response = await pagarme.post("/subscriptions", req.body);
+      const payload = JSON.parse(JSON.stringify(req.body)); // CLONE REAL
+
+      if (!payload.customer.name) console.error("ERRO: name undefined");
+      if (!payload.customer.email) console.error("ERRO: email undefined");
+      if (!payload.customer.document) console.error("ERRO: document undefined");
+
+
+      console.log("PAYLOAD ENVIADO PARA PAGARME =", payload);
+
+      const response = await pagarme.post("/subscriptions", payload);
 
       return res.status(201).json(response.data);
     } catch (error) {
@@ -203,6 +212,7 @@ export const PagarmeController = {
       return res.status(500).json(error.response?.data || { message: "Erro interno" });
     }
   },
+
 
     // =========================================
   // Atualizar assinatura existente

@@ -36,6 +36,7 @@ import { organizationColorsRouter } from './routes/organizationColorsRoutes.js';
 import { appointmentProcessRouter } from './routes/appointmentsProcessRoutes.js';
 import { organizationPoliciesRouter } from "./routes/organizationPoliciesRoutes.js";
 import { pagarmeRouter } from './routes/pagarmeRoutes.js';
+import { userRepresentativeRouter } from './routes/userRepresentativeRoutes.js';
 
 const app = express();
 const port = process.env.PORT || 3333;
@@ -43,7 +44,7 @@ const port = process.env.PORT || 3333;
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
 
@@ -95,6 +96,7 @@ app.use('/api/organizations', organizationRouter)
 app.use('/api/organization-colors', organizationColorsRouter)
 app.use("/api/organization-policies", organizationPoliciesRouter);
 app.use('/api/pagarme', pagarmeRouter)
+app.use('/api/representative-organization', userRepresentativeRouter)
 
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);

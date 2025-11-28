@@ -12,7 +12,7 @@ export default function EscolherPlano({ slug }) {
   const router = useRouter();
 
   const [step, setStep] = useState(1);
-
+  const [representante, setRepresentante] = useState(null);
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState([]);
 
@@ -54,9 +54,25 @@ export default function EscolherPlano({ slug }) {
     loadPlans();
   }, []);
 
-  // ==========================================
-  // 🔐 Criar assinatura
-  // ==========================================
+  useEffect(() => {
+    const loadRep = async () => {
+      try {
+        const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/representative-organization/${slug}`,
+        {
+          withCredentials: true
+        }
+        );
+        setRepresentante(res.data);
+        console.log("FRONT RECEBEU REPRESENTANTE =>", res.data[0]);
+      } catch (err) {
+        console.error("Erro ao carregar dados do representante:", err);
+      }
+    };
+
+    loadRep();
+  }, [slug]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -68,13 +84,28 @@ export default function EscolherPlano({ slug }) {
       const body = {
         plan_id: selectedPlan.id,
         billing_type: selectedBilling,
+        payment_method: "credit_card",
         slug,
+        customer: {
+          name: representante?.users?.username?.normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
+          email: representante?.users?.email,
+          document: representante?.organizations?.document_number,
+          type: representante?.organizations?.document_type === "cnpj" ? "company" : "individual",
+          phones: {
+            mobile_phone: {
+              country_code: "55",
+              area_code: representante?.users?.phone?.replace(/\D/g, "").slice(0, 2),
+              number: representante?.users?.phone?.replace(/\D/g, "").slice(2),
+            }
+          }
+        },
         card: { ...cardData },
       };
 
       await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/pagarme/subscriptions`,
-        body
+        body,
+        { headers: { "Content-Type": "application/json" } }
       );
 
       toast.success("Assinatura criada com sucesso!");
