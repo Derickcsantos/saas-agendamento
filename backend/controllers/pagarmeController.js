@@ -1,5 +1,6 @@
 import axios from "axios";
 import dotenv from "dotenv";
+import { supabase } from "../lib/supabase.js";
 
 dotenv.config();
 
@@ -126,8 +127,24 @@ export const PagarmeController = {
   async createPlan(req, res) {
     try {
       const response = await pagarme.post("/plans", req.body);
+      const plan = response.data;
 
-      return res.status(201).json(response.data);
+      const { error } = await supabase
+        .from("plans")
+        .insert({
+          pagarme_plan_id: plan.id,
+          name_plan: plan.name,
+          description_plan: plan.description,
+          price_plan: plan.items?.[0]?.pricing_scheme?.price / 100 || 0,
+          interval_plan: plan.interval,
+          billing_type: plan.billing_type,
+          is_active: plan.status === "active",
+          created_at: new Date().toISOString(),
+        });
+
+      if (error) throw error;
+
+      return res.status(201).json(plan);
     } catch (error) {
       console.error("Erro ao criar plano:", error.response?.data || error);
       return res.status(500).json(error.response?.data || { message: "Erro interno" });
@@ -155,8 +172,25 @@ export const PagarmeController = {
       const { plan_id } = req.params;
 
       const response = await pagarme.put(`/plans/${plan_id}`, req.body);
+      const plan = response.data;
 
-      return res.status(200).json(response.data);
+      // sincronizar banco
+      const { error } = await supabase
+        .from("plans")
+        .update({
+          name_plan: plan.name,
+          description_plan: plan.description,
+          price_plan: plan.items?.[0]?.pricing_scheme?.price / 100 || 0,
+          interval_plan: plan.interval,
+          billing_type: plan.billing_type,
+          is_active: plan.status === "active",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("pagarme_plan_id", plan_id);
+
+      if (error) throw error;
+
+      return res.status(200).json(plan);
     } catch (error) {
       console.error("Erro ao atualizar plano:", error.response?.data || error);
       return res.status(500).json(error.response?.data || { message: "Erro interno" });
@@ -168,6 +202,13 @@ export const PagarmeController = {
       const { plan_id } = req.params;
 
       const response = await pagarme.delete(`/plans/${plan_id}`);
+
+      const { error } = await supabase
+      .from("plans")
+      .delete()
+      .eq("pagarme_plan_id", plan_id);
+
+      if (error) throw error;
 
       return res.status(200).json({ message: "Plano excluído com sucesso", data: response.data });
     } catch (error) {

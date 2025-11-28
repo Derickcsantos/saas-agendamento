@@ -37,6 +37,8 @@ import { appointmentProcessRouter } from './routes/appointmentsProcessRoutes.js'
 import { organizationPoliciesRouter } from "./routes/organizationPoliciesRoutes.js";
 import { pagarmeRouter } from './routes/pagarmeRoutes.js';
 import { userRepresentativeRouter } from './routes/userRepresentativeRoutes.js';
+import { plansRouter } from "./routes/plansRoutes.js";
+import { subscriptionsRouter } from "./routes/subscriptionRoutes.js";
 
 const app = express();
 const port = process.env.PORT || 3333;
@@ -97,6 +99,8 @@ app.use('/api/organization-colors', organizationColorsRouter)
 app.use("/api/organization-policies", organizationPoliciesRouter);
 app.use('/api/pagarme', pagarmeRouter)
 app.use('/api/representative-organization', userRepresentativeRouter)
+app.use("/api/plans", plansRouter);
+app.use("/api/subscriptions", subscriptionsRouter);
 
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
