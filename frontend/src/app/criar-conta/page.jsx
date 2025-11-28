@@ -4,9 +4,11 @@ import { useState } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from 'react-toastify'
+import { useRouter } from "next/navigation";
 
 export default function CreateOrganization() {
   const [step, setStep] = useState(1);
+  const router = useRouter();
 
   const [orgData, setOrgData] = useState({
     name: "",
@@ -87,20 +89,24 @@ export default function CreateOrganization() {
         formData
       );
 
-      // SE A API RETORNAR UM SLUG FINAL, USE ELE. CASO CONTRÁRIO, USE O LOCAL.
       const returnedSlug = orgResponse.data?.slug_organization || localSlug;
 
-      // ----------------------------
-      // 2️⃣ ENVIO DO REPRESENTANTE
-      // ----------------------------
-      await axios.post(
+
+      const userResponse = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/users/${returnedSlug}`,
         repData
       );
 
-      // ----------------------------
-      // 3️⃣ ENVIO DAS CORES (opcional)
-      // ----------------------------
+      const userId = userResponse.data?.id || 19;
+
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/representative-organization/${returnedSlug}`,
+        { userId: userId }, 
+        {
+          withCredentials: true 
+        }
+      );
+
       const hasColors =
         orgData.strong_color.trim() !== "" ||
         orgData.light_color.trim() !== "";
@@ -128,13 +134,13 @@ export default function CreateOrganization() {
             );
           } catch (err2) {
             console.error("Falha ao salvar cores mesmo após nova tentativa.");
-            // ❗ Não quebra o fluxo. A conta é criada mesmo sem as cores.
           }
         }
       }
 
 
       toast.success("Conta criada com sucesso!");
+      router.push(`/escolher-plano/${returnedSlug}`)
       setIsReviewOpen(false);
 
     } catch (error) {
