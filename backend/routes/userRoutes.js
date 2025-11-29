@@ -1,6 +1,7 @@
 import Router from 'express';
 import { getUsers, getUserById, createUser, updateUser, deleteUser } from '../controllers/usersController.js'
-import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddleware.js';
+import { authenticateJWT} from '../middlewares/authMiddleware.js';
+import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
 
 export const userRouter = Router();
 
@@ -32,7 +33,7 @@ export const userRouter = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-userRouter.get('/:slug', authenticateJWT, getUsers)
+userRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, getUsers)
 
 /**
  * @swagger
