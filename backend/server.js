@@ -41,7 +41,7 @@ import { plansRouter } from "./routes/plansRoutes.js";
 import { subscriptionsRouter } from "./routes/subscriptionRoutes.js";
 
 const app = express();
-const port = process.env.PORT || 3333;
+const port = process.env.PORT || 3000;
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
