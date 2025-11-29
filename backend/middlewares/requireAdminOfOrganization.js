@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase.js";
 export const requireAdminOfOrganization = async (req, res, next) => {
   try {
     // Slug que identifica o tenant alvo da rota
-    const slug = req.params.slug_organization;
+    const slug = req.params.slug;
 
     if (!slug) {
       return res.status(400).json({
