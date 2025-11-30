@@ -48,8 +48,8 @@ export default function UsersTab({ org }) {
     try {
       const method = editing ? "PUT" : "POST";
       const url = editing
-        ? `${API}/api/users/${editing}?organization_id=${org.id}`
-        : `${API}/api/users?organization_id=${org.id}`;
+        ? `${API}/api/users/${orgSlug}/${org.id}/${editing}`
+        : `${API}/api/users/${orgSlug}`;
 
       const body = {
         username: form.username,
