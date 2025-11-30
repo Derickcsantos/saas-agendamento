@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddleware.js'
 import { getRevenues, exportRevenue } from '../controllers/revenueController.js'
+import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js'
 
 export const revenueRouter = Router()
 
@@ -95,7 +96,7 @@ export const revenueRouter = Router()
  *       500:
  *         description: Erro interno do servidor
  */
-revenueRouter.get('/:slug', getRevenues)
+revenueRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, getRevenues)
 
 
 /**
@@ -129,4 +130,4 @@ revenueRouter.get('/:slug', getRevenues)
  *       500:
  *         description: Erro interno do servidor
  */
-revenueRouter.get('/export', extractOrganizationId, exportRevenue)
+revenueRouter.get('/export', authenticateJWT, requireAdminOfOrganization, exportRevenue)

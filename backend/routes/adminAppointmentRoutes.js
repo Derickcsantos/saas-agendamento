@@ -9,6 +9,7 @@ import {
   getCancelledAppointments
 } from '../controllers/adminAppointmentsController.js';
 import { authenticateJWT } from '../middlewares/authMiddleware.js';
+import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
 
 export const adminAppointmentRouter = Router();
 
@@ -47,7 +48,7 @@ export const adminAppointmentRouter = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-adminAppointmentRouter.get('/:slug', authenticateJWT, getAdminAppointments);
+adminAppointmentRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, getAdminAppointments);
 
 
 /**
@@ -94,7 +95,7 @@ adminAppointmentRouter.get('/:slug', authenticateJWT, getAdminAppointments);
  *       500:
  *         description: Erro interno do servidor
  */
-adminAppointmentRouter.get('/:slug/:id', authenticateJWT, getAdminAppointmentById);
+adminAppointmentRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganization, getAdminAppointmentById);
 
 /**
  * @swagger

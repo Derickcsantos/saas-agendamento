@@ -8,6 +8,7 @@ import {
   deleteCategory,
 } from '../controllers/categoriesController.js';
 import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddleware.js';
+import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
 
 export const categoryRouter = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -82,7 +83,7 @@ categoryRouter.get('/:slug', authenticateJWT, getAllCategories);
  *       500:
  *         description: Erro interno do servidor
  */
-categoryRouter.get('/:id', authenticateJWT, getCategoryById);
+categoryRouter.get('/:id', authenticateJWT, requireAdminOfOrganization, getCategoryById);
 
 /**
  * @swagger
@@ -128,7 +129,7 @@ categoryRouter.get('/:id', authenticateJWT, getCategoryById);
  *       500:
  *         description: Erro interno do servidor
  */
-categoryRouter.post('/:slug', authenticateJWT, upload.single('image'), createCategory);
+categoryRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, upload.single('image'), createCategory);
 
 /**
  * @swagger
@@ -211,4 +212,4 @@ categoryRouter.put('/:slug/:id', authenticateJWT,  upload.single('image'), updat
  *       500:
  *         description: Erro interno do servidor
  */
-categoryRouter.delete('/:slug/:id', authenticateJWT, deleteCategory);
+categoryRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, deleteCategory);

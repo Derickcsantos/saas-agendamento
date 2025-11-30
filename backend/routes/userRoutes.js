@@ -63,7 +63,7 @@ userRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, getUsers)
  *         description: Erro interno do servidor
  */
 
-userRouter.get('/:id', authenticateJWT, getUserById)
+userRouter.get('/:id', authenticateJWT, requireAdminOfOrganization, getUserById)
 
 
 /**
@@ -164,5 +164,5 @@ userRouter.put('/:id', authenticateJWT, updateUser)
  *       500:
  *         description: Erro interno do servidor
  */
-userRouter.delete('/:id', authenticateJWT, deleteUser)
+userRouter.delete('/:id', authenticateJWT, requireAdminOfOrganization, deleteUser)
 
