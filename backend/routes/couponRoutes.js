@@ -8,6 +8,7 @@ import {
   deleteCoupon,  
   validateCoupon
 } from '../controllers/couponController.js';
+import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
 
 export const couponRouter = Router();
 
@@ -90,7 +91,7 @@ couponRouter.get('/:slug/:id', authenticateJWT, getCouponById);
  *       500:
  *         description: Erro interno do servidor
  */
-couponRouter.post('/:slug', authenticateJWT, createCoupon);
+couponRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, createCoupon);
 
 /**
  * @swagger
@@ -123,7 +124,7 @@ couponRouter.post('/:slug', authenticateJWT, createCoupon);
  *       500:
  *         description: Erro interno do servidor
  */
-couponRouter.put('/:id', authenticateJWT, updateCoupon);
+couponRouter.put('/:id', authenticateJWT, requireAdminOfOrganization, updateCoupon);
 
 /**
  * @swagger
@@ -146,7 +147,7 @@ couponRouter.put('/:id', authenticateJWT, updateCoupon);
  *       500:
  *         description: Erro interno do servidor
  */
-couponRouter.delete('/:slug/:id', authenticateJWT, deleteCoupon);
+couponRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, deleteCoupon);
 
 /**
  * @swagger
