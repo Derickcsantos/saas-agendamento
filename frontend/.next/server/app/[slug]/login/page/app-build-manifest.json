@@ -1,13 +1,13 @@
 {
   "pages": {
     "/[slug]/login/page": [
-      "static/chunks/node_modules_next_dist_8db7fb1f._.js",
-      "static/chunks/src_app_favicon_ico_mjs_243aa161._.js",
-      "static/chunks/[root-of-the-server]__a3dce129._.css",
-      "static/chunks/src_app_layout_0a548d63.js",
-      "static/chunks/node_modules_next_dist_client_components_builtin_global-error_3ead9ac7.js",
-      "static/chunks/_3acc824d._.js",
-      "static/chunks/src_app_[slug]_login_page_3ead9ac7.js",
+      "static/chunks/[root-of-the-server]__ddac3b83._.css",
+      "static/chunks/node_modules_7a88b279._.js",
+      "static/chunks/src_app_components_541c4631._.js",
+      "static/chunks/src_app_layout_jsx_0a548d63._.js",
+      "static/chunks/node_modules_next_dist_client_components_builtin_global-error_a0733916.js",
+      "static/chunks/src_app_[slug]_login_LoginPage_jsx_144ad73d._.js",
+      "static/chunks/src_app_[slug]_login_page_a0733916.js",
       "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_57d40746._.js",
       "static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js",
       "static/chunks/node_modules_next_dist_compiled_next-devtools_index_a9cb0712.js",
