@@ -41,7 +41,7 @@ export const userRepresentativeRouter = Router();
  */
 userRepresentativeRouter.get('/', authenticateJWT, getUserRepresentatives)
 
-userRepresentativeRouter.get('/:slug', authenticateJWT, getUserRepresentativeBySlug)
+userRepresentativeRouter.get('/:slug', getUserRepresentativeBySlug)
 /**
  * @swagger
  * /api/users/{id}:

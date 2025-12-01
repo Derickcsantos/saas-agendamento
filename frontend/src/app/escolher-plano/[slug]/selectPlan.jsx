@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { CreditCard, CheckCircle, ArrowRight } from "lucide-react";
+import { CreditCardComponent } from '../../components/CreditCard'
 
 const BRAND = "#5E3BEE";
 
@@ -411,6 +412,10 @@ export default function EscolherPlano({ slug }) {
               >
                 Trocar plano
               </button>
+            </div>
+
+            <div className="flex justify-center">
+              <CreditCardComponent name={cardData.holder_name} number={cardData.number} month={cardData.exp_month} year={cardData.exp_year} cvv={cardData.cvv}/>
             </div>
 
             <h2 className="font-bold text-xl text-gray-900 flex items-center gap-2">
