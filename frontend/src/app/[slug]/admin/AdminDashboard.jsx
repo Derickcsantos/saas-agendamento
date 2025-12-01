@@ -140,8 +140,25 @@ export default function AdminDashboard({ slug }) {
             </section>
 
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-              <ChartCard status={stats?.monthlyAppointments} title="Agendamentos por mês" id="appointmentsChart" />
-              <ChartCard title="Serviços mais populares" id="servicesChart" />
+              <ChartCard
+                id="appointmentsChart"
+                title="Agendamentos por mês"
+                data={{
+                  labels: [
+                    "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+                    "Jul", "Ago", "Set", "Out", "Nov", "Dez"
+                  ],
+                  values: stats?.monthlyAppointments || []
+                }}
+              />
+              <ChartCard
+                id="servicesChart"
+                title="Serviços mais populares"
+                data={{
+                  labels: (stats?.servicesPopularity || []).map(s => s.service),
+                  values: (stats?.servicesPopularity || []).map(s => s.count),
+                }}
+              />
             </section>
 
             <section className="mt-6 space-y-6">

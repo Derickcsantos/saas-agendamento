@@ -114,7 +114,7 @@ export default function MyAccountPage() {
             className="flex items-center gap-2 cursor-pointer"
           >
             <img
-              src={orgData?.organizations.logo_organization || "/img/LogoPaulaTrancas.png"}
+              src={orgData?.organizations?.logo_organization || "/img/LogoPaulaTrancas.png"}
               alt="Logo"
               className="w-10 h-10 rounded-full border border-white"
             />

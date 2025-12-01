@@ -1,50 +1,37 @@
 "use client";
-import { useEffect, useRef } from "react";
-import { Chart } from "chart.js/auto";
 
-export default function ChartCard({ title, id, status }) {
-  const chartInstance = useRef(null);
+import { Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend
+} from "chart.js";
 
-  useEffect(() => {
-    const ctx = document.getElementById(id);
-    if (!ctx) return;
+ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
-    // Se já existe um chart anterior, destrói antes de criar outro
-    if (chartInstance.current) {
-      chartInstance.current.destroy();
-    }
-
-
-    chartInstance.current = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"],
-        datasets: [
-          {
-            label: title,
-            data: [5, 10, 8, 12, 6, 9],
-            backgroundColor: "rgba(99, 102, 241, 0.6)",
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-      },
-    });
-
-    // Cleanup quando o componente desmontar
-    return () => {
-      if (chartInstance.current) {
-        chartInstance.current.destroy();
+export default function ChartCard({ id, title, data }) {
+  const chartData = {
+    labels: data.labels,
+    datasets: [
+      {
+        label: title,
+        data: data.values,
+        backgroundColor: "rgba(94, 59, 238, 0.3)",
+        borderColor: "rgba(94, 59, 238, 1)",
+        borderWidth: 2,
+        borderRadius: 6,
+        maxBarThickness: 50,
       }
-    };
-  }, [id, title]);
+    ]
+  };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border h-72">
-      <h4 className="font-semibold text-gray-700 mb-4">{title}</h4>
-      <canvas id={id} className="w-full h-full" />
+    <div className="bg-white p-6 rounded-xl shadow-md">
+      <h2 className="text-lg font-semibold mb-4">{title}</h2>
+      <Bar data={chartData} />
     </div>
   );
 }
