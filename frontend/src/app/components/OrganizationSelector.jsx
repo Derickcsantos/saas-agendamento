@@ -23,7 +23,7 @@ export function OrganizationSelector() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:3000/api/organizations");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations`);
       const data = await res.json();
 
       const safeArray = Array.isArray(data) ? data : [];
