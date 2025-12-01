@@ -8,9 +8,9 @@ export default function ClientLanding({ slug }) {
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // =========================
+  // -------------------------------------------------
   // Helpers
-  // =========================
+  // -------------------------------------------------
   const normalizeWhatsapp = (phone) => {
     if (!phone) return "";
     const onlyNumbers = phone.replace(/\D/g, "");
@@ -19,9 +19,8 @@ export default function ClientLanding({ slug }) {
   };
 
   const whatsappLink = (phone) => {
-    const norm = normalizeWhatsapp(phone);
-    if (!norm) return "#";
-    return `https://wa.me/${norm}`;
+    const n = normalizeWhatsapp(phone);
+    return n ? `https://wa.me/${n}` : "#";
   };
 
   const instagramLink = (url) => {
@@ -30,11 +29,11 @@ export default function ClientLanding({ slug }) {
     return `https://instagram.com/${url.replace("@", "")}`;
   };
 
-  // =========================
-  // Fetch
-  // =========================
+  // -------------------------------------------------
+  // Fetch Data
+  // -------------------------------------------------
   useEffect(() => {
-    async function fetchData() {
+    async function load() {
       if (!slug) return;
 
       setLoading(true);
@@ -44,932 +43,833 @@ export default function ClientLanding({ slug }) {
         const [landingRes, colorRes] = await Promise.all([
           fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/api/landing-page/${slug}`,
-            {
-              credentials: "include",
-            }
+            { credentials: "include" }
           ),
           fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`,
             { credentials: "include" }
-          ),
+          )
         ]);
 
-        if (!landingRes.ok) {
-          throw new Error("Landing not found");
-        }
+        if (!landingRes.ok) throw new Error("not found");
 
-        const landingData = await landingRes.json();
-        const paletteData = colorRes.ok ? await colorRes.json() : null;
+        const landingJson = await landingRes.json();
+        const paletteJson = colorRes.ok ? await colorRes.json() : null;
 
-        setLanding(landingData);
-        setPalette(paletteData);
-      } catch (err) {
-        console.error("Erro ao buscar dados da landing:", err);
+        setLanding(landingJson);
+        setPalette(paletteJson);
+      } catch (e) {
+        console.error(e);
         setNotFound(true);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchData();
+    load();
   }, [slug]);
 
-  // =========================
-  // Estados de carregamento / erro
-  // =========================
+  // -------------------------------------------------
+  // Loading Screen (Ultra Minimal)
+  // -------------------------------------------------
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-slate-100">
-        <div className="flex flex-col items-center gap-4">
-          <span className="h-10 w-10 rounded-full border-2 border-slate-500 border-t-transparent animate-spin" />
-          <p className="text-sm uppercase tracking-[0.25em] text-slate-400">
-            Preparando sua página profissional...
+      <main className="min-h-screen flex items-center justify-center bg-white text-gray-700">
+        <div className="flex flex-col items-center gap-3 animate-fadeIn">
+          <span className="h-8 w-8 rounded-full border-2 border-gray-200 border-t-gray-400 animate-spin" />
+          <p className="text-xs tracking-widest text-gray-500">
+            Carregando sua experiência premium...
           </p>
         </div>
       </main>
     );
   }
 
+  // -------------------------------------------------
+  // Not Found
+  // -------------------------------------------------
   if (notFound || !landing) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-slate-100 px-6 text-center">
-        <h1 className="text-4xl font-bold mb-3">
-          Essa página ainda não está pronta 😕
+      <main className="min-h-screen flex flex-col items-center justify-center bg-white text-gray-800 p-6 text-center">
+        <h1 className="text-3xl font-semibold mb-3">
+          Esta página ainda não está disponível
         </h1>
-        <p className="text-slate-400 max-w-xl mb-6">
-          Parece que o profissional ainda não configurou a página. Assim que
-          isso acontecer, você poderá agendar online de forma rápida e simples.
+        <p className="text-gray-500 max-w-md mb-6 leading-relaxed">
+          O profissional ainda não concluiu a configuração.  
+          Assim que estiver tudo pronto, você poderá acessar uma
+          página moderna, clara, intuitiva e totalmente otimizada 
+          para agendamentos rápidos.
         </p>
 
         <a
           href="/"
-          className="px-6 py-3 rounded-xl bg-white text-slate-900 font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition"
+          className="px-6 py-2 rounded-full bg-gray-900 text-white text-sm font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
         >
-          Voltar para o início
+          Voltar ao início
         </a>
       </main>
     );
   }
 
-  const org = landing.org || landing.organizations || null;
+  // -------------------------------------------------
+  // Palette + Defaults
+  // -------------------------------------------------
+  const STRONG = palette?.strong_color || "#5E3BEE"; // destaque
+  const TEXT = "#111827";
+  const TEXT_SOFT = "#4B5563";
+  const BG = "#ffffff";
 
-  // =========================
-  // Cores padrão
-  // =========================
-  const STRONG = palette?.strong_color || "#5E3BEE";
-  const BG_MAIN = palette?.background_color_main || "#f5f5f7";
-  const TEXT = palette?.text_color || "#111827";
-  const SOFT = palette?.soft_color || "#E5E7EB";
+  const org = landing.org || landing.organizations || {};
 
-  // =========================
-  // Background dinâmico
-  // =========================
-  const dynamicBackground = landing.background_image_url
-    ? {
-        backgroundImage: `url(${landing.background_image_url})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }
-    : {
-        background: `radial-gradient(circle at top left, ${STRONG}11, transparent 55%), radial-gradient(circle at bottom right, ${STRONG}22, transparent 55%), ${BG_MAIN}`,
-      };
-
-  const blurValue = Number(landing.background_blur || 0);
-  const opacityValue = Number(landing.background_opacity || 1);
-
-  // =========================
-  // Defaults de conteúdo (copy)
-  // =========================
-  const heroTitleDefault =
+  // Copies longas e persuasivas
+  const heroTitle =
     landing.hero_title ||
-    "Agende seu horário em poucos cliques, sem filas e sem espera.";
+    "Transforme sua rotina com agendamentos modernos, rápidos e pensados para quem valoriza tempo, bem-estar e praticidade.";
 
-  const heroSubtitleDefault =
+  const heroSubtitle =
     landing.hero_subtitle ||
-    "Facilite sua rotina e ofereça uma experiência moderna para seus clientes — agenda online, confirmação automática e tudo organizado em um só lugar.";
+    "Agendar nunca foi tão fácil. Em poucos cliques você encontra horários disponíveis, confirma sua visita e recebe lembretes automáticos. Ideal para consultórios, clínicas, salões, mentores, estúdios, terapeutas, coaches, nutricionistas, personal trainers e qualquer profissional que deseje oferecer uma experiência impecável.";
 
-  const heroButtonText = landing.hero_button_text || "Agendar agora";
+  const heroButtonText =
+    landing.hero_button_text || "Agendar agora — é rápido, fácil e gratuito";
 
-  const aboutTitle = landing.about_title || "Profissionais que cuidam de você";
-  const aboutText =
-    landing.about_text ||
-    "Aqui você encontra atendimento humanizado, pontualidade e cuidado em cada detalhe. Seja para um tratamento de saúde, um cuidado com a beleza ou uma sessão de mentoria, nossa missão é oferecer uma experiência leve, acolhedora e profissional.";
-
-  const servicesTitle =
-    landing.services_title || "Como podemos transformar o seu dia";
-
-  const contactTitle =
-    landing.contact_title || "Pronto para agendar seu próximo horário?";
-
-  const galleryTitle =
-    landing.gallery_title || "Veja resultados reais do nosso trabalho";
-
-  const gallerySubtitle =
-    landing.gallery_subtitle ||
-    "Em breve você poderá conferir aqui fotos reais de atendimentos, ambientes e transformações incríveis.";
-
-  const testimonialsTitle =
-    landing.testimonials_title || "O que nossos clientes dizem";
-
-  const testimonialsSubtitle =
-    landing.testimonials_subtitle ||
-    "Depoimentos de pessoas que já confiaram em nosso trabalho e hoje fazem parte da nossa história.";
-
-  const teamTitle =
-    landing.team_title || "Uma equipe preparada para te atender";
-  const teamSubtitle =
-    landing.team_subtitle ||
-    "Profissionais atualizados, apaixonados pelo que fazem e focados em oferecer o melhor atendimento possível.";
-
-  // =========================
-  // UI
-  // =========================
+  // -------------------------------------------------
+  // UI — Ultra Premium Light (Linear Style)
+  // -------------------------------------------------
   return (
-    <main
-      className="font-sans min-h-screen text-slate-900"
-      style={{ ...dynamicBackground, color: TEXT, opacity: opacityValue }}
-    >
-      {/* GRADIENT OVERLAY + BLUR GLOBAL */}
-      <div
-        className="min-h-screen"
-        style={{
-          backdropFilter: `blur(${blurValue}px)`,
-        }}
+    <main className="font-sans bg-white text-gray-900 min-h-screen">
+      {/* NAVBAR */}
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl shadow-[0_2px_20px_rgba(0,0,0,0.03)]">
+        <nav className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          {/* LEFT */}
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gray-50 shadow-sm flex items-center justify-center overflow-hidden border border-black/5">
+              {org.logo_organization ? (
+                <img
+                  src={org.logo_organization}
+                  alt={org.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-xs font-semibold text-gray-800">
+                  {(org?.name || "MB")
+                    .split(" ")
+                    .map((i) => i[0])
+                    .join("")
+                    .substring(0, 2)
+                    .toUpperCase()}
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-gray-900">
+                {org?.name || "Seu espaço profissional"}
+              </span>
+              <span className="text-xs text-gray-500">
+                Atendimento moderno e organizado
+              </span>
+            </div>
+          </div>
+
+          {/* RIGHT */}
+          <div className="hidden md:flex items-center gap-6 text-sm text-gray-600">
+            <a href={`/${slug}#sobre`} className="hover:text-gray-900 transition">
+              Sobre
+            </a>
+            <a
+              href={`/${slug}#como-funciona`}
+              className="hover:text-gray-900 transition"
+            >
+              Como funciona
+            </a>
+            <a
+              href={`/${slug}#beneficios`}
+              className="hover:text-gray-900 transition"
+            >
+              Benefícios
+            </a>
+            <a
+              href={`/${slug}#contato`}
+              className="hover:text-gray-900 transition"
+            >
+              Contato
+            </a>
+
+            <a
+              href={`/${slug}/agendar`}
+              className="px-4 py-2 rounded-full bg-gray-900 text-white shadow hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs font-semibold"
+            >
+              Agendar
+            </a>
+          </div>
+        </nav>
+      </header>
+
+      {/* HERO */}
+      <section className="relative px-4 pt-16 pb-24 max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-12">
+        {/* TEXT */}
+        <div className="flex-1 space-y-6 animate-fadeUp">
+          <span
+            className="inline-flex px-4 py-1 rounded-full text-xs font-medium shadow-sm"
+            style={{
+              backgroundColor: `${STRONG}15`,
+              color: STRONG,
+            }}
+          >
+            Agenda sempre disponível • Atendimento profissional
+          </span>
+
+          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 leading-tight">
+            {heroTitle}
+          </h1>
+
+          <p className="text-gray-600 text-base md:text-lg leading-relaxed max-w-xl">
+            {heroSubtitle}
+          </p>
+
+          {/* CTA */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 pt-4">
+            <a
+              href={`/${slug}/agendar`}
+              className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 rounded-full text-sm font-semibold text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+              style={{
+                backgroundColor: STRONG,
+                boxShadow: `0 8px 20px ${STRONG}35`,
+              }}
+            >
+              {heroButtonText}
+            </a>
+
+            <a
+              href={whatsappLink(landing.whatsapp)}
+              target="_blank"
+              className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 rounded-full border border-black/5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-all"
+            >
+              Falar no WhatsApp
+            </a>
+          </div>
+
+          <p className="text-xs text-gray-500">
+            * Agendar é gratuito. Pagamento feito somente no dia do atendimento.
+          </p>
+        </div>
+
+        {/* SIDE CARD */}
+        <div className="flex-1 flex justify-center animate-fadeUpDelay">
+          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-[0_10px_40px_rgba(0,0,0,0.06)] border border-black/5">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-500">Próximos horários</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  Agende em menos de 1 minuto
+                </p>
+              </div>
+
+              <span
+                className="px-3 py-1 text-[10px] rounded-full font-medium text-white"
+                style={{ backgroundColor: STRONG }}
+              >
+                Atendendo
+              </span>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* presencial */}
+              <div className="rounded-2xl bg-gray-50 p-4 shadow-sm border border-black/5 hover:shadow-md transition-all">
+                <p className="font-semibold text-gray-900">Atendimento presencial</p>
+                <p className="text-gray-600">
+                  Endereço:{" "}
+                  {landing.endereco ||
+                    org?.address ||
+                    "Será informado no momento da confirmação"}
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-gray-50 p-4 shadow-sm border border-black/5 hover:shadow-md transition-all">
+                <p className="font-semibold text-gray-900">Agendamento online</p>
+                <p className="text-gray-600">
+                  Horários sempre atualizados em tempo real.
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-gray-50 p-4 shadow-sm border border-black/5 hover:shadow-md transition-all">
+                <p className="font-semibold text-gray-900">Área do cliente</p>
+                <p className="text-gray-600">
+                  Consulte histórico, reagende e atualize seus dados.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      {/* ============================================
+          ABOUT — Seção institucional premium
+      ============================================= */}
+      <section
+        id="sobre"
+        className="w-full bg-white border-t border-black/5 border-b border-black/5"
       >
-        {/* =========================
-            NAVBAR / HEADER FIXO
-        ========================== */}
-        <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
-          <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-            {/* Logo + nome */}
-            <div className="flex items-center gap-3">
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-full bg-slate-900/70 shadow-lg shadow-black/40 overflow-hidden border border-white/10">
-                {org?.logo_organization ? (
-                  <img
-                    src={org.logo_organization}
-                    alt={org.name || "Logo"}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="text-xs font-semibold text-white">
-                    {(org?.name || "Seu negócio")
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .substring(0, 2)
-                      .toUpperCase()}
-                  </span>
-                )}
+        <div className="max-w-6xl mx-auto px-4 py-20 grid md:grid-cols-2 gap-12 items-center">
+
+          {/* TEXT */}
+          <div className="space-y-6 animate-fadeUp">
+            <span className="text-xs font-semibold tracking-widest text-gray-400">
+              SOBRE O PROFISSIONAL
+            </span>
+
+            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
+              {landing.about_title ||
+                "Profissionais comprometidos com cuidado, excelência e uma experiência inesquecível."}
+            </h2>
+
+            <p className="text-gray-600 leading-relaxed text-base md:text-lg">
+              {landing.about_text ||
+                "Aqui você encontra uma abordagem moderna e acolhedora. Seja para saúde, estética, performance, bem-estar ou desenvolvimento pessoal, o atendimento é pensado para proporcionar conforto, transparência, segurança e uma jornada impecável do início ao fim. Pontualidade, clareza e qualidade fazem parte da essência do nosso trabalho."}
+            </p>
+
+            <div className="grid sm:grid-cols-2 gap-4 pt-4">
+              <div className="rounded-2xl bg-gray-50 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-black/5 transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)]">
+                <p className="text-sm font-semibold text-gray-900 mb-1">
+                  Atendimento personalizado
+                </p>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Tratamentos e serviços adaptados às suas necessidades, com atenção aos detalhes.
+                </p>
               </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">
-                  {org?.name || "Seu espaço, sua marca"}
-                </span>
-                <span className="text-xs text-slate-400">
-                  Agendamento simples, profissionalismo em cada detalhe.
-                </span>
+
+              <div className="rounded-2xl bg-gray-50 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-black/5 transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)]">
+                <p className="text-sm font-semibold text-gray-900 mb-1">
+                  Ambiente seguro e acolhedor
+                </p>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Focado em garantir tranquilidade para você relaxar e aproveitar o momento.
+                </p>
               </div>
             </div>
+          </div>
 
-            {/* Links principais */}
-            <div className="hidden gap-6 text-sm font-medium text-slate-200 md:flex">
-              <a href={`/${slug}#sobre`} className="hover:text-white">
-                Sobre
-              </a>
-              <a href={`/${slug}#como-funciona`} className="hover:text-white">
-                Como funciona
-              </a>
-              <a href={`/${slug}#beneficios`} className="hover:text-white">
-                Benefícios
-              </a>
-              <a href={`/${slug}#contato`} className="hover:text-white">
-                Contato
-              </a>
-            </div>
-
-            {/* CTA agendar */}
-            <div className="flex items-center gap-3">
-              <a
-                href={`/${slug}/login`}
-                className="hidden text-xs font-medium text-slate-300 hover:text-white md:inline"
-              >
-                Área do cliente
-              </a>
-              <a
-                href={`/${slug}/agendar`}
-                className="inline-flex items-center rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-900 shadow-lg shadow-black/20 hover:-translate-y-0.5 hover:shadow-xl transition"
-              >
-                Agendar agora
-              </a>
-            </div>
-          </nav>
-        </header>
-
-        {/* =========================
-            HERO SECTION
-        ========================== */}
-        <section className="relative overflow-hidden border-b border-white/10 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900">
-          {/* background hero image */}
-          {landing.hero_image_url && (
-            <div className="pointer-events-none absolute inset-0 opacity-40 mix-blend-soft-light">
+          {/* IMAGE */}
+          <div className="relative animate-fadeUpDelay">
+            <div className="absolute inset-0 rounded-3xl bg-gray-100 blur-2xl opacity-70"></div>
+            <div className="relative rounded-3xl overflow-hidden shadow-[0_12px_50px_rgba(0,0,0,0.06)] border border-black/5">
               <img
-                src={landing.hero_image_url}
-                alt="Hero"
-                className="h-full w-full object-cover"
+                src={
+                  landing.about_image_url ||
+                  landing.hero_image_url ||
+                  "https://images.pexels.com/photos/8467412/pexels-photo-8467412.jpeg?auto=compress&cs=tinysrgb&w=1200"
+                }
+                alt="Ambiente"
+                className="w-full h-[320px] md:h-[380px] object-cover"
               />
             </div>
-          )}
+          </div>
+        </div>
+      </section>
 
-          {/* decorative blobs */}
-          <div className="pointer-events-none absolute -left-10 top-10 h-48 w-48 rounded-full bg-[radial-gradient(circle_at_top,_#ffffff20,_transparent_60%)] blur-3xl" />
-          <div className="pointer-events-none absolute -right-10 bottom-10 h-56 w-56 rounded-full bg-[radial-gradient(circle_at_bottom,_#6366f180,_transparent_60%)] blur-3xl" />
 
-          <div className="relative mx-auto flex max-w-6xl flex-col gap-12 px-4 py-16 md:flex-row md:items-center md:py-24">
-            {/* Texto */}
-            <div className="md:w-1/2 space-y-6 animate-[fadeInUp_0.6s_ease-out]">
-              <p className="inline-flex items-center gap-2 rounded-full bg-slate-900/70 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.25em] text-slate-300 shadow-lg shadow-black/40">
-                Agenda aberta • Vagas limitadas
-              </p>
+      {/* ============================================
+          COMO FUNCIONA — Passo a passo minimalista
+      ============================================= */}
+      <section
+        id="como-funciona"
+        className="w-full bg-white py-20 border-b border-black/5"
+      >
+        <div className="max-w-6xl mx-auto px-4">
 
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white drop-shadow-[0_20px_60px_rgba(0,0,0,0.95)]">
-                {heroTitleDefault}
-              </h1>
+          {/* TITLE */}
+          <div className="text-center max-w-2xl mx-auto mb-14 space-y-4 animate-fadeUp">
+            <span className="text-xs font-semibold tracking-widest text-gray-400">
+              COMO FUNCIONA
+            </span>
 
-              <p className="text-sm sm:text-base md:text-lg text-slate-300 max-w-xl">
-                {heroSubtitleDefault}
-              </p>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
+              Simples, claro e totalmente intuitivo — do primeiro clique até o atendimento.
+            </h2>
 
-              {/* bullet highlights */}
-              <div className="grid gap-3 text-xs sm:text-sm text-slate-200 sm:grid-cols-2">
-                <div className="flex items-start gap-2">
-                  <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[11px] text-emerald-300">
-                    ✓
-                  </span>
-                  <p>
-                    Agendamento 24/7 direto do celular, sem precisar falar com
-                    ninguém.
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-500/20 text-[11px] text-sky-300">
-                    ✓
-                  </span>
-                  <p>Confirmação automática e lembretes por WhatsApp.</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-violet-500/20 text-[11px] text-violet-300">
-                    ✓
-                  </span>
-                  <p>Ideal para clínicas, consultórios, salões e mentores.</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-[11px] text-amber-300">
-                    ✓
-                  </span>
-                  <p>
-                    Experiência profissional desde o primeiro contato com o
-                    cliente.
-                  </p>
-                </div>
-              </div>
+            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
+              O sistema foi pensado para eliminar atritos, facilitar a vida dos clientes e aumentar a organização do profissional. Tudo funciona de maneira fluida, clara e agradável.
+            </p>
+          </div>
 
-              {/* CTAs */}
-              <div className="flex flex-col sm:flex-row items-center gap-3 pt-4">
-                <a
-                  href={landing.hero_button_url || `/${slug}/agendar`}
-                  className="inline-flex w-full sm:w-auto items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-xl shadow-black/40 hover:-translate-y-0.5 hover:shadow-2xl transition"
-                >
-                  {heroButtonText}
-                </a>
+          {/* STEPS */}
+          <div className="grid md:grid-cols-3 gap-8">
 
-                <a
-                  href={whatsappLink(landing.whatsapp)}
-                  target="_blank"
-                  className="inline-flex w-full sm:w-auto items-center justify-center rounded-full border border-white/40 px-6 py-3 text-xs font-medium text-slate-100 hover:bg-white/10 transition"
-                >
-                  Falar no WhatsApp
-                </a>
-              </div>
+            {/* Step 1 */}
+            <div className="group rounded-3xl bg-white p-7 border border-black/5 shadow-[0_6px_25px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] transition-all animate-fadeUp delay-75">
+              <span className="inline-flex items-center justify-center h-10 w-10 rounded-xl bg-gray-100 text-gray-800 font-semibold shadow-sm mb-4">
+                1
+              </span>
 
-              {/* info */}
-              <p className="text-[11px] text-slate-400">
-                * Você não paga nada para agendar. O pagamento do serviço é
-                feito diretamente com o profissional, no dia do atendimento.
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Escolha o serviço ou profissional
+              </h3>
+
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Você visualiza rapidamente todas as opções de atendimento e escolhe o serviço ideal ou o profissional preferido.
               </p>
             </div>
 
-            {/* Card lateral */}
-            <div className="md:w-1/2 flex justify-center">
-              <div className="w-full max-w-md rounded-3xl border border-white/5 bg-slate-900/80 p-5 shadow-2xl shadow-black/50 backdrop-blur-xl">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-slate-400">
-                      Próximos horários disponíveis
-                    </p>
-                    <p className="text-sm font-semibold text-slate-100">
-                      Agende em menos de 1 minuto
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-[11px] font-medium text-emerald-300">
-                    Atendendo normalmente
-                  </span>
-                </div>
+            {/* Step 2 */}
+            <div className="group rounded-3xl bg-white p-7 border border-black/5 shadow-[0_6px_25px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] transition-all animate-fadeUp delay-100">
+              <span className="inline-flex items-center justify-center h-10 w-10 rounded-xl bg-gray-100 text-gray-800 font-semibold shadow-sm mb-4">
+                2
+              </span>
 
-                <div className="space-y-3 text-xs">
-                  <div className="flex items-center justify-between rounded-2xl bg-slate-800/70 px-4 py-3">
-                    <div>
-                      <p className="font-semibold text-slate-50">
-                        Atendimento presencial
-                      </p>
-                      <p className="text-slate-400">
-                        Endereço:{" "}
-                        {landing.endereco || org?.address || "Será informado na confirmação"}
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-slate-900 px-3 py-1 text-[11px] text-slate-300">
-                      {org?.phone || landing.telefone || "Contato direto"}
-                    </span>
-                  </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Veja os horários disponíveis
+              </h3>
 
-                  <div className="flex items-center justify-between rounded-2xl bg-slate-800/40 px-4 py-3">
-                    <div>
-                      <p className="font-semibold text-slate-50">
-                        Agendamento online
-                      </p>
-                      <p className="text-slate-400">
-                        Horários em tempo real, sem precisar chamar no WhatsApp.
-                      </p>
-                    </div>
-                    <a
-                      href={`/${slug}/agendar`}
-                      className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-900 shadow-md hover:-translate-y-0.5 hover:shadow-lg transition"
-                    >
-                      Ver horários
-                    </a>
-                  </div>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Os horários aparecem automaticamente em tempo real, sem necessidade de troca de mensagens.
+              </p>
+            </div>
 
-                  <div className="flex items-center justify-between rounded-2xl bg-slate-800/40 px-4 py-3">
-                    <div>
-                      <p className="font-semibold text-slate-50">
-                        Área do cliente
-                      </p>
-                      <p className="text-slate-400">
-                        Consulte histórico, reagende e gerencie suas visitas.
-                      </p>
-                    </div>
-                    <a
-                      href={`/${slug}/login`}
-                      className="rounded-full border border-slate-500 px-3 py-1 text-[11px] font-medium text-slate-200 hover:bg-slate-700/80 transition"
-                    >
-                      Acessar
-                    </a>
-                  </div>
-                </div>
+            {/* Step 3 */}
+            <div className="group rounded-3xl bg-white p-7 border border-black/5 shadow-[0_6px_25px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] transition-all animate-fadeUp delay-150">
+              <span className="inline-flex items-center justify-center h-10 w-10 rounded-xl bg-gray-100 text-gray-800 font-semibold shadow-sm mb-4">
+                3
+              </span>
 
-                <div className="mt-4 flex items-center justify-between border-t border-slate-700 pt-3 text-[11px] text-slate-400">
-                  <span>
-                    Página criada com tecnologia{" "}
-                    <strong className="font-semibold text-slate-100">
-                      Marcafy
-                    </strong>
-                  </span>
-                  <a
-                    href={`/${slug}/cadastro`}
-                    className="text-[11px] font-semibold text-violet-300 hover:text-violet-200"
-                  >
-                    Sou profissional e quero uma página dessas
-                  </a>
-                </div>
-              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Confirme e receba lembretes
+              </h3>
+
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Após confirmar seus dados, você recebe alertas automáticos para não esquecer seu compromisso.
+              </p>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* =========================
-            ABOUT SECTION
-        ========================== */}
-        <section
-          id="sobre"
-          className="bg-slate-950/95 border-b border-white/10"
-        >
-          <div className="mx-auto flex max-w-6xl flex-col gap-10 px-4 py-16 md:grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:items-center">
-            {/* texto */}
-            <div className="space-y-4 animate-[fadeIn_0.6s_ease-out]">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-violet-300">
-                Sobre o atendimento
-              </p>
-              <h2 className="text-3xl md:text-4xl font-bold text-white">
-                {aboutTitle}
-              </h2>
-              <p className="text-sm md:text-base text-slate-300 leading-relaxed">
-                {aboutText}
-              </p>
 
-              <div className="grid gap-4 md:grid-cols-2 pt-4">
-                <div className="rounded-2xl bg-slate-900/70 p-4 shadow-lg shadow-black/40">
-                  <p className="text-xs font-semibold text-violet-200 mb-1">
-                    Para quem é ideal?
-                  </p>
-                  <p className="text-sm text-slate-200">
-                    Perfeito para quem valoriza pontualidade, atendimento
-                    organizado e um ambiente acolhedor — seja em clínicas,
-                    consultórios, salões de beleza, studios de manicure,
-                    barbearias ou sessões de mentoria.
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-slate-900/70 p-4 shadow-lg shadow-black/40">
-                  <p className="text-xs font-semibold text-violet-200 mb-1">
-                    Como funciona o atendimento?
-                  </p>
-                  <p className="text-sm text-slate-200">
-                    Você escolhe o horário, preenche alguns dados básicos e
-                    recebe a confirmação. Antes do atendimento, enviaremos
-                    lembretes para que você não esqueça do seu compromisso.
-                  </p>
-                </div>
-              </div>
-            </div>
+      {/* ============================================
+          BENEFÍCIOS — Cards premium e copy forte
+      ============================================= */}
+      <section
+        id="beneficios"
+        className="w-full bg-white py-20 border-b border-black/5"
+      >
+        <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-2 gap-16 items-center">
 
-            {/* imagem */}
-            <div className="relative h-[280px] md:h-[360px] animate-[fadeInUp_0.6s_ease-out]">
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-violet-500/40 via-indigo-500/30 to-sky-400/40 blur-3xl opacity-60" />
-              <div className="relative h-full w-full overflow-hidden rounded-3xl border border-white/10 bg-slate-900/80 shadow-2xl shadow-black/60">
-                <img
-                  src={
-                    landing.about_image_url ||
-                    landing.hero_image_url ||
-                    "https://images.pexels.com/photos/8467412/pexels-photo-8467412.jpeg?auto=compress&cs=tinysrgb&w=1200"
-                  }
-                  alt="Ambiente de atendimento"
-                  className="h-full w-full object-cover brightness-95"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
+          {/* TEXT */}
+          <div className="space-y-6 animate-fadeUp">
+            <span className="text-xs font-semibold tracking-widest text-gray-400">
+              BENEFÍCIOS
+            </span>
 
-        {/* =========================
-            COMO FUNCIONA / BENEFÍCIOS
-        ========================== */}
-        <section
-          id="como-funciona"
-          className="border-b border-white/10 bg-slate-950"
-        >
-          <div className="mx-auto max-w-6xl px-4 py-16 space-y-10">
-            <div className="text-center space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-violet-300">
-                Passo a passo simples
-              </p>
-              <h2 className="text-3xl md:text-4xl font-bold text-white">
-                Do primeiro clique até o pós-atendimento.
-              </h2>
-              <p className="text-sm md:text-base text-slate-300 max-w-2xl mx-auto">
-                Todo o fluxo foi pensado para profissionais que querem
-                organização e para clientes que desejam praticidade — sem
-                burocracia, sem fricção.
-              </p>
-            </div>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
+              Menos mensagens, mais organização — e uma experiência impecável para cada cliente.
+            </h2>
 
-            <div className="grid gap-6 md:grid-cols-3">
-              {[
-                {
-                  step: "01",
-                  title: "Escolha o serviço ou profissional",
-                  text: "Você será direcionado para a página de agendamento, onde poderá escolher o tipo de atendimento ou o profissional desejado.",
-                },
-                {
-                  step: "02",
-                  title: "Selecione o melhor horário",
-                  text: "Veja os horários livres em tempo real, sem troca de mensagens. Basta escolher o que se encaixa melhor na sua agenda.",
-                },
-                {
-                  step: "03",
-                  title: "Confirme e seja lembrado",
-                  text: "Preencha seus dados, confirme o agendamento e receba lembretes automáticos antes do horário marcado.",
-                },
-              ].map((item) => (
-                <div
-                  key={item.step}
-                  className="group relative overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 p-6 shadow-xl shadow-black/40"
-                >
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-violet-500/15 via-transparent to-sky-500/10 opacity-0 group-hover:opacity-100 transition" />
-                  <div className="relative flex flex-col gap-3">
-                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-800 text-xs font-bold text-slate-200 shadow-md shadow-black/30">
-                      {item.step}
-                    </span>
-                    <h3 className="text-lg font-semibold text-white">
-                      {item.title}
-                    </h3>
-                    <p className="text-sm text-slate-300">{item.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
+              A agenda online reduz falhas de comunicação, aumenta a confiança do cliente e melhora a rotina do profissional. Tudo fica registrado, organizado e acessível quando você mais precisa.
+            </p>
 
-        {/* =========================
-            BENEFÍCIOS / CARDS
-        ========================== */}
-        <section
-          id="beneficios"
-          className="border-b border-white/10 bg-slate-950/98"
-        >
-          <div className="mx-auto max-w-6xl px-4 py-16 space-y-10">
-            <div className="grid gap-10 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:items-center">
-              <div className="space-y-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-violet-300">
-                  Por que agendar online?
-                </p>
-                <h2 className="text-3xl md:text-4xl font-bold text-white">
-                  Menos mensagens, mais organização e clientes mais felizes.
-                </h2>
-                <p className="text-sm md:text-base text-slate-300 leading-relaxed">
-                  Com a agenda online, você não depende de disponibilidade no
-                  WhatsApp, evita desencontros de comunicação e ainda passa uma
-                  imagem muito mais profissional para quem está chegando agora.
-                </p>
+            <ul className="space-y-2 text-sm text-gray-700">
+              <li>• Agendamentos 24h sem depender do WhatsApp</li>
+              <li>• Lembretes automáticos reduzem faltas e atrasos</li>
+              <li>• Histórico completo de cada cliente</li>
+              <li>• Perfeito para clínicas, salões, consultórios, mentores e muito mais</li>
+            </ul>
 
-                <ul className="mt-4 space-y-2 text-sm text-slate-200">
-                  <li>• Clientes escolhem o horário no melhor momento para eles;</li>
-                  <li>
-                    • Você reduz faltas com lembretes automáticos e confirmações;
-                  </li>
-                  <li>
-                    • Tudo fica registrado em um só lugar, com histórico e dados
-                    organizados;
-                  </li>
-                  <li>
-                    • Ideal para consultórios, clínicas, salões, studios e
-                    mentores.
-                  </li>
-                </ul>
-
-                <div className="pt-5 flex flex-wrap gap-3">
-                  <a
-                    href={`/${slug}/agendar`}
-                    className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-xl shadow-black/40 hover:-translate-y-0.5 hover:shadow-2xl transition"
-                  >
-                    Ver horários disponíveis
-                  </a>
-                  <a
-                    href={whatsappLink(landing.whatsapp)}
-                    target="_blank"
-                    className="inline-flex items-center justify-center rounded-full border border-slate-600 px-6 py-3 text-xs font-medium text-slate-200 hover:bg-slate-800/60 transition"
-                  >
-                    Tirar dúvidas no WhatsApp
-                  </a>
-                </div>
-              </div>
-
-              {/* mini cards */}
-              <div className="grid gap-4">
-                {[
-                  {
-                    title: "Perfeito para novos clientes",
-                    text: "Quem te encontra pelo Instagram, Google ou indicação já consegue reservar o horário na hora, sem precisar esperar você responder.",
-                  },
-                  {
-                    title: "Experiência premium desde o primeiro contato",
-                    text: "Uma landing page bonita, leve e profissional aumenta a confiança e a conversão de novos agendamentos.",
-                  },
-                  {
-                    title: "Funciona para qualquer tipo de serviço",
-                    text: "Saúde, beleza, bem-estar, estética, terapia, consultorias e mentorias — se você trabalha com horário agendado, essa página é para você.",
-                  },
-                ].map((card, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-3xl border border-white/5 bg-slate-900/80 p-4 shadow-xl shadow-black/40"
-                  >
-                    <h3 className="text-sm font-semibold text-white mb-1">
-                      {card.title}
-                    </h3>
-                    <p className="text-xs text-slate-300 leading-relaxed">
-                      {card.text}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* =========================
-            GALERIA
-        ========================== */}
-        {landing.show_gallery && (
-          <section
-            id="galeria"
-            className="border-b border-white/10 bg-slate-950"
-          >
-            <div className="mx-auto max-w-6xl px-4 py-16 text-center space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-violet-300">
-                {galleryTitle}
-              </p>
-              <h2 className="text-3xl md:text-4xl font-bold text-white">
-                Em breve: imagens reais dos resultados.
-              </h2>
-              <p className="text-sm md:text-base text-slate-300 max-w-2xl mx-auto">
-                {gallerySubtitle}
-              </p>
-              <p className="mt-4 text-xs text-slate-500">
-                * Assim que o profissional começar a publicar fotos dos
-                atendimentos, elas aparecerão aqui automaticamente.
-              </p>
-
-              <a
-                href={`/${slug}/galeria`}
-                className="mt-6 inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition"
-              >
-                Ver galeria completa
-              </a>
-            </div>
-          </section>
-        )}
-
-        {/* =========================
-            TESTIMONIALS
-        ========================== */}
-        {landing.show_testimonials && (
-          <section className="border-b border-white/10 bg-slate-950/98">
-            <div className="mx-auto max-w-6xl px-4 py-16 text-center space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-violet-300">
-                {testimonialsTitle}
-              </p>
-              <h2 className="text-3xl md:text-4xl font-bold text-white">
-                Clientes que já tiveram uma ótima experiência.
-              </h2>
-              <p className="text-sm md:text-base text-slate-300 max-w-2xl mx-auto">
-                {testimonialsSubtitle}
-              </p>
-              <p className="mt-4 text-xs text-slate-500">
-                * Depoimentos reais serão exibidos aqui assim que forem
-                cadastrados pelo profissional.
-              </p>
-            </div>
-          </section>
-        )}
-
-        {/* =========================
-            TEAM
-        ========================== */}
-        {landing.show_team && (
-          <section className="border-b border-white/10 bg-slate-950">
-            <div className="mx-auto max-w-6xl px-4 py-16 text-center space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-violet-300">
-                {teamTitle}
-              </p>
-              <h2 className="text-3xl md:text-4xl font-bold text-white">
-                {teamSubtitle}
-              </h2>
-              <p className="text-sm md:text-base text-slate-300 max-w-2xl mx-auto">
-                Os profissionais serão cadastrados e aparecerão aqui com suas
-                fotos, cargos e especialidades.
-              </p>
-            </div>
-          </section>
-        )}
-
-        {/* =========================
-            CONTATO / CTA FINAL
-        ========================== */}
-        <section
-          id="contato"
-          className="border-b border-white/10 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900"
-        >
-          <div className="mx-auto max-w-6xl px-4 py-16 space-y-8">
-            <div className="text-center space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-violet-300">
-                {contactTitle}
-              </p>
-              <h2 className="text-3xl md:text-4xl font-bold text-white">
-                Escolha como prefere falar com a gente.
-              </h2>
-              <p className="text-sm md:text-base text-slate-300 max-w-2xl mx-auto">
-                Você pode agendar direto pelo site, tirar dúvidas no WhatsApp ou
-                nos chamar pelo Instagram. O importante é dar o primeiro passo —
-                o resto a gente cuida.
-              </p>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-3">
+            {/* CTAs */}
+            <div className="pt-6 flex flex-wrap gap-3">
               <a
                 href={`/${slug}/agendar`}
-                className="group rounded-3xl border border-violet-500/60 bg-slate-900/80 p-6 text-center shadow-xl shadow-black/40 hover:-translate-y-1 hover:shadow-2xl transition"
+                className="px-8 py-3 rounded-full text-sm font-semibold text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition"
+                style={{ backgroundColor: STRONG }}
               >
-                <p className="text-xs font-semibold text-violet-300 mb-1">
-                  Agendar online
-                </p>
-                <h3 className="text-lg font-semibold text-white mb-2">
-                  Horários em tempo real
-                </h3>
-                <p className="text-xs text-slate-300 mb-3">
-                  Veja todas as opções disponíveis e confirme sua visita em
-                  segundos.
-                </p>
-                <span className="inline-flex items-center justify-center rounded-full bg-violet-500 px-4 py-2 text-xs font-semibold text-white group-hover:bg-violet-400 transition">
-                  Ver agenda
-                </span>
+                Ver horários disponíveis
               </a>
 
               <a
                 href={whatsappLink(landing.whatsapp)}
                 target="_blank"
-                className="group rounded-3xl border border-emerald-500/50 bg-slate-900/80 p-6 text-center shadow-xl shadow-black/40 hover:-translate-y-1 hover:shadow-2xl transition"
+                className="px-8 py-3 rounded-full border border-black/5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
               >
-                <p className="text-xs font-semibold text-emerald-300 mb-1">
-                  WhatsApp
-                </p>
-                <h3 className="text-lg font-semibold text-white mb-2">
-                  Atendimento direto
-                </h3>
-                <p className="text-xs text-slate-300 mb-3">
-                  Fale com a equipe para tirar dúvidas rápidas ou combinar
-                  detalhes do atendimento.
-                </p>
-                <span className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-900 group-hover:bg-emerald-400 transition">
-                  Abrir WhatsApp
-                </span>
-              </a>
-
-              <a
-                href={instagramLink(landing.instagram)}
-                target="_blank"
-                className="group rounded-3xl border border-pink-500/50 bg-slate-900/80 p-6 text-center shadow-xl shadow-black/40 hover:-translate-y-1 hover:shadow-2xl transition"
-              >
-                <p className="text-xs font-semibold text-pink-300 mb-1">
-                  Instagram
-                </p>
-                <h3 className="text-lg font-semibold text-white mb-2">
-                  Acompanhe o dia a dia
-                </h3>
-                <p className="text-xs text-slate-300 mb-3">
-                  Veja bastidores, resultados, conteúdos e dicas exclusivas.
-                </p>
-                <span className="inline-flex items-center justify-center rounded-full bg-pink-500 px-4 py-2 text-xs font-semibold text-white group-hover:bg-pink-400 transition">
-                  Abrir Instagram
-                </span>
+                Tirar dúvidas no WhatsApp
               </a>
             </div>
+          </div>
+
+          {/* MINI CARDS */}
+          <div className="grid sm:grid-cols-2 gap-4 animate-fadeUpDelay">
+            {[
+              {
+                title: "Perfeito para novos clientes",
+                text: "Quem te encontra pelo Instagram, Google ou indicação já consegue marcar o horário imediatamente.",
+              },
+              {
+                title: "Experiência premium desde o início",
+                text: "Uma página clara, leve e profissional aumenta confiança e conversões.",
+              },
+              {
+                title: "Funciona para qualquer área",
+                text: "Saúde, estética, beleza, desenvolvimento pessoal, performance e muito mais.",
+              },
+              {
+                title: "Organização completa",
+                text: "Tenha histórico, dados e controle total dos atendimentos.",
+              },
+            ].map((card, index) => (
+              <div
+                key={index}
+                className="p-5 rounded-3xl bg-gray-50 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-black/5 hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)] transition-all"
+              >
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                  {card.title}
+                </h3>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  {card.text}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+      {/* ============================================
+          GALERIA — Imagens reais (ou placeholder premium)
+      ============================================= */}
+      {landing.show_gallery && (
+        <section
+          id="galeria"
+          className="w-full bg-white py-20 border-t border-b border-black/5"
+        >
+          <div className="max-w-6xl mx-auto px-4 text-center space-y-6 animate-fadeUp">
+
+            <span className="text-xs font-semibold tracking-widest text-gray-400">
+              GALERIA
+            </span>
+
+            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
+              {landing.gallery_title || "Resultados reais, ambientes profissionais e experiências que inspiram confiança."}
+            </h2>
+
+            <p className="max-w-2xl mx-auto text-gray-600 leading-relaxed text-base md:text-lg">
+              {landing.gallery_subtitle ||
+                "Assim que o profissional adicionar fotos de atendimentos, bastidores, resultados e ambientes, elas irão aparecer aqui automaticamente. Enquanto isso, você já pode explorar outras áreas da página."}
+            </p>
+
+            <a
+              href={`/${slug}/galeria`}
+              className="inline-flex items-center justify-center mt-4 px-8 py-3 rounded-full text-sm font-semibold text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition"
+              style={{ backgroundColor: STRONG }}
+            >
+              Ver galeria completa
+            </a>
           </div>
         </section>
+      )}
 
-        {/* =========================
-            FOOTER
-        ========================== */}
-        <footer className="bg-slate-950 border-t border-white/10">
-          <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-3 items-start">
-              {/* marca */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 border border-white/10 shadow-md shadow-black/40 overflow-hidden">
-                    {org?.logo_organization ? (
-                      <img
-                        src={org.logo_organization}
-                        alt={org.name || "Logo"}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-xs font-semibold text-white">
-                        {(org?.name || "MB")
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .substring(0, 2)
-                          .toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-white">
-                      {org?.name || "Seu espaço profissional"}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      {landing.endereco || org?.address || ""}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-400 max-w-xs">
-                  Página profissional criada para facilitar o agendamento de
-                  serviços e oferecer uma experiência moderna para seus
-                  clientes.
-                </p>
-              </div>
 
-              {/* navegação */}
-              <div>
-                <p className="pb-1 text-sm font-medium text-white">
-                  Acesso rápido
-                </p>
-                <ul className="space-y-1 text-xs text-slate-300">
-                  <li>
-                    <a href={`/${slug}/`} className="hover:text-white">
-                      Home
-                    </a>
-                  </li>
-                  <li>
-                    <a href={`/${slug}/agendar`} className="hover:text-white">
-                      Agendar
-                    </a>
-                  </li>
-                  <li>
-                    <a href={`/${slug}/galeria`} className="hover:text-white">
-                      Galeria
-                    </a>
-                  </li>
-                  <li>
-                    <a href={`/${slug}/login`} className="hover:text-white">
-                      Login
-                    </a>
-                  </li>
-                  <li>
-                    <a href={`/${slug}/cadastro`} className="hover:text-white">
-                      Cadastro
-                    </a>
-                  </li>
-                </ul>
-              </div>
 
-              {/* contato */}
-              <div>
-                <p className="pb-1 text-sm font-medium text-white">Contato</p>
-                <ul className="space-y-1 text-xs text-slate-300">
-                  {landing.whatsapp && (
-                    <li>
-                      <a
-                        href={whatsappLink(landing.whatsapp)}
-                        target="_blank"
-                        className="hover:text-white"
-                      >
-                        WhatsApp: {landing.whatsapp}
-                      </a>
-                    </li>
-                  )}
-                  {landing.telefone && (
-                    <li>
-                      <a
-                        href={`tel:${landing.telefone}`}
-                        className="hover:text-white"
-                      >
-                        Telefone: {landing.telefone}
-                      </a>
-                    </li>
-                  )}
-                  {landing.email && (
-                    <li>
-                      <a
-                        href={`mailto:${landing.email}`}
-                        className="hover:text-white"
-                      >
-                        E-mail: {landing.email}
-                      </a>
-                    </li>
-                  )}
-                  {landing.instagram && (
-                    <li>
-                      <a
-                        href={instagramLink(landing.instagram)}
-                        target="_blank"
-                        className="hover:text-white"
-                      >
-                        Instagram
-                      </a>
-                    </li>
-                  )}
-                </ul>
-              </div>
+      {/* ============================================
+          TESTEMUNHOS — Credibilidade e Prova Social
+      ============================================= */}
+      {landing.show_testimonials && (
+        <section className="w-full bg-white py-20 border-b border-black/5">
+          <div className="max-w-6xl mx-auto px-4 text-center space-y-6 animate-fadeUp">
+
+            <span className="text-xs font-semibold tracking-widest text-gray-400">
+              DEPOIMENTOS
+            </span>
+
+            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
+              {landing.testimonials_title || "Clientes que viveram uma experiência transformadora."}
+            </h2>
+
+            <p className="max-w-2xl mx-auto text-gray-600 leading-relaxed text-base md:text-lg">
+              {landing.testimonials_subtitle ||
+                "Assim que os depoimentos forem cadastrados pelo profissional, eles serão exibidos aqui. Uma forma sincera e poderosa de mostrar como cada atendimento faz a diferença."}
+            </p>
+
+            <div className="pt-6 text-xs text-gray-400">
+              * Os depoimentos aparecerão automaticamente quando incluídos.
             </div>
 
-            <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-800 pt-4 text-[11px] text-slate-500 md:flex-row">
-              <span>© {new Date().getFullYear()} Todos os direitos reservados.</span>
-              <span>
-                Página criada com{" "}
-                <a
-                  href="https://www.marcafy.com.br"
-                  className="font-semibold text-slate-300 hover:text-white"
-                >
-                  Marcafy
-                </a>
-                .
+          </div>
+        </section>
+      )}
+
+
+
+      {/* ============================================
+          EQUIPE — Cards ultra premium e minimalistas
+      ============================================= */}
+      {landing.show_team && (
+        <section className="w-full bg-white py-20 border-b border-black/5">
+          <div className="max-w-6xl mx-auto px-4 space-y-6 text-center animate-fadeUp">
+
+            <span className="text-xs font-semibold tracking-widest text-gray-400">
+              EQUIPE
+            </span>
+
+            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">
+              {landing.team_title || "Conheça os profissionais que estão prontos para te atender."}
+            </h2>
+
+            <p className="max-w-2xl mx-auto text-gray-600 leading-relaxed text-base md:text-lg">
+              {landing.team_subtitle ||
+                "Cada integrante da equipe possui formação, especialização e uma paixão genuína pelo que faz. Assim que forem cadastrados, aparecerão aqui com suas fotos, áreas de atuação e breve apresentação."}
+            </p>
+
+            <div className="pt-6 text-xs text-gray-400">
+              * Os profissionais serão exibidos automaticamente quando cadastrados.
+            </div>
+
+          </div>
+        </section>
+      )}
+
+
+
+      {/* ============================================
+          CONTATO — CTA Final Premium
+      ============================================= */}
+      <section
+        id="contato"
+        className="w-full bg-white py-24 border-b border-black/5"
+      >
+        <div className="max-w-6xl mx-auto px-4 text-center space-y-10 animate-fadeUp">
+
+          <span className="text-xs font-semibold tracking-widest text-gray-400">
+            ENTRE EM CONTATO
+          </span>
+
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
+            {landing.contact_title || "Comece agora a transformar sua experiência com agendamentos online."}
+          </h2>
+
+          <p className="max-w-2xl mx-auto text-base md:text-lg text-gray-600 leading-relaxed">
+            Você pode agendar diretamente pelo site, tirar dúvidas pelo WhatsApp ou acompanhar conteúdos
+            no Instagram. Tudo foi pensado para facilitar sua vida e oferecer um atendimento moderno,
+            rápido e totalmente transparente.
+          </p>
+
+          {/* CONTACT OPTIONS */}
+          <div className="grid md:grid-cols-3 gap-6 pt-6">
+
+            {/* AGENDAR */}
+            <a
+              href={`/${slug}/agendar`}
+              className="rounded-3xl p-8 bg-white border border-black/5 shadow-[0_8px_30px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_45px_rgba(0,0,0,0.07)] hover:-translate-y-1 transition-all text-center group"
+            >
+              <p className="text-xs font-semibold text-gray-400 mb-1">
+                AGENDAR ONLINE
+              </p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Horários em tempo real
+              </h3>
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                Veja todas as opções disponíveis e confirme sua visita em poucos segundos.
+              </p>
+              <span
+                className="inline-flex items-center justify-center rounded-full px-5 py-2 text-xs font-semibold text-white transition"
+                style={{ backgroundColor: STRONG }}
+              >
+                Ver agenda
               </span>
+            </a>
+
+            {/* WHATSAPP */}
+            <a
+              href={whatsappLink(landing.whatsapp)}
+              target="_blank"
+              className="rounded-3xl p-8 bg-white border border-black/5 shadow-[0_8px_30px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_45px_rgba(0,0,0,0.07)] hover:-translate-y-1 transition-all text-center group"
+            >
+              <p className="text-xs font-semibold text-gray-400 mb-1">
+                WHATSAPP
+              </p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Atendimento direto
+              </h3>
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                Tire dúvidas de forma rápida e prática com a equipe.
+              </p>
+              <span
+                className="inline-flex items-center justify-center rounded-full px-5 py-2 text-xs font-semibold text-white bg-emerald-500 group-hover:bg-emerald-400 transition"
+              >
+                Abrir WhatsApp
+              </span>
+            </a>
+
+            {/* INSTAGRAM */}
+            <a
+              href={instagramLink(landing.instagram)}
+              target="_blank"
+              className="rounded-3xl p-8 bg-white border border-black/5 shadow-[0_8px_30px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_45px_rgba(0,0,0,0.07)] hover:-translate-y-1 transition-all text-center group"
+            >
+              <p className="text-xs font-semibold text-gray-400 mb-1">
+                INSTAGRAM
+              </p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Conteúdos e bastidores
+              </h3>
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                Inspire-se com resultados, novidades, rotinas e conteúdos exclusivos.
+              </p>
+              <span
+                className="inline-flex items-center justify-center rounded-full px-5 py-2 text-xs font-semibold text-white bg-pink-500 group-hover:bg-pink-400 transition"
+              >
+                Abrir Instagram
+              </span>
+            </a>
+          </div>
+        </div>
+      </section>
+      {/* ============================================
+          FOOTER ULTRA PREMIUM
+      ============================================= */}
+      <footer className="w-full bg-white border-t border-black/5 pt-16 pb-10">
+        <div className="max-w-6xl mx-auto px-4">
+
+          {/* TOP GRID */}
+          <div className="grid md:grid-cols-3 gap-12 pb-14">
+
+            {/* LOGO + INFO */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-gray-100 border border-black/5 overflow-hidden shadow-sm flex items-center justify-center">
+                  {org?.logo_organization ? (
+                    <img
+                      src={org.logo_organization}
+                      alt={org?.name || "Logo"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-base font-semibold text-gray-800">
+                      {(org?.name || "MB")
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .substring(0, 2)
+                        .toUpperCase()}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-gray-900">
+                    {org?.name || "Seu espaço profissional"}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {landing.endereco || org?.address || "Endereço não informado"}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-600 leading-relaxed max-w-xs">
+                Uma página premium criada para elevar sua presença profissional, facilitar agendamentos e oferecer uma experiência impecável para seus clientes.
+              </p>
+            </div>
+
+            {/* NAVIGATION */}
+            <div>
+              <p className="text-sm font-semibold text-gray-900 mb-3">
+                Navegação rápida
+              </p>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li><a href={`/${slug}`} className="hover:text-gray-900 transition">Home</a></li>
+                <li><a href={`/${slug}/agendar`} className="hover:text-gray-900 transition">Agendar</a></li>
+                <li><a href={`/${slug}/galeria`} className="hover:text-gray-900 transition">Galeria</a></li>
+                <li><a href={`/${slug}/login`} className="hover:text-gray-900 transition">Área do cliente</a></li>
+                <li><a href={`/${slug}/cadastro`} className="hover:text-gray-900 transition">Quero uma página</a></li>
+              </ul>
+            </div>
+
+            {/* CONTACT */}
+            <div>
+              <p className="text-sm font-semibold text-gray-900 mb-3">
+                Contato
+              </p>
+              <ul className="space-y-2 text-sm text-gray-600">
+
+                {landing.whatsapp && (
+                  <li>
+                    <a
+                      href={whatsappLink(landing.whatsapp)}
+                      target="_blank"
+                      className="hover:text-gray-900 transition"
+                    >
+                      WhatsApp: {landing.whatsapp}
+                    </a>
+                  </li>
+                )}
+
+                {landing.telefone && (
+                  <li>
+                    <a
+                      href={`tel:${landing.telefone}`}
+                      className="hover:text-gray-900 transition"
+                    >
+                      Telefone: {landing.telefone}
+                    </a>
+                  </li>
+                )}
+
+                {landing.email && (
+                  <li>
+                    <a
+                      href={`mailto:${landing.email}`}
+                      className="hover:text-gray-900 transition"
+                    >
+                      E-mail: {landing.email}
+                    </a>
+                  </li>
+                )}
+
+                {landing.instagram && (
+                  <li>
+                    <a
+                      href={instagramLink(landing.instagram)}
+                      target="_blank"
+                      className="hover:text-gray-900 transition"
+                    >
+                      Instagram
+                    </a>
+                  </li>
+                )}
+              </ul>
             </div>
           </div>
-        </footer>
 
-        {/* Floating WhatsApp */}
-        {landing.whatsapp && (
-          <a
-            href={whatsappLink(landing.whatsapp)}
-            target="_blank"
-            className="fixed bottom-4 right-4 z-50 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 shadow-2xl shadow-emerald-500/40 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(16,185,129,0.75)] transition"
-            aria-label="Falar no WhatsApp"
-          >
-            <span className="text-white text-xl">💬</span>
-          </a>
-        )}
-      </div>
+          {/* DIVIDER */}
+          <div className="w-full border-t border-black/5 pt-6 flex flex-col md:flex-row items-center justify-between text-xs text-gray-500 gap-3">
+
+            <span>
+              © {new Date().getFullYear()} Todos os direitos reservados.
+            </span>
+
+            <span>
+              Página criada com{" "}
+              <a
+                href="https://www.marcafy.com.br"
+                className="font-semibold text-gray-700 hover:text-gray-900 transition"
+              >
+                Marcafy
+              </a>.
+            </span>
+          </div>
+        </div>
+      </footer>
+
+
+      {/* ============================================
+          FLOATING WHATSAPP — Botão premium
+      ============================================= */}
+      {landing.whatsapp && (
+        <a
+          href={whatsappLink(landing.whatsapp)}
+          target="_blank"
+          className="fixed bottom-5 right-5 z-50 inline-flex h-12 w-12 items-center justify-center rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] bg-emerald-500 hover:bg-emerald-400 transition-all hover:-translate-y-1"
+          aria-label="Falar no WhatsApp"
+        >
+          <span className="text-white text-xl">💬</span>
+        </a>
+      )}
+
     </main>
   );
 }
