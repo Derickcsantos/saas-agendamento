@@ -144,16 +144,16 @@ export default function CreateOrganization() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white to-gray-100 flex items-center justify-center py-10 px-4">
-      <div className="w-full max-w-2xl bg-white shadow-2xl rounded-3xl p-10 border border-gray-200/50 backdrop-blur-sm">
+    <div className="min-h-screen bg-white flex items-center justify-center py-8 px-4">
+      <div className="w-full max-w-xl bg-white shadow-2xl rounded-2xl p-6 sm:p-10 border border-black/5">
 
         {/* HEADER */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-extrabold text-[#5E3BEE] tracking-tight">
+        <div className="text-center mb-8 sm:mb-10">
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#5E3BEE]">
             Crie sua conta Marcafy
           </h1>
-          <p className="text-gray-500 mt-2 text-sm">
-            Um onboarding de alto nível para uma operação de alto nível.
+          <p className="text-gray-500 mt-2 text-xs sm:text-sm">
+            Inovação, controle e otimização do seu tempo — tudo começa aqui.
           </p>
 
           {slug && (
@@ -166,22 +166,18 @@ export default function CreateOrganization() {
           )}
         </div>
 
-        {/* STEPS */}
-        <div className="flex justify-between mb-12">
+        {/* STEPS INDICATOR */}
+        <div className="flex justify-between mb-10 gap-2 sm:gap-4">
           {steps.map((label, index) => (
-            <div key={index} className="flex flex-col items-center">
-              <motion.div
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow ${
-                  step === index + 1
-                    ? "bg-[#5E3BEE] text-white shadow-lg"
-                    : "bg-gray-200 text-gray-600"
-                }`}
-                whileHover={{ scale: 1.05 }}
-                transition={{ duration: 0.2 }}
+            <div key={index} className="flex flex-col items-center flex-1 min-w-[70px]">
+              <div
+                className={`w-8 h-8 flex items-center justify-center rounded-full text-xs sm:text-sm font-bold 
+                  ${step === index + 1 ? "bg-[#5E3BEE] text-white shadow-lg" : "bg-gray-200 text-gray-600"}
+                `}
               >
                 {index + 1}
-              </motion.div>
-              <span className="text-xs mt-2 text-gray-600 w-20 text-center font-medium">
+              </div>
+              <span className="text-[10px] sm:text-xs mt-2 text-gray-600 text-center">
                 {label}
               </span>
             </div>
@@ -201,19 +197,19 @@ export default function CreateOrganization() {
             {step === 1 && (
               <div className="space-y-6">
                 <div>
-                  <label className="font-semibold text-gray-900 text-sm">
-                    Nome do Negócio
-                  </label>
+                  <label className="font-semibold text-gray-900 text-sm">Nome do Negócio</label>
                   <input
                     type="text"
                     name="name"
                     value={orgData.name}
                     onChange={handleOrgChange}
-                    className="w-full mt-1 border rounded-xl p-3 focus:ring-2 ring-[#5E3BEE] text-gray-900 shadow-sm transition"
+                    className="w-full text-gray-950 mt-1 border border-black/10 rounded-lg p-3 placeholder-gray-400 shadow-sm focus:ring-2 focus:ring-[#5E3BEE]/40 focus:outline-none"
+                    placeholder="Digite o nome da sua empresa"
                   />
                 </div>
 
                 <div>
+                  <label className="font-semibold text-gray-900 text-sm">Setor</label>
                   <label className="font-semibold text-gray-900 text-sm">
                     Setor
                   </label>
@@ -221,6 +217,7 @@ export default function CreateOrganization() {
                     name="setor"
                     value={orgData.setor}
                     onChange={handleOrgChange}
+                    className="w-full mt-1 border border-black/10 rounded-lg p-3 text-gray-950 shadow-sm focus:ring-2 focus:ring-[#5E3BEE]/40 focus:outline-none"
                     className="w-full mt-1 border rounded-xl p-3 shadow-sm text-gray-900"
                   >
                     <option value="">Selecione...</option>
@@ -231,10 +228,14 @@ export default function CreateOrganization() {
                     <option value="Consultoria">Consultoria</option>
                     <option value="Clinica">Clínica</option>
                     <option value="Educação">Educação</option>
+                    <option value="Esportivo">Esportivo</option>
+                    <option value="Outro">Outro</option>
                   </select>
                 </div>
 
                 <div>
+                  <label className="font-semibold text-gray-900 text-sm">CPF ou CNPJ</label>
+                  <div className="flex flex-col sm:flex-row gap-3 mt-1">
                   <label className="font-semibold text-gray-900 text-sm">
                     CPF ou CNPJ
                   </label>
@@ -243,6 +244,7 @@ export default function CreateOrganization() {
                       name="document_type"
                       value={orgData.document_type}
                       onChange={handleOrgChange}
+                      className="border border-black/10 text-gray-950 rounded-lg p-3 w-full sm:w-36 shadow-sm focus:ring-2 focus:ring-[#5E3BEE]/40 focus:outline-none"
                       className="border rounded-xl p-3 w-32 text-gray-900"
                     >
                       <option value="cpf">CPF</option>
@@ -255,6 +257,7 @@ export default function CreateOrganization() {
                       value={orgData.document_number}
                       onChange={handleOrgChange}
                       placeholder="Digite o número"
+                      className="flex-1 text-gray-950 border border-black/10 rounded-lg p-3 placeholder-gray-400 shadow-sm focus:ring-2 focus:ring-[#5E3BEE]/40 focus:outline-none"
                       className="flex-1 border rounded-xl p-3 shadow-sm text-gray-900"
                     />
                   </div>
@@ -262,6 +265,7 @@ export default function CreateOrganization() {
 
                 <button
                   onClick={handleNext}
+                  className="w-full bg-[#5E3BEE] text-white py-3 rounded-lg font-semibold mt-4 hover:bg-[#4d2bcc] transition shadow-lg"
                   className="w-full bg-[#5E3BEE] text-white py-3 rounded-xl font-semibold mt-4 hover:bg-[#4b2bcc] shadow-md transition"
                 >
                   Próximo
@@ -271,6 +275,41 @@ export default function CreateOrganization() {
 
             {/* ===================== STEP 2 ===================== */}
             {step === 2 && (
+              <div className="space-y-6">
+                <p className="text-gray-700 text-sm">Este passo é opcional. Você pode pular se quiser.</p>
+
+                {/* COR PRIMÁRIA */}
+                <div>
+                  <label className="font-semibold text-gray-900 text-sm">Cor Primária</label>
+                  <div className="flex items-center gap-3 mt-1">
+                    <input
+                      type="color"
+                      name="strong_color"
+                      value={orgData.strong_color}
+                      onChange={handleOrgChange}
+                      className="w-12 h-10 rounded-lg border border-black/10"
+                    />
+                    <input
+                      type="text"
+                      placeholder="#HEX"
+                      name="strong_color"
+                      value={orgData.strong_color}
+                      onChange={handleOrgChange}
+                      className="border border-black/10 p-3 rounded-lg w-full shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40"
+                    />
+                  </div>
+                </div>
+
+                {/* COR SECUNDÁRIA */}
+                <div>
+                  <label className="font-semibold text-gray-900 text-sm">Cor Secundária</label>
+                  <div className="flex items-center gap-3 mt-1">
+                    <input
+                      type="color"
+                      name="light_color"
+                      value={orgData.light_color}
+                      onChange={handleOrgChange}
+                      className="w-12 h-10 rounded-lg border border-black/10"
               <div className="space-y-8">
                 <p className="text-gray-600 text-sm">
                   Este passo é opcional, mas faz seu negócio brilhar.
@@ -321,6 +360,10 @@ export default function CreateOrganization() {
                     <input
                       type="text"
                       placeholder="#HEX"
+                      name="light_color"
+                      value={orgData.light_color}
+                      onChange={handleOrgChange}
+                      className="border border-black/10 p-3 rounded-lg w-full shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40"
                       name="strong_color"
                       value={orgData.strong_color}
                       onChange={handleOrgChange}
@@ -329,7 +372,20 @@ export default function CreateOrganization() {
                   </div>
                 </div>
 
+                {/* LOGO UPLOAD */}
                 <div>
+                  <label className="font-semibold text-gray-900 text-sm">Logo (opcional)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="w-full border border-black/10 rounded-lg p-3 mt-1 bg-gray-50 text-gray-800 shadow-sm"
+                  />
+                  {logoPreview && (
+                    <img
+                      src={logoPreview}
+                      alt="Preview"
+                      className="w-24 h-24 object-cover mt-3 rounded-lg shadow-md border border-black/10"
                   <label className="font-semibold text-gray-900 text-sm">
                     Cor Secundária
                   </label>
@@ -352,14 +408,13 @@ export default function CreateOrganization() {
                   </div>
                 </div>
 
+                {/* NAV */}
                 <div className="flex justify-between mt-6">
-                  <button
-                    onClick={handleBack}
-                    className="text-gray-600 font-semibold"
-                  >
-                    Voltar
-                  </button>
+                  <button onClick={handleBack} className="text-gray-600 font-semibold">Voltar</button>
 
+                  <div className="flex gap-3">
+                    <button onClick={handleNext} className="text-[#5E3BEE] font-semibold">Pular</button>
+                    <button onClick={handleNext} className="bg-[#5E3BEE] text-white px-6 py-3 rounded-lg hover:bg-[#4d2bcc] shadow-lg">
                   <div className="flex gap-4">
                     <button
                       onClick={handleNext}
@@ -381,6 +436,17 @@ export default function CreateOrganization() {
 
             {/* ===================== STEP 3 ===================== */}
             {step === 3 && (
+              <div className="space-y-5">
+                <label className="font-semibold text-gray-900 text-sm">Endereço</label>
+
+                <input
+                  type="text"
+                  name="address"
+                  value={orgData.address}
+                  onChange={handleOrgChange}
+                  placeholder="Av. Paulista, 1471 conj 1110 — São Paulo, SP"
+                  className="w-full border border-black/10 mt-1 rounded-lg p-3 shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40"
+                />
               <div className="space-y-6">
                 <div>
                   <label className="font-semibold text-gray-900 text-sm">
@@ -396,15 +462,11 @@ export default function CreateOrganization() {
                 </div>
 
                 <div className="flex justify-between mt-6">
-                  <button
-                    onClick={handleBack}
-                    className="text-gray-600 font-semibold"
-                  >
-                    Voltar
-                  </button>
+                  <button onClick={handleBack} className="text-gray-600 font-semibold">Voltar</button>
 
                   <button
                     onClick={handleNext}
+                    className="bg-[#5E3BEE] text-white px-6 py-3 rounded-lg hover:bg-[#4d2bcc] shadow-lg"
                     className="bg-[#5E3BEE] text-white px-6 py-3 rounded-xl hover:bg-[#4b2bcc] shadow-md transition"
                   >
                     Próximo
@@ -417,6 +479,7 @@ export default function CreateOrganization() {
             {step === 4 && (
               <div className="space-y-6">
                 <div>
+                  <label className="font-semibold text-gray-900 text-sm">Nome do Representante</label>
                   <label className="font-semibold text-gray-900 text-sm">
                     Nome do Representante
                   </label>
@@ -425,11 +488,14 @@ export default function CreateOrganization() {
                     name="username"
                     value={repData.username}
                     onChange={handleRepChange}
+                    className="w-full border border-black/10 mt-1 rounded-lg p-3 shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40"
+                    placeholder="Seu nome completo"
                     className="w-full mt-1 border rounded-xl p-3 shadow-sm text-gray-900"
                   />
                 </div>
 
                 <div>
+                  <label className="font-semibold text-gray-900 text-sm">Telefone</label>
                   <label className="font-semibold text-gray-900 text-sm">
                     Telefone
                   </label>
@@ -438,11 +504,14 @@ export default function CreateOrganization() {
                     name="phone"
                     value={repData.phone}
                     onChange={handleRepChange}
+                    className="w-full border border-black/10 mt-1 rounded-lg p-3 shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40"
+                    placeholder="(11) 99999-9999"
                     className="w-full mt-1 border rounded-xl p-3 shadow-sm text-gray-900"
                   />
                 </div>
 
                 <div>
+                  <label className="font-semibold text-gray-900 text-sm">E-mail</label>
                   <label className="font-semibold text-gray-900 text-sm">
                     E-mail
                   </label>
@@ -451,11 +520,14 @@ export default function CreateOrganization() {
                     name="email"
                     value={repData.email}
                     onChange={handleRepChange}
+                    className="w-full border border-black/10 mt-1 rounded-lg p-3 shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40"
+                    placeholder="email@exemplo.com"
                     className="w-full mt-1 border rounded-xl p-3 shadow-sm text-gray-900"
                   />
                 </div>
 
                 <div>
+                  <label className="font-semibold text-gray-900 text-sm">Senha</label>
                   <label className="font-semibold text-gray-900 text-sm">
                     Senha
                   </label>
@@ -464,12 +536,15 @@ export default function CreateOrganization() {
                     name="password"
                     value={repData.password}
                     onChange={handleRepChange}
+                    className="w-full border border-black/10 mt-1 rounded-lg p-3 shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40"
+                    placeholder="Crie uma senha segura"
                     className="w-full mt-1 border rounded-xl p-3 shadow-sm text-gray-900"
                   />
                 </div>
 
                 <button
                   onClick={() => setIsReviewOpen(true)}
+                  className="w-full bg-[#5E3BEE] text-white py-3 rounded-lg font-semibold hover:bg-[#4d2bcc] transition shadow-lg"
                   className="w-full bg-[#5E3BEE] text-white py-3 rounded-xl font-semibold mt-4 hover:bg-[#4b2bcc] shadow-md transition"
                 >
                   Revisar Informações
@@ -489,6 +564,9 @@ export default function CreateOrganization() {
 
       {/* ======================= REVIEW MODAL ======================= */}
       {isReviewOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-md w-full relative border border-black/10">
+
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
@@ -500,6 +578,15 @@ export default function CreateOrganization() {
             </h2>
 
             <div className="space-y-3 text-sm text-gray-700">
+
+              <p><strong>Slug:</strong> {orgData.name.toLowerCase().replace(/\s+/g, "-")}</p>
+              <p><strong>Nome do Negócio:</strong> {orgData.name}</p>
+              <p><strong>Setor:</strong> {orgData.setor}</p>
+              <p><strong>Documento:</strong> {orgData.document_type.toUpperCase()} - {orgData.document_number}</p>
+              <p><strong>Endereço:</strong> {orgData.address}</p>
+
+              {orgData.strong_color && <p><strong>Cor Primária:</strong> {orgData.strong_color}</p>}
+              {orgData.light_color && <p><strong>Cor Secundária:</strong> {orgData.light_color}</p>}
               <p>
                 <strong>URL:</strong>{" "}
                 www.marcafy.com.br/{slug}
@@ -534,6 +621,7 @@ export default function CreateOrganization() {
               {logoPreview && (
                 <div className="mt-3">
                   <p className="font-semibold">Logo:</p>
+                  <img src={logoPreview} className="w-20 h-20 object-cover rounded-lg shadow border border-black/10 mt-2" />
                   <img
                     src={logoPreview}
                     className="w-20 h-20 object-cover rounded-xl shadow"
@@ -556,20 +644,20 @@ export default function CreateOrganization() {
             </div>
 
             <div className="mt-6 flex justify-between">
-              <button
-                onClick={() => setIsReviewOpen(false)}
-                className="text-gray-600 font-semibold"
-              >
+              <button onClick={() => setIsReviewOpen(false)} className="text-gray-600 font-semibold">
                 Voltar
               </button>
 
               <button
                 onClick={submitAll}
+                className="bg-[#5E3BEE] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#4d2bcc] shadow-lg"
                 className="bg-[#5E3BEE] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#4b2bcc] shadow-md transition"
               >
                 Confirmar e Criar Conta
               </button>
             </div>
+
+          </div>
           </motion.div>
         </div>
       )}
