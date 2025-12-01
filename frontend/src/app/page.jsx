@@ -146,13 +146,19 @@ export default function MarcafyLanding() {
       <header className="sticky top-0 z-30 w-full bg-white/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 md:px-8">
           <div className="flex items-center gap-3">
+            {/* Desktop / Tablet */}
             <img
-              src="/marcafy-logo.jpg"
+              src="/marcafyTopbar.jpg"
               alt="Marcafy"
-              className="h-9 w-9 rounded-xl"
-              style={{ border: `1px solid ${BRAND}26` }}
+              className="hidden sm:block h-25 w-47 rounded-xl"
             />
-            <span className="text-xl font-extrabold tracking-tight">Marcafy</span>
+
+            {/* Mobile */}
+            <img
+              src="/mTopbar.jpg"
+              alt="Marcafy Mobile"
+              className="block sm:hidden h-15 w-20 rounded-xl"
+            />
           </div>
 
           <nav className="hidden items-center gap-6 md:flex">

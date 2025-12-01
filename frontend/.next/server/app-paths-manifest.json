@@ -1,9 +1,4 @@
 {
-<<<<<<< Updated upstream
-  "/[slug]/login/page": "app/[slug]/login/page.js"
-=======
-  "/[slug]/logado/page": "app/[slug]/logado/page.js",
-  "/[slug]/login/page": "app/[slug]/login/page.js",
-  "/_not-found/page": "app/_not-found/page.js"
->>>>>>> Stashed changes
+  "/criar-conta/page": "app/criar-conta/page.js",
+  "/page": "app/page.js"
 }
