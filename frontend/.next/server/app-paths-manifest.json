@@ -1,5 +1,7 @@
 {
+  "/[slug]/galeria/page": "app/[slug]/galeria/page.js",
   "/[slug]/page": "app/[slug]/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
   "/escolher-plano/[slug]/page": "app/escolher-plano/[slug]/page.js",
   "/page": "app/page.js"
 }

@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Footer from "../../components/Footer";
 
-export default function GalleryPage({ params }) {
-  const { slug } = params;
+export default function GalleryPage({ slug }) {
+  // const { slug } = params;
   const [data, setData] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -60,7 +60,14 @@ export default function GalleryPage({ params }) {
         }`;
 
         const res = await fetch(url, { credentials: "include" });
-        if (!res.ok) throw new Error("Not found");
+        if (!res.ok) {
+          console.log('Imagens não encontradas')
+          return (
+            <div className="flex h-screen items-center justify-center bg-white text-gray-700 text-center">
+              <p>Nenhuma imagem encontrada.</p>
+            </div>
+          );
+        }
 
         const json = await res.json();
         if (!json || !json.organization) throw new Error("Not found");
@@ -108,7 +115,7 @@ export default function GalleryPage({ params }) {
         <nav className="flex justify-between items-center px-6 py-4 bg-white dark:bg-red-800 shadow" style={{backgroundColor: palette?.strong_color || '#dfdfdf', color: palette?.text_light_color || '#ffffff'}}>
           <div className="flex items-center gap-2">
             <img
-              src={orgData?.organizations.logo_organization || "/img/LogoPaulaTrancas.png"}
+              src={orgData?.organizations?.logo_organization || './mbranco.jpg'}
               alt="Logo"
               className="w-10 h-10 rounded-full border border-white"
             />
