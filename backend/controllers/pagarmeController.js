@@ -1,6 +1,7 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import { supabase } from "../lib/supabase.js";
+import { NfeController } from "./nfeController.js";
 
 dotenv.config();
 
@@ -236,30 +237,58 @@ export const PagarmeController = {
   // =========================================
   async createSubscription(req, res) {
     try {
-      const payload = JSON.parse(JSON.stringify(req.body));
+      const payload = req.body;
 
       const response = await pagarme.post("/subscriptions", payload);
       const sub = response.data;
 
-      console.log("🔄 Assinatura criada no Pagarme:", sub);
+      // ------------------------------------------------------
+      // 1️⃣ Buscar dados reais da organização no supabase
+      // ------------------------------------------------------
+      const { data: org, error: orgError } = await supabase
+        .from("organizations")
+        .select("*")
+        .eq("id", payload.organization_id)
+        .single();
 
-      // Salvar no Supabase
+      if (orgError || !org) {
+        console.warn("Organização não encontrada:", payload.organization_id);
+      }
+
+      // // ------------------------------------------------------
+      // // 2️⃣ Emitir Nota Fiscal AUTOMATICAMENTE
+      // // ------------------------------------------------------
+      // const chargeAmount = sub.plan?.amount;
+
+      // const nota = await NfeController.emitirNota({
+      //   organization: org,
+      //   customer: payload.customer,
+      //   amount: chargeAmount,
+      //   pagarme_charge_id: sub.latest_invoice?.charge_id,
+      //   subscription_id: sub.id,
+      // });
+
+      // ------------------------------------------------------
+      // 3️⃣ Salvar assinatura no banco
+      // ------------------------------------------------------
       const { error } = await supabase.from("subscriptions").insert({
-        organization_id: payload?.organization_id,
-        plan_id: sub?.plan?.id,
+        organization_id: payload.organization_id,
+        plan_id: sub.plan.id,
         pagarme_subscription_id: sub.id,
         status: sub.status,
         billing_type: sub.plan.billing_type,
-        current_period_start: sub.current_period?.start,
-        current_period_end: sub.current_period?.end,
-        trial_end: sub.trial?.end,
+        current_period_start: sub.current_period.start,
+        current_period_end: sub.current_period.end,
         created_at: sub.created_at,
         updated_at: sub.updated_at,
+        latest_invoice_id: sub.latest_invoice?.id,
+        latest_invoice_amount: chargeAmount / 100,
+        nfe_document_id: nota?.id || null,
       });
 
       if (error) throw error;
 
-      return res.status(201).json(sub);
+      return res.status(201).json({ subscription: sub, nota });
     } catch (error) {
       console.error("Erro ao criar assinatura:", error.response?.data || error);
       return res.status(500).json(error.response?.data || { message: "Erro interno" });
