@@ -4,6 +4,6 @@ import { authenticateJWT } from '../middlewares/authMiddleware.js';
 
 export const authRouter = Router();
 
-authRouter.get("/check", authenticateJWT, checkAuth)
+authRouter.get("/:slug/check", authenticateJWT, checkAuth)
 
 authRouter.post('/logout', authenticateJWT, logout)

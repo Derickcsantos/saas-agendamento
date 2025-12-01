@@ -52,7 +52,7 @@ export default function AppointmentPage({ slug }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/check`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/${slug}/check`, {
           credentials: "include",
         });
         const data = await res.json();

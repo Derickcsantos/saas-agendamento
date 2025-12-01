@@ -14,7 +14,7 @@ export default function AppointmentsPage({ params }) {
   useEffect(() => {
     const fetchUserAndAppointments = async () => {
       try {
-        const authRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/check`, {
+        const authRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/${slug}/check`, {
           credentials: "include",
         });
         const authData = await authRes.json();
