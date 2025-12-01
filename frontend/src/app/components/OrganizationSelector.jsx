@@ -94,11 +94,11 @@ export function OrganizationSelector() {
         </span>
 
         <h2 className="mt-4 text-3xl font-bold tracking-tight">
-          Entre no seu painel Marcafy
+          Encontre fácil o seu negócio
         </h2>
 
         <p className="mt-2 text-neutral-600">
-          Busque seu salão, clínica, barbearia ou negócio cadastrado.
+          Busque seu salão, clínica, barbearia, consultório ou outra empresa cadastrada.
         </p>
       </div>
 
