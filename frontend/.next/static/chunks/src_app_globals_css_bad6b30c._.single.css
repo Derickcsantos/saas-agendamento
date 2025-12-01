@@ -1774,6 +1774,16 @@
     }
   }
 
+  .border-black\/20 {
+    border-color: rgba(0, 0, 0, .2);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .border-black\/20 {
+      border-color: color-mix(in oklab, var(--color-black) 20%, transparent);
+    }
+  }
+
   .border-emerald-500\/50 {
     border-color: rgba(0, 187, 127, .5);
   }

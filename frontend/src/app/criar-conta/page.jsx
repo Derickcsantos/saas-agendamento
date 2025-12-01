@@ -301,19 +301,36 @@ export default function CreateOrganization() {
 
                 <div>
                   <label className="font-semibold text-gray-900 text-sm">Logo (opcional)</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="w-full border border-black/10 rounded-lg p-3 mt-1 bg-gray-50 text-gray-900 shadow-sm"
-                  />
-                  {logoPreview && (
-                    <img
-                      src={logoPreview}
-                      alt="Preview"
-                      className="w-24 h-24 object-cover mt-3 rounded-lg shadow-md border border-black/10"
-                    />
-                  )}
+
+                  <div
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const file = e.dataTransfer.files[0];
+                      handleLogoUpload({ target: { files: [file] } });
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    className="mt-1 flex flex-col items-center justify-center w-full h-32 border border-dashed border-black/20 rounded-xl bg-gray-50 hover:bg-gray-100 transition cursor-pointer shadow-sm"
+                  >
+                    {!logoPreview ? (
+                      <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer">
+                        <span className="text-gray-500 text-sm">Arraste uma imagem aqui</span>
+                        <span className="text-gray-400 text-xs mt-1">ou clique para selecionar</span>
+
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    ) : (
+                      <img
+                        src={logoPreview}
+                        alt="Preview"
+                        className="w-24 h-24 object-cover rounded-lg shadow-md border border-black/10"
+                      />
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex justify-between mt-6">
