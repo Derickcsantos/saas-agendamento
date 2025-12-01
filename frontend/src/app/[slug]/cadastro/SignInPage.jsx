@@ -28,7 +28,7 @@ export default function SignInPage({ slug }) {
     const checkAuth = async () => {
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/check`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/${slug}/check`,
           { credentials: "include" }
         );
         const data = await res.json();

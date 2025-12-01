@@ -15,7 +15,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/check`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/marcafy/check`, {
           credentials: "include",
         });
         const data = await res.json();
