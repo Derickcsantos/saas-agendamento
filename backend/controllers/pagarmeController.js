@@ -236,26 +236,37 @@ export const PagarmeController = {
   // =========================================
   async createSubscription(req, res) {
     try {
-      const payload = JSON.parse(JSON.stringify(req.body)); // CLONE REAL
-
-      if (!payload.customer.name) console.error("ERRO: name undefined");
-      if (!payload.customer.email) console.error("ERRO: email undefined");
-      if (!payload.customer.document) console.error("ERRO: document undefined");
-
-
-      console.log("PAYLOAD ENVIADO PARA PAGARME =", payload);
+      const payload = JSON.parse(JSON.stringify(req.body));
 
       const response = await pagarme.post("/subscriptions", payload);
+      const sub = response.data;
 
-      return res.status(201).json(response.data);
+      console.log("🔄 Assinatura criada no Pagarme:", sub);
+
+      // Salvar no Supabase
+      const { error } = await supabase.from("subscriptions").insert({
+        organization_id: payload?.organization_id,
+        plan_id: sub?.plan?.id,
+        pagarme_subscription_id: sub.id,
+        status: sub.status,
+        billing_type: sub.plan.billing_type,
+        current_period_start: sub.current_period?.start,
+        current_period_end: sub.current_period?.end,
+        trial_end: sub.trial?.end,
+        created_at: sub.created_at,
+        updated_at: sub.updated_at,
+      });
+
+      if (error) throw error;
+
+      return res.status(201).json(sub);
     } catch (error) {
       console.error("Erro ao criar assinatura:", error.response?.data || error);
       return res.status(500).json(error.response?.data || { message: "Erro interno" });
     }
   },
 
-
-    // =========================================
+  // =========================================
   // Atualizar assinatura existente
   // =========================================
   async updateSubscription(req, res) {
@@ -263,8 +274,26 @@ export const PagarmeController = {
       const { subscription_id } = req.params;
 
       const response = await pagarme.patch(`/subscriptions/${subscription_id}`, req.body);
+      const sub = response.data;
 
-      return res.status(200).json(response.data);
+      console.log("🔄 Assinatura atualizada:", sub);
+
+      const { error } = await supabase
+        .from("subscriptions")
+        .update({
+          status: sub.status,
+          plan_id: sub.plan?.id,
+          billing_type: sub.plan?.billing_type,
+          current_period_start: sub.current_period?.start,
+          current_period_end: sub.current_period?.end,
+          trial_end: sub.trial?.end,
+          updated_at: sub.updated_at,
+        })
+        .eq("pagarme_subscription_id", subscription_id);
+
+      if (error) throw error;
+
+      return res.status(200).json(sub);
     } catch (error) {
       console.error("Erro ao atualizar assinatura:", error.response?.data || error);
       return res.status(500).json(error.response?.data || { message: "Erro interno" });
@@ -278,16 +307,31 @@ export const PagarmeController = {
     try {
       const { subscription_id } = req.params;
 
-      const response = await pagarme.post(`/subscriptions/${subscription_id}/cancel`, req.body);
+      const response = await pagarme.post(`/subscriptions/${subscription_id}/cancel`);
+      const sub = response.data;
 
-      return res.status(200).json(response.data);
+      console.log("❌ Assinatura cancelada:", sub);
+
+      const { error } = await supabase
+        .from("subscriptions")
+        .update({
+          status: sub.status,
+          current_period_start: sub.current_period?.start,
+          current_period_end: sub.current_period?.end,
+          updated_at: sub.updated_at,
+        })
+        .eq("pagarme_subscription_id", subscription_id);
+
+      if (error) throw error;
+
+      return res.status(200).json(sub);
     } catch (error) {
       console.error("Erro ao cancelar assinatura:", error.response?.data || error);
       return res.status(500).json(error.response?.data || { message: "Erro interno" });
     }
   },
 
-    // =========================================
+  // =========================================
   // Solicitar reembolso de uma cobrança
   // =========================================
   async refundCharge(req, res) {

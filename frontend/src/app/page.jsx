@@ -146,19 +146,13 @@ export default function MarcafyLanding() {
       <header className="sticky top-0 z-30 w-full bg-white/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 md:px-8">
           <div className="flex items-center gap-3">
-            {/* Desktop / Tablet */}
             <img
-              src="/marcafyTopbar.jpg"
+              src="/marcafy-logo.jpg"
               alt="Marcafy"
-              className="hidden sm:block h-25 w-47 rounded-xl"
+              className="h-9 w-9 rounded-xl"
+              style={{ border: `1px solid ${BRAND}26` }}
             />
-
-            {/* Mobile */}
-            <img
-              src="/mTopbar.jpg"
-              alt="Marcafy Mobile"
-              className="block sm:hidden h-15 w-20 rounded-xl"
-            />
+            <span className="text-xl font-extrabold tracking-tight">Marcafy</span>
           </div>
 
           <nav className="hidden items-center gap-6 md:flex">
@@ -371,11 +365,11 @@ export default function MarcafyLanding() {
 
         <div className="order-1 flex items-center justify-center md:order-2">
           <motion.img
-            src="/mobile.avif"
+            src="/mockupCadastro.jpg"
             alt="Fluxo no celular"
             className="w-[260px] md:w-[320px] rounded-[32px] border"
             style={{ borderColor: "#ececec" }}
-            animate={{ rotate: [0, -2, 2, 0] }}
+            animate={{ rotate: [0, -0.5, 0.5, 0] }}
             transition={{ repeat: Infinity, duration: 10, ease: "easeInOut" }}
           />
         </div>
