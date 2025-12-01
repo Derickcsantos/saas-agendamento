@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { PagarmeController } from "../controllers/pagarmeController.js";
+import { NfeController } from "../controllers/nfeController.js";
 
 export const pagarmeRouter = Router();
 
@@ -33,6 +34,7 @@ pagarmeRouter.get("/subscriptions", PagarmeController.listSubscriptions);
 // Assinaturas (recorrência)
 pagarmeRouter.post("/subscriptions", PagarmeController.createSubscription);
 
+pagarmeRouter.get("/nfe/:document_id", NfeController.consultarNota);
 // Atualizar e cancelar assinatura
 pagarmeRouter.patch("/subscriptions/:subscription_id", PagarmeController.updateSubscription);
 
