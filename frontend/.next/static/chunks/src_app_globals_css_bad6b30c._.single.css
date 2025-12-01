@@ -929,6 +929,10 @@
     }
   }
 
+  .m-1 {
+    margin: calc(var(--spacing) * 1);
+  }
+
   .mx-auto {
     margin-left: auto;
     margin-right: auto;
@@ -1026,8 +1030,16 @@
     margin-left: calc(var(--spacing) * 1);
   }
 
+  .ml-2 {
+    margin-left: calc(var(--spacing) * 2);
+  }
+
   .ml-2\.5 {
     margin-left: calc(var(--spacing) * 2.5);
+  }
+
+  .ml-5 {
+    margin-left: calc(var(--spacing) * 5);
   }
 
   .ml-auto {
@@ -2306,6 +2318,10 @@
     color: var(--color-blue-600);
   }
 
+  .text-gray-50 {
+    color: var(--color-gray-50);
+  }
+
   .text-gray-400 {
     color: var(--color-gray-400);
   }
@@ -2370,12 +2386,20 @@
     color: var(--color-purple-100);
   }
 
+  .text-purple-400 {
+    color: var(--color-purple-400);
+  }
+
   .text-purple-600 {
     color: var(--color-purple-600);
   }
 
   .text-purple-700 {
     color: var(--color-purple-700);
+  }
+
+  .text-purple-800 {
+    color: var(--color-purple-800);
   }
 
   .text-red-500 {

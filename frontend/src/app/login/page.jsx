@@ -143,6 +143,7 @@ export default function GlobalLogin() {
   // UI
   // ===========================
   return (
+    
     <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8">
 
@@ -241,6 +242,10 @@ export default function GlobalLogin() {
             {loadingLogin ? "Entrando..." : "Entrar"}
           </button>
         </form>
+        <div className="w-full mt-4 flex justify-center">
+          <p className="text-gray-500 mr-1">Deseja voltar?</p>
+          <a style={{color: "#5E3BEE"}}  href="/">clique aqui</a>
+        </div>
 
         {/* MENSAGENS */}
         {errorMsg && (
