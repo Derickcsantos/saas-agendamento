@@ -206,7 +206,7 @@ export default function EmployeePanel() {
             className="flex items-center gap-2 cursor-pointer"
           >
             <img
-              src={orgData?.organizations.logo_organization}
+              src={orgData?.organizations?.logo_organization}
               alt="Logo"
               className="w-10 h-10 rounded-full border border-white"
             />

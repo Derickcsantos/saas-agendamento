@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter} from "next/navigation";
+import { useRouter } from "next/navigation";
+
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import Card from "./components/Card";
@@ -16,7 +17,7 @@ import RevenuesTab from './components/RevenuesTab';
 import CouponsTab from "./components/CouponsTab";
 import UsersTab from "./components/UsersTab";
 import FasterScheduleTab from "./components/FasterScheduleTab";
-import SiteTab from './components/SiteTab';
+import SiteTab from "./components/SiteTab";
 import SettingsTab from "./components/SettingsTab";
 
 export default function AdminDashboard({ slug }) {
@@ -27,6 +28,9 @@ export default function AdminDashboard({ slug }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
 
+  // ======================
+  // Autenticação
+  // ======================
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -40,34 +44,38 @@ export default function AdminDashboard({ slug }) {
           return;
         }
 
-        if (data.user.tipo === 'comum') {
-          router.push(`/${slug}/minha-conta`)
-          return
+        if (data.user.tipo === "comum") {
+          router.push(`/${slug}/minha-conta`);
+          return;
         }
 
-        if (data.user.tipo === 'funcionario') {
-          router.push(`/${slug}/profissional`)
-          return
+        if (data.user.tipo === "funcionario") {
+          router.push(`/${slug}/profissional`);
+          return;
         }
 
         setUser(data.user);
-      } catch (error) {
-        console.error("Erro ao verificar autenticação:", error);
+
+      } catch {
         router.push(`/${slug}/login`);
       } finally {
         setLoading(false);
       }
     };
+
     checkAuth();
   }, [router, slug]);
 
+  // ======================
+  // Buscar dados
+  // ======================
   useEffect(() => {
     async function fetchData() {
       try {
         const [orgRes, statsRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${slug}`),
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard/${slug}`, {
-            credentials: 'include',
+            credentials: "include",
           }),
         ]);
 
@@ -75,9 +83,8 @@ export default function AdminDashboard({ slug }) {
         const statsData = await statsRes.json();
 
         setOrg(orgData);
-        console.log(orgData)
         setStats(statsData);
-        console.log(statsData)
+
       } catch (err) {
         console.error(err);
       } finally {
@@ -103,7 +110,7 @@ export default function AdminDashboard({ slug }) {
     );
 
   // ======================
-  // Renderização por abas
+  // Render por abas
   // ======================
   const renderContent = () => {
     switch (activeTab) {
@@ -129,9 +136,11 @@ export default function AdminDashboard({ slug }) {
         return <SiteTab org={org} />;
       case "settings":
         return <SettingsTab org={org} />;
+
       default:
         return (
           <>
+            {/* CARDS */}
             <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card title="Serviços" value={stats?.totalServices} />
               <Card title="Funcionários" value={stats?.totalEmployees} />
@@ -139,39 +148,43 @@ export default function AdminDashboard({ slug }) {
               <Card title="Agendamentos" value={stats?.totalAppointments} />
             </section>
 
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            {/* GRÁFICOS */}
+            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 w-full overflow-x-hidden">
               <ChartCard
                 id="appointmentsChart"
                 title="Agendamentos por mês"
                 data={{
-                  labels: [
-                    "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
-                    "Jul", "Ago", "Set", "Out", "Nov", "Dez"
-                  ],
-                  values: stats?.monthlyAppointments || []
+                  labels: ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"],
+                  values: stats?.monthlyAppointments || [],
                 }}
               />
               <ChartCard
                 id="servicesChart"
                 title="Serviços mais populares"
                 data={{
-                  labels: (stats?.servicesPopularity || []).map(s => s.service),
-                  values: (stats?.servicesPopularity || []).map(s => s.count),
+                  labels: stats?.servicesPopularity?.map((s) => s.service) || [],
+                  values: stats?.servicesPopularity?.map((s) => s.count) || [],
                 }}
               />
             </section>
 
-            <section className="mt-6 space-y-6">
-              <Table
-                title="Últimos agendamentos"
-                columns={["Cliente", "Serviço", "Profissional", "Data", "Status"]}
-                data={stats?.latestAppointments || []}
-              />
-              <Table
-                title="Funcionários ativos"
-                columns={["Nome", "Email", "Telefone", "Status"]}
-                data={stats?.employeesList || []}
-              />
+            {/* TABELAS */}
+            <section className="mt-6 space-y-6 overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table
+                  title="Últimos agendamentos"
+                  columns={["Cliente", "Serviço", "Profissional", "Data", "Status"]}
+                  data={stats?.latestAppointments || []}
+                />
+              </div>
+
+              <div className="overflow-x-auto">
+                <Table
+                  title="Funcionários ativos"
+                  columns={["Nome", "Email", "Telefone", "Status"]}
+                  data={stats?.employeesList || []}
+                />
+              </div>
             </section>
           </>
         );
@@ -179,11 +192,19 @@ export default function AdminDashboard({ slug }) {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <Sidebar org={org} slug={slug} setActiveTab={setActiveTab} activeTab={activeTab} />
-      <div className="flex-1 flex flex-col">
+    <div className="flex min-h-screen bg-gray-100 overflow-hidden"> 
+      {/* Sidebar fixa sem deixar vazar */}
+      <div className="shrink-0">
+        <Sidebar org={org} slug={slug} setActiveTab={setActiveTab} activeTab={activeTab} />
+      </div>
+
+      {/* Conteúdo */}
+      <div className="flex-1 flex flex-col max-w-full overflow-hidden">
         <Topbar org={org} slug={slug} />
-        <main className="flex-1 p-6 space-y-6 overflow-y-auto">{renderContent()}</main>
+
+        <main className="flex-1 p-6 space-y-6 overflow-y-auto max-w-full overflow-x-hidden">
+          {renderContent()}
+        </main>
       </div>
     </div>
   );
