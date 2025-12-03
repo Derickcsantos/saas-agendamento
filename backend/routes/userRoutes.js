@@ -130,7 +130,7 @@ userRouter.post('/:slug', createUser)
  *       500:
  *         description: Erro interno do servidor
  */
-userRouter.put('/:id', authenticateJWT, updateUser)
+userRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, updateUser)
 
 
 /**
@@ -164,5 +164,5 @@ userRouter.put('/:id', authenticateJWT, updateUser)
  *       500:
  *         description: Erro interno do servidor
  */
-userRouter.delete('/:id', authenticateJWT, requireAdminOfOrganization, deleteUser)
+userRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, deleteUser)
 
