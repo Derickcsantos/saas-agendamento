@@ -41,7 +41,9 @@ export default function EmployeesTab({ org }) {
 
    const loadEmployeeServices = async (employeeId) => {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/employee-services/${employeeId}`
+      `${process.env.NEXT_PUBLIC_API_URL}/api/employee-services/${org.slug_organization}/${employeeId}`, {
+        credentials: 'include'
+      }
     );
     const data = await res.json();
     setEmployeeServices(data);
@@ -126,6 +128,7 @@ export default function EmployeesTab({ org }) {
     setSchedules(sched.length ? sched : [{ day_of_week: 1, start_time: "08:00", end_time: "17:00" }]);
 
     await loadEmployeeServices(emp.id);
+    await loadAllServices(); 
   };
 
   const handleDelete = async (id) => {
@@ -134,6 +137,7 @@ export default function EmployeesTab({ org }) {
       `${process.env.NEXT_PUBLIC_API_URL}/api/admin/employees/${org.slug_organization}/${id}`,
       { method: "DELETE", credentials: 'include' }
     );
+    toast.success('Funcionário excluido com sucesso');
     loadEmployees();
   };
 
@@ -172,9 +176,10 @@ export default function EmployeesTab({ org }) {
 
   const saveEmployeeServices = async () => {
     await fetch(
-      `${api}/api/employee-services/${editing}?organization_id=${org.id}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/employee-services/${org.slug_organization}/${editing}`,
       {
         method: "PUT",
+        credentials: 'include',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(employeeServices),
       }
@@ -184,7 +189,7 @@ export default function EmployeesTab({ org }) {
     setShowServicesModal(false);
   };
 
-  const filteredServices = services.filter((s) =>
+  const filteredServices = allServices.filter((s) =>
     s.name.toLowerCase().includes(searchService.toLowerCase())
   );
 
@@ -198,7 +203,6 @@ export default function EmployeesTab({ org }) {
           {editing ? "Editar Funcionário" : "Novo Funcionário"}
         </h4>
 
-        {/* INPUTS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input type="text" required placeholder="Nome" className="border p-2 rounded-md"
             value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -228,7 +232,6 @@ export default function EmployeesTab({ org }) {
 
         {preview && <img src={preview} className="w-32 h-32 object-cover rounded-md" />}
 
-        {/* SCHEDULES */}
         <div className="space-y-2">
           <h5 className="font-medium text-gray-700">Horários de Trabalho</h5>
 
@@ -278,7 +281,6 @@ export default function EmployeesTab({ org }) {
           </button>
         </div>
 
-        {/* ACTION BUTTONS */}
         <div className="flex gap-2">
           <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-md">Salvar</button>
 

@@ -6,7 +6,6 @@ import cookieParser from 'cookie-parser';
 import cron from 'node-cron';
 import setupSwagger from './swagger.js';
 import { categoryRouter } from './routes/categoryRoutes.js';
-// import { whatsappRouter } from './routes/whatsappRoutes.js';
 import { userRouter } from './routes/userRoutes.js';
 import { forgotPasswordRouter } from './routes/forgotPasswordRoutes.js';
 import { verifyUserRouter } from './routes/verifyUserRoutes.js';
@@ -22,16 +21,15 @@ import { galleryRouter } from './routes/galleryRoutes.js';
 import { revenueRouter } from './routes/revenueRouter.js'
 import { employeeScheduleRouter } from './routes/employeeScheduleRoutes.js'
 import { loginRouter } from './routes/loginRoutes.js'
-// import { emailRouter } from './routes/emailRoutes.js'
+import { emailRouter } from './routes/emailRoutes.js'
 import { dashboardDataRouter } from './routes/dashboardDataRoutes.js'
-// import { checkHealthRouter } from './routes/checkHealthRoutes.js'
 import { loggedInUserRouter } from './routes/loggedInUserRoutes.js';
 import { corsOptions } from './utils/corsOptions.js';
 import { googleRouter } from './routes/googleRoutes.js';
 import { landingPageRouter } from './routes/landingPagesRoutes.js';
 import { authRouter } from './routes/authRoutes.js';
 import { organizationRouter } from './routes/organizationRoutes.js';
-// import passport from './lib/passport.js';
+import passport from './lib/passport.js';
 import { organizationColorsRouter } from './routes/organizationColorsRoutes.js';
 import { appointmentProcessRouter } from './routes/appointmentsProcessRoutes.js';
 import { organizationPoliciesRouter } from "./routes/organizationPoliciesRoutes.js";
@@ -49,15 +47,9 @@ app.options("*", cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
-
-// app.use((req, res, next) => {
-//   res.header('Access-Control-Allow-Credentials', 'true'); // importante
-//   next();
-// });
-
 setupSwagger(app)
 
-// app.use(passport.initialize());
+app.use(passport.initialize());
 
 cron.schedule('0 3 * * *', async () => {
   console.log('Executando atualização diária de agendamentos...');
@@ -72,13 +64,11 @@ cron.schedule('0 3 * * *', async () => {
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
 app.use('/api/appointments', appointmentProcessRouter);
 app.use('/api/forgot-password', forgotPasswordRouter) 
-// app.use('/api/send-confirmation-email', emailRouter)
-// app.use('/api/send-whatsapp-confirmation', whatsappRouter )
-// app.use('/api/health', checkHealthRouter)
+app.use('/api/send-confirmation-email', emailRouter)
 app.use('/api/users', userRouter)
 app.use('/api/register', registerUserRouter);
 app.use('/api/login', loginRouter) 
-// app.use('/auth/google', googleRouter);
+app.use('/auth/google', googleRouter);
 app.use('/api/verifica-usuario', verifyUserRouter); 
 app.use('/api/appointments', appointmentsRouter); 
 app.use('/api/minha-conta', loggedInUserRouter);
