@@ -2,6 +2,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import jsPDF from "jspdf";
+import { toast } from 'react-toastify'
 import "jspdf-autotable";
 
 export default function RevenueTab({ org }) {
@@ -26,16 +27,6 @@ export default function RevenueTab({ org }) {
     ).toLocaleDateString("pt-BR")}`;
   };
 
-  const showToast = (message, type = "success") => {
-    const toast = document.createElement("div");
-    toast.className = `fixed right-6 top-6 z-50 px-4 py-3 rounded shadow text-white bg-${
-      type === "error" ? "red" : "green"
-    }-600 animate-slide-in opacity-0`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => (toast.style.opacity = 1), 80);
-    setTimeout(() => toast.remove(), 4000);
-  };
 
   const loadRevenue = async (start = null, end = null) => {
     try {
@@ -51,7 +42,7 @@ export default function RevenueTab({ org }) {
       if (!res.ok) throw new Error(json.error || "Erro ao carregar dados");
       setData(json);
     } catch (err) {
-      showToast(err.message, "error");
+      toast.error("Erro ao carregar dados");
     } finally {
       setLoading(false);
     }
@@ -77,9 +68,9 @@ export default function RevenueTab({ org }) {
         .split("T")[0]}.xlsx`;
       a.click();
       URL.revokeObjectURL(downloadUrl);
-      showToast("Excel exportado com sucesso!");
+      toast.success("Dados exportados com sucesso!");
     } catch (err) {
-      showToast(err.message, "error");
+      toast.error("Falha na exportação");
     }
   };
 
@@ -138,9 +129,9 @@ export default function RevenueTab({ org }) {
           .replace(/\//g, "-")}.pdf`
       );
 
-      showToast("PDF gerado com sucesso!");
+      toast.success("PDF gerado com sucesso!");
     } catch (err) {
-      showToast("Erro ao gerar PDF: " + err.message, "error");
+      toast.error("Erro ao gerar PDF: ");
     }
   };
 

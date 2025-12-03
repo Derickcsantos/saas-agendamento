@@ -19,9 +19,6 @@ export default function CouponsTab({ org }) {
 
   const [loading, setLoading] = useState(false);
 
-  // ===========================
-  // 🔹 Carregar cupons
-  // ===========================
   useEffect(() => {
     loadCoupons();
   }, []);
@@ -35,9 +32,7 @@ export default function CouponsTab({ org }) {
     setCoupons(data);
   }
 
-  // ===========================
-  // 🔹 Manipula envio do formulário
-  // ===========================
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -65,9 +60,6 @@ export default function CouponsTab({ org }) {
     loadCoupons();
   };
 
-  // ===========================
-  // 🔹 Pré-carrega cupom na edição
-  // ===========================
   const handleEdit = (coupon) => {
     setForm({
       id: coupon.id,
@@ -88,9 +80,6 @@ export default function CouponsTab({ org }) {
     });
   };
 
-  // ===========================
-  // 🔹 Excluir cupom
-  // ===========================
   const handleDelete = async (id) => {
     if (!confirm("Deseja realmente excluir este cupom?")) return;
 
@@ -109,9 +98,6 @@ export default function CouponsTab({ org }) {
     loadCoupons();
   };
 
-  // ===========================
-  // 🔹 Resetar formulario
-  // ===========================
   const resetForm = () => {
     setForm({
       id: null,
@@ -128,9 +114,6 @@ export default function CouponsTab({ org }) {
     });
   };
 
-  // ===========================
-  // 🔹 Formatar data para input
-  // ===========================
   function formatDateToInput(dateStr) {
     const d = new Date(dateStr);
     return d.toISOString().slice(0, 16);
@@ -138,9 +121,7 @@ export default function CouponsTab({ org }) {
 
   return (
     <div>
-      {/* =========================== */}
-      {/* 🔹 FORMULÁRIO */}
-      {/* =========================== */}
+
       <form
         onSubmit={handleSubmit}
         className="bg-white p-4 rounded-lg shadow-sm border mb-6 space-y-4"
@@ -149,7 +130,6 @@ export default function CouponsTab({ org }) {
           {form.id ? "Editar Cupom" : "Novo Cupom"}
         </h4>
 
-        {/* Nome + Código */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input
             type="text"
@@ -172,7 +152,6 @@ export default function CouponsTab({ org }) {
           />
         </div>
 
-        {/* Tipo de desconto + valor */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <select
             className="border p-2 rounded-md"
@@ -198,7 +177,6 @@ export default function CouponsTab({ org }) {
           />
         </div>
 
-        {/* Datas */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input
             type="datetime-local"
@@ -215,7 +193,6 @@ export default function CouponsTab({ org }) {
           />
         </div>
 
-        {/* Max usos + valor mínimo */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input
             type="number"
@@ -244,7 +221,6 @@ export default function CouponsTab({ org }) {
           />
         </div>
 
-        {/* Descrição */}
         <textarea
           className="border p-2 rounded-md w-full"
           rows={2}
@@ -255,7 +231,6 @@ export default function CouponsTab({ org }) {
           }
         />
 
-        {/* Status */}
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -267,7 +242,6 @@ export default function CouponsTab({ org }) {
           Cupom Ativo
         </label>
 
-        {/* Botões */}
         <div className="flex gap-2">
           <button
             type="submit"
@@ -289,9 +263,6 @@ export default function CouponsTab({ org }) {
         </div>
       </form>
 
-      {/* =========================== */}
-      {/* 🔹 TABELA */}
-      {/* =========================== */}
       <div className="bg-white p-4 rounded-lg shadow-sm border">
         <h4 className="font-semibold text-gray-700 mb-4">Cupons</h4>
 

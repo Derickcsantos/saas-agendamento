@@ -8,9 +8,6 @@ import ptLocale from "@fullcalendar/core/locales/pt-br";
 import formatDateFromYYYYMMDD from "@/app/utils/formatDateFromYYYYMMDD";
 import { statusClasses } from "@/app/utils/appointmentStatus";
 
-// =====================================
-// PREMIUM CSS PARA FULLCALENDAR
-// =====================================
 const calendarStyles = `
   .fc-theme-standard td, 
   .fc-theme-standard th {
@@ -113,9 +110,6 @@ export default function AppointmentsTab({ org }) {
     date: "",
   });
 
-  // =====================================
-  // Debounce de performance
-  // =====================================
   const debounce = (fn, delay) => {
     let timer;
     return (...args) => {
@@ -132,9 +126,7 @@ export default function AppointmentsTab({ org }) {
     []
   );
 
-  // =====================================
-  // Carregar agendamentos
-  // =====================================
+
   async function loadAppointments(customFilters = filters) {
     setLoading(true);
     try {
@@ -148,7 +140,6 @@ export default function AppointmentsTab({ org }) {
       const data = await res.json();
       setAppointments(data);
 
-      // Eventos com design premium
       setCalendarEvents(
         data.map((a) => ({
           id: a.id,
@@ -200,19 +191,14 @@ export default function AppointmentsTab({ org }) {
     setSavingId(null);
   };
 
-  // =====================================
-  // UI PREMIUM
-  // =====================================
   return (
     <div className="space-y-8 bg-white dark:bg-gray-900 p-6 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-gray-200 dark:border-gray-700">
 
-      {/* 🎨 Estilos Premium do Calendar */}
       <style>{calendarStyles}</style>
 
-      {/* HEADER */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-          📅 Agendamentos
+        <h1 className="text-2xl text-gray-800 dark:text-gray-100">
+          Agendamentos
         </h1>
 
         <button
@@ -223,7 +209,6 @@ export default function AppointmentsTab({ org }) {
         </button>
       </div>
 
-      {/* FILTROS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl shadow-inner border border-gray-200 dark:border-gray-700">
         <input
           type="text"
@@ -261,9 +246,6 @@ export default function AppointmentsTab({ org }) {
         </button>
       </div>
 
-      {/* =======================
-          TABELA PREMIUM
-      ======================== */}
       {view === "table" && (
         <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg">
           <table className="w-full text-sm min-w-[900px]">
@@ -320,9 +302,7 @@ export default function AppointmentsTab({ org }) {
         </div>
       )}
 
-      {/* =========================
-          CALENDÁRIO PREMIUM
-      ========================= */}
+
       {view === "calendar" && (
         <div className="p-4 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-[0_8px_30px_rgba(0,0,0,0.06)] bg-white dark:bg-gray-800 overflow-hidden">
           <FullCalendar

@@ -20,7 +20,6 @@ export default function EmployeesTab({ org }) {
     { day_of_week: 1, start_time: "08:00", end_time: "17:00" },
   ]);
 
-    // Modal de serviços
   const [servicesModalOpen, setServicesModalOpen] = useState(false);
   const [allServices, setAllServices] = useState([]);
   const [showServicesModal, setShowServicesModal] = useState(false);
@@ -50,7 +49,9 @@ export default function EmployeesTab({ org }) {
 
   const loadAllServices = async () => {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/services`
+      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/services/slug/${org.slug_organization}`, {
+        credentials: 'include'
+      }
     );
     const data = await res.json();
     setAllServices(data);
@@ -68,15 +69,20 @@ export default function EmployeesTab({ org }) {
         ? `${process.env.NEXT_PUBLIC_API_URL}/api/admin/employees/${org.slug_organization}/${editing}`
         : `${process.env.NEXT_PUBLIC_API_URL}/api/admin/employees/${org.slug_organization}`;
 
-      const res = await fetch(url, { method, body: formData });
+      const res = await fetch(url, { 
+        method,
+        credentials: 'include', 
+        body: formData 
+      });
       if (!res.ok) throw new Error("Erro ao salvar funcionário");
       const emp = await res.json();
 
       // salvar horários
       await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/schedules/${org.slug_organization}/${emp.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/schedules/${org.slug_organization}/${emp.id}`,
         {
           method: "PUT",
+          credentials: 'include',
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(schedules),
         }
@@ -93,6 +99,7 @@ export default function EmployeesTab({ org }) {
       setPreview("");
       setEditing(null);
       setSchedules([{ day_of_week: 1, start_time: "08:00", end_time: "17:00" }]);
+      toast.success('Funcionário cadastrado com sucesso');
       loadEmployees();
     } catch (err) {
       toast.error('Erro ao enviar dados');
@@ -112,20 +119,20 @@ export default function EmployeesTab({ org }) {
 
     setPreview(emp.image_url || "");
 
-    // Load schedules
-    const res = await fetch(`${api}/api/admin/${org.slug_organization}/schedules/${emp.id}`);
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/schedules/${org.slug_organization}/${emp.id}`, {
+      credentials: 'include'
+    });
     const sched = await res.json();
     setSchedules(sched.length ? sched : [{ day_of_week: 1, start_time: "08:00", end_time: "17:00" }]);
 
-    // Load employee services
     await loadEmployeeServices(emp.id);
   };
 
   const handleDelete = async (id) => {
     if (!confirm("Deseja realmente excluir este funcionário?")) return;
     await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/employees/${id}`,
-      { method: "DELETE" }
+      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/employees/${org.slug_organization}/${id}`,
+      { method: "DELETE", credentials: 'include' }
     );
     loadEmployees();
   };
@@ -183,7 +190,6 @@ export default function EmployeesTab({ org }) {
 
   return (
     <div>
-      {/* ====================== FORM ====================== */}
       <form
         onSubmit={handleSubmit}
         className="bg-white p-4 rounded-lg shadow-sm border mb-6 space-y-4"
@@ -298,7 +304,6 @@ export default function EmployeesTab({ org }) {
         </div>
       </form>
 
-      {/* ====================== EMPLOYEES LIST ====================== */}
       <div className="bg-white p-4 rounded-lg shadow-sm border">
         <h4 className="font-semibold text-gray-700 mb-4">Funcionários</h4>
 
@@ -349,7 +354,6 @@ export default function EmployeesTab({ org }) {
         </table>
       </div>
 
-      {/* ====================== MODAL: SERVICES ====================== */}
       {showServicesModal && (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
           <div className="bg-white w-full max-w-xl rounded-lg shadow-lg p-6">

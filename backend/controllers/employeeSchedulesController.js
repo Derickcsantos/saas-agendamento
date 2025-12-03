@@ -6,10 +6,22 @@ import formatTimeFromDB from '../utils/formatTimeFromDB.js'
 
 export const getSchedules = async (req, res) => {
   try {
+    const { slug } = req.params;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
     const { data, error } = await supabase
       .from("work_schedules")
       .select("*, employees(name, email)")
-      .eq('organization_id', req.organizationId);
+      .eq('organization_id', org.id);
 
 
     if (error) throw error;
@@ -22,12 +34,23 @@ export const getSchedules = async (req, res) => {
 
 export const getScheduleByEmployeeId = async (req, res) => {
   try {
-    const { employee_id } = req.params;
+    const { slug, employee_id } = req.params;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+    
     const { data, error } = await supabase
       .from("work_schedules")
       .select("*")
       .eq("employee_id", employee_id)
-      .eq('organization_id', req.organizationId);
+      .eq('organization_id', org.id);
 
     if (error) throw error;
     
@@ -63,6 +86,17 @@ export const getScheduleByEmployeeId = async (req, res) => {
 export const createSchedule = async (req, res) => {
   try {
     const { employee_id, day_of_week, start_time, end_time, is_available = true } = req.body;
+    const { slug } = req.params;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
 
     // Validações
     if (!employee_id || day_of_week === undefined || !start_time || !end_time) {
@@ -93,7 +127,8 @@ export const createSchedule = async (req, res) => {
         day_of_week: dayNumber, 
         start_time: formattedStart, 
         end_time: formattedEnd, 
-        is_available 
+        is_available,
+        organization_id: org.id
       }])
       .select();
 
@@ -111,8 +146,18 @@ export const createSchedule = async (req, res) => {
 
 export const updateSchedule = async (req, res) => {
   try {
-    const { employee_id } = req.params;
+    const { slug, employee_id } = req.params;
     const schedules = req.body;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
 
     // Verificar se o funcionário existe
     const { data: employee, error: employeeError } = await supabase
@@ -145,7 +190,8 @@ export const updateSchedule = async (req, res) => {
           employee_id,
           day_of_week: schedule.day_of_week,
           start_time: schedule.start_time,
-          end_time: schedule.end_time
+          end_time: schedule.end_time,
+          organization_id: org.id
         };
       });
 
@@ -168,10 +214,22 @@ export const updateSchedule = async (req, res) => {
 
 export const deleteAllSchedulesFromEmployee = async (req, res) => {
   try {
-    const { employee_id } = req.params;
+    const { slug, employee_id } = req.params;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
     const { error } = await supabase
       .from("work_schedules")
       .delete()
+      .eq('organization_id', org.id)
       .eq("employee_id", employee_id);
 
     if (error) throw error;

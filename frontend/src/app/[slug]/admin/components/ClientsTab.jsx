@@ -14,9 +14,6 @@ export default function ClientsTab({ org }) {
     notes: "",
   });
 
-  // ==========================
-  // Funções utilitárias
-  // ==========================
   const apiBase = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/${org.slug_organization}/clients`;
 
   async function loadClients(query = "") {
@@ -37,9 +34,6 @@ export default function ClientsTab({ org }) {
     loadClients();
   }, []);
 
-  // ==========================
-  // Handlers CRUD
-  // ==========================
   async function handleSubmit(e) {
     e.preventDefault();
 
@@ -100,12 +94,8 @@ export default function ClientsTab({ org }) {
     await loadClients(search);
   }
 
-  // ==========================
-  // JSX
-  // ==========================
   return (
     <div className="space-y-6">
-      {/* Formulário */}
       <form
         onSubmit={handleSubmit}
         className="bg-white p-4 rounded-lg shadow-sm border space-y-4"
@@ -165,7 +155,6 @@ export default function ClientsTab({ org }) {
         </div>
       </form>
 
-      {/* Busca */}
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="text"
@@ -191,7 +180,6 @@ export default function ClientsTab({ org }) {
         </button>
       </div>
 
-      {/* Lista de clientes */}
       <div className="bg-white p-4 rounded-lg shadow-sm border">
         <h4 className="font-semibold text-gray-700 mb-4">Clientes</h4>
 
