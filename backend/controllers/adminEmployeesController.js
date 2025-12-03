@@ -64,12 +64,23 @@ export const getEmployees = async (req, res) => {
 
 export const getEmployeeById = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { slug, id } = req.params;
+    
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
     const { data, error } = await supabase
       .from('employees')
       .select('*')
       .eq('id', id)
-      .eq('organization_id', req.organizationId)
+      .eq('organization_id', org.id)
       .single();
 
     if (error) throw error;
@@ -91,9 +102,19 @@ export const getEmployeeById = async (req, res) => {
 
 export const createEmployee = async (req, res) => {
   try {
-    // Extrair dados do corpo da requisição
     const { name, email, phone, comissao, is_active } = req.body;
     let imageData = null;
+    const { slug } = req.params;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
 
     // Se houver arquivo, converte para base64
     if (req.file) {
@@ -113,7 +134,8 @@ export const createEmployee = async (req, res) => {
         phone,
         comissao, 
         imagem_funcionario: imageData,
-        is_active: is_active === 'true' || is_active === true
+        is_active: is_active === 'true' || is_active === true,
+        organization_id: org.id
       }])
       .select();
 
@@ -127,9 +149,19 @@ export const createEmployee = async (req, res) => {
 
 export const updateEmployee = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { slug, id } = req.params;
     const { name, email, phone, comissao, is_active } = req.body;
     let imageData = null;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
 
     // Se enviou nova imagem, converte para base64
     if (req.file) {
@@ -146,6 +178,7 @@ export const updateEmployee = async (req, res) => {
       email, 
       phone, 
       comissao,
+      organization_id: org.id,
       is_active: is_active === 'true' || is_active === true,
       ...(imageData && { imagem_funcionario: imageData })
     };
@@ -166,7 +199,17 @@ export const updateEmployee = async (req, res) => {
 
 export const deleteEmployee = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { slug, id } = req.params;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
     
     // Primeiro deletar os horários associados
     const { error: scheduleError } = await supabase
@@ -180,6 +223,7 @@ export const deleteEmployee = async (req, res) => {
     const { error: employeeError } = await supabase
       .from('employees')
       .delete()
+      .eq('organization_id', org.id)
       .eq('id', id);
 
     if (employeeError) throw employeeError;

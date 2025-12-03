@@ -36,7 +36,7 @@ export const employeeScheduleRouter = Router()
  *       500:
  *         description: Erro interno do servidor
  */
-employeeScheduleRouter.get('/', getSchedules)
+employeeScheduleRouter.get('/:slug', getSchedules)
 
 /**
  * @swagger
@@ -64,7 +64,7 @@ employeeScheduleRouter.get('/', getSchedules)
  *       500:
  *         description: Erro interno do servidor
  */
-employeeScheduleRouter.get('/:employee_id', getScheduleByEmployeeId)
+employeeScheduleRouter.get('/:slug/:employee_id', getScheduleByEmployeeId)
 
 /**
  * @swagger
@@ -116,7 +116,7 @@ employeeScheduleRouter.get('/:employee_id', getScheduleByEmployeeId)
  *       500:
  *         description: Erro interno do servidor
  */
-employeeScheduleRouter.post('/', createSchedule)
+employeeScheduleRouter.post('/:slug', createSchedule)
 
 /**
  * @swagger
@@ -173,7 +173,7 @@ employeeScheduleRouter.post('/', createSchedule)
  *       500:
  *         description: Erro interno do servidor
  */
-employeeScheduleRouter.put('/:employee_id', updateSchedule)
+employeeScheduleRouter.put('/:slug/:employee_id', updateSchedule)
 
 /**
  * @swagger
@@ -194,7 +194,7 @@ employeeScheduleRouter.put('/:employee_id', updateSchedule)
  *       500:
  *         description: Erro interno do servidor
  */
-employeeScheduleRouter.delete('/:employee_id', deleteAllSchedulesFromEmployee)
+employeeScheduleRouter.delete('/:slug/:employee_id', deleteAllSchedulesFromEmployee)
 
 /**
  * @swagger

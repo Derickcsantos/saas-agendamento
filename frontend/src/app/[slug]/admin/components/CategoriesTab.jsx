@@ -12,9 +12,6 @@ export default function CategoriesTab({ org }) {
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ======================
-  // 1️⃣ Carregar categorias
-  // ======================
   const loadCategories = async () => {
     try {
       setLoading(true);
@@ -36,9 +33,7 @@ export default function CategoriesTab({ org }) {
     loadCategories();
   }, []);
 
-  // ======================
-  // 2️⃣ Salvar categoria
-  // ======================
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -74,9 +69,7 @@ export default function CategoriesTab({ org }) {
     }
   };
 
-  // ======================
-  // 3️⃣ Editar
-  // ======================
+
   const handleEdit = (cat) => {
     setEditing(true);
     setCategoryId(cat.id);
@@ -84,9 +77,7 @@ export default function CategoriesTab({ org }) {
     setPreview(cat.imagem_category);
   };
 
-  // ======================
-  // 4️⃣ Excluir
-  // ======================
+
   const handleDelete = async (id) => {
     if (!confirm("Deseja realmente excluir esta categoria?")) return;
 
@@ -101,7 +92,6 @@ export default function CategoriesTab({ org }) {
   return (
     <div className="space-y-8">
 
-      {/* FORMULÁRIO */}
       <form
         onSubmit={handleSubmit}
         className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 space-y-6"
@@ -162,7 +152,6 @@ export default function CategoriesTab({ org }) {
         </div>
       </form>
 
-      {/* LISTAGEM */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700">
         <h4 className="text-lg font-bold text-gray-700 dark:text-gray-200 mb-4">Categorias</h4>
 

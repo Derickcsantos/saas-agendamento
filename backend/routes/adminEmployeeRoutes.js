@@ -9,6 +9,7 @@ import {
 import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddleware.js';
 import { create } from 'domain';
 import multer from 'multer';
+import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
 const upload = multer(); 
 
 export const adminEmployeeRouter = Router();
@@ -49,7 +50,7 @@ export const adminEmployeeRouter = Router();
  *                 details:
  *                   type: string
  */
-adminEmployeeRouter.get('/:slug', authenticateJWT, getEmployees);
+adminEmployeeRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, getEmployees);
 
 /**
  * @swagger
@@ -77,7 +78,7 @@ adminEmployeeRouter.get('/:slug', authenticateJWT, getEmployees);
  *       500:
  *         description: Erro interno do servidor
  */
-adminEmployeeRouter.get('/:id', extractOrganizationId, getEmployeeById);
+adminEmployeeRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganization, getEmployeeById);
 
 /**
  * @swagger
@@ -133,7 +134,7 @@ adminEmployeeRouter.get('/:id', extractOrganizationId, getEmployeeById);
  *       500:
  *         description: Erro interno do servidor
  */
-adminEmployeeRouter.post('/', extractOrganizationId, upload.single('image'), createEmployee);
+adminEmployeeRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, upload.single('image'), createEmployee);
 
 /**
  * @swagger
@@ -185,7 +186,7 @@ adminEmployeeRouter.post('/', extractOrganizationId, upload.single('image'), cre
  *       500:
  *         description: Erro interno do servidor
  */
-adminEmployeeRouter.put('/:id', extractOrganizationId, upload.single('image'), updateEmployee);
+adminEmployeeRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, upload.single('image'), updateEmployee);
 
 /**
  * @swagger
@@ -208,4 +209,4 @@ adminEmployeeRouter.put('/:id', extractOrganizationId, upload.single('image'), u
  *       500:
  *         description: Erro interno do servidor
  */
-adminEmployeeRouter.delete('/:id', extractOrganizationId, deleteEmployee);
+adminEmployeeRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, deleteEmployee);
