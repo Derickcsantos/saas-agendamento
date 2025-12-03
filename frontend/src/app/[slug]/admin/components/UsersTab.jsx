@@ -238,7 +238,7 @@ export default function UsersTab({ org }) {
                           ? "bg-blue-600"
                           : u.tipo === "funcionario"
                           ? "bg-yellow-600"
-                          : "bg-gray-500"
+                          : "bg-gray-500" 
                       }`}
                     >
                       {u.tipo}

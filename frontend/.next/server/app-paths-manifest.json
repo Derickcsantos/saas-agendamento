@@ -1,7 +1,9 @@
 {
   "/[slug]/admin/page": "app/[slug]/admin/page.js",
+  "/[slug]/agendar/page": "app/[slug]/agendar/page.js",
   "/[slug]/login/page": "app/[slug]/login/page.js",
   "/[slug]/minha-conta/page": "app/[slug]/minha-conta/page.js",
   "/[slug]/page": "app/[slug]/page.js",
-  "/_not-found/page": "app/_not-found/page.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin-dashboard/page": "app/admin-dashboard/page.js"
 }

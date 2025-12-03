@@ -28,22 +28,28 @@ export default function FasterScheduleTab({ org }) {
 
   async function loadCategories() {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/categories/${org.slug_organization}`,
-      { cache: "no-store" }
+      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/categories/${org.slug_organization}`, { 
+        cache: "no-store",
+        credentials: 'include' 
+      }
     );
     setCategories(await res.json());
   }
 
   async function loadServices(categoryId) {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/services/${categoryId}/${org.slug_organization}`
+      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/services/${categoryId}/${org.slug_organization}`, {
+        credentials: 'include'
+      }
     );
     setServices(await res.json());
   }
 
   async function loadEmployees(serviceId) {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/employees/${serviceId}/${org.slug_organization}`
+      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/employees/${serviceId}/${org.slug_organization}`, {
+        credentials: 'include'
+      }
     );
     setEmployees(await res.json());
   }

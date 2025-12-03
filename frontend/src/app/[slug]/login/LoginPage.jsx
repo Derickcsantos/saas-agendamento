@@ -28,11 +28,15 @@ export default function LoginPage({ slug }) {
         if (res.ok && data.authenticated && data.user) {
           const tipo = data.user.tipo;
           if (tipo === "admin") router.push(`/${slug}/admin`);
+
           else if (tipo === "master") router.push(`/admin-dashboard`);
+
           else if (tipo === "funcionario") router.push(`/${slug}/profissional`);
+
           else router.push(`/${slug}/minha-conta`);
           return;
         }
+      console.log(data.user.tipo)
       } catch (err) {
         console.warn("Não autenticado:", err);
       } finally {
