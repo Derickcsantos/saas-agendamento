@@ -210,7 +210,6 @@
     --color-purple-500: #ac4bff;
     --color-purple-600: #9810fa;
     --color-purple-700: #8200da;
-    --color-purple-800: #6e11b0;
     --color-pink-400: #fb64b6;
     --color-pink-500: #f6339a;
     --color-gray-50: #f9fafb;
@@ -240,7 +239,6 @@
     --container-xl: 36rem;
     --container-2xl: 42rem;
     --container-4xl: 56rem;
-    --container-5xl: 64rem;
     --container-6xl: 72rem;
     --container-7xl: 80rem;
     --text-xs: .75rem;
@@ -326,7 +324,6 @@
       --color-purple-500: color(display-p3 .629519 .30089 .990817);
       --color-purple-600: color(display-p3 .546729 .130167 .94439);
       --color-purple-700: color(display-p3 .465298 .0652579 .824397);
-      --color-purple-800: color(display-p3 .393513 .10339 .664476);
       --color-pink-400: color(display-p3 .915485 .430491 .70271);
       --color-pink-500: color(display-p3 .88894 .276457 .595049);
       --color-gray-50: color(display-p3 .977213 .98084 .985102);
@@ -387,7 +384,6 @@
       --color-purple-500: lab(52.0183% 66.11 -78.2316);
       --color-purple-600: lab(43.0295% 75.21 -86.5669);
       --color-purple-700: lab(36.1758% 69.8525 -80.0381);
-      --color-purple-800: lab(30.6017% 56.7637 -64.4751);
       --color-pink-400: lab(64.5597% 64.3615 -12.7988);
       --color-pink-500: lab(56.9303% 76.8162 -8.07021);
       --color-gray-50: lab(98.2596% -.247031 -.706708);
@@ -1301,10 +1297,6 @@
     max-width: var(--container-4xl);
   }
 
-  .max-w-5xl {
-    max-width: var(--container-5xl);
-  }
-
   .max-w-6xl {
     max-width: var(--container-6xl);
   }
@@ -2183,14 +2175,6 @@
     padding-block: calc(var(--spacing) * 24);
   }
 
-  .pt-2 {
-    padding-top: calc(var(--spacing) * 2);
-  }
-
-  .pt-3 {
-    padding-top: calc(var(--spacing) * 3);
-  }
-
   .pt-4 {
     padding-top: calc(var(--spacing) * 4);
   }
@@ -2438,10 +2422,6 @@
 
   .text-neutral-800 {
     color: var(--color-neutral-800);
-  }
-
-  .text-purple-100 {
-    color: var(--color-purple-100);
   }
 
   .text-purple-500 {
@@ -2924,18 +2904,6 @@
   @media (hover: hover) {
     .hover\:text-purple-700:hover {
       color: var(--color-purple-700);
-    }
-  }
-
-  @media (hover: hover) {
-    .hover\:text-purple-800:hover {
-      color: var(--color-purple-800);
-    }
-  }
-
-  @media (hover: hover) {
-    .hover\:text-red-700:hover {
-      color: var(--color-red-700);
     }
   }
 
@@ -3485,10 +3453,6 @@
 
   .dark\:text-gray-400:is(.dark *) {
     color: var(--color-gray-400);
-  }
-
-  .dark\:text-gray-800:is(.dark *) {
-    color: var(--color-gray-800);
   }
 
   .dark\:text-gray-900:is(.dark *) {
