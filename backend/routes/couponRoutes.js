@@ -124,7 +124,7 @@ couponRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, createC
  *       500:
  *         description: Erro interno do servidor
  */
-couponRouter.put('/:id', authenticateJWT, requireAdminOfOrganization, updateCoupon);
+couponRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, updateCoupon);
 
 /**
  * @swagger

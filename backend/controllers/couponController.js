@@ -66,39 +66,58 @@ export const getCouponById = async (req, res) => {
   }
 };
 
+// Função para criar um cupom
 export const createCoupon = async (req, res) => {
   try {
-    const { slug } = req.params
+    const { slug } = req.params;
 
     if (!slug) {
-      return res.status(400).json({ error: 'Slug não fornecido' });
+      return res.status(400).json({ error: "Slug não fornecido" });
     }
 
-    // Busca o organization_id correspondente ao slug
     const { data: orgData, error: orgError } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('slug_organization', slug)
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
       .single();
 
     if (orgError || !orgData) {
-      return res.status(404).json({ error: 'Organização não encontrada' });
+      return res.status(404).json({ error: "Organização não encontrada" });
     }
 
+
+    const { valid_from, valid_until, ...restOfBody } = req.body;
+
+    const formatted_valid_from = valid_from 
+      ? new Date(valid_from).toISOString() 
+      : null; 
+    
+    const formatted_valid_until = valid_until
+      ? new Date(valid_until).toISOString()
+      : null; 
+
     const couponData = {
-      ...req.body,
+      ...restOfBody,
       code: req.body.code.toUpperCase(),
-      organization_id: orgData.id
+      organization_id: orgData.id,
+      valid_from: formatted_valid_from, 
+      valid_until: formatted_valid_until, 
     };
 
-    
+    console.log(couponData);
+
     const { data, error } = await supabase
-      .from('coupons')
+      .from("coupons")
       .insert(couponData)
       .select()
       .single();
+
+    if (error) {
+      console.log("Não foi possivel inserir", error);
+
+      return res.status(400).json({ error: "Erro ao inserir cupom: " + error.message }); 
+    }
     
-    if (error) throw error;
     res.status(201).json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -123,10 +142,28 @@ export const updateCoupon = async (req, res) => {
     if (orgError || !orgData) {
       return res.status(404).json({ error: 'Organização não encontrada' });
     }
+
+    const { valid_from, valid_until, ...restOfBody } = req.body;
+
+    const formatted_valid_from = valid_from 
+      ? new Date(valid_from).toISOString() 
+      : null; 
+    
+    const formatted_valid_until = valid_until
+      ? new Date(valid_until).toISOString()
+      : null; 
+
+    const couponData = {
+      ...restOfBody,
+      code: req.body.code.toUpperCase(),
+      organization_id: orgData.id,
+      valid_from: formatted_valid_from, 
+      valid_until: formatted_valid_until, 
+    };
   
     const { data, error } = await supabase
       .from('coupons')
-      .update(req.body)
+      .update(couponData)
       .eq('id', id)
       .select()
       .single();

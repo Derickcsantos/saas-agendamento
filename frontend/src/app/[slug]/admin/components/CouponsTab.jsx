@@ -5,7 +5,6 @@ import { toast } from 'react-toastify'
 export default function CouponsTab({ org }) {
   const [coupons, setCoupons] = useState([]);
   const [form, setForm] = useState({
-    id: null,
     name: "",
     code: "",
     discount_type: "percentage",
@@ -50,6 +49,7 @@ export default function CouponsTab({ org }) {
 
     const res = await fetch(url, {
       method,
+      credentials: 'include',
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
@@ -95,8 +95,10 @@ export default function CouponsTab({ org }) {
     if (!confirm("Deseja realmente excluir este cupom?")) return;
 
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/coupons/${org.slug_organization}/${id}`,
-      { method: "DELETE" }
+      `${process.env.NEXT_PUBLIC_API_URL}/api/coupons/${org.slug_organization}/${id}`, {  
+        method: "DELETE",
+        credentials: 'include',
+       }
     );
 
     if (!res.ok) {
