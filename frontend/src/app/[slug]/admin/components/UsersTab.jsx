@@ -58,7 +58,7 @@ export default function UsersTab({ org }) {
     try {
       const method = editing ? "PUT" : "POST";
       const url = editing
-        ? `${API}/api/users/${orgSlug}/${org.id}/${editing}`
+        ? `${API}/api/users/${orgSlug}/${editing}`
         : `${API}/api/users/${orgSlug}`;
 
       const body = {
@@ -73,6 +73,7 @@ export default function UsersTab({ org }) {
 
       const res = await fetch(url, {
         method,
+        credentials: 'include',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
@@ -103,8 +104,9 @@ export default function UsersTab({ org }) {
   const deleteUser = async (id) => {
     if (!confirm("Deseja excluir este usuário?")) return;
 
-    await fetch(`${API}/api/users/${id}?organization_id=${org.id}`, {
+    await fetch(`${API}/api/users/${orgSlug}/${id}`, {
       method: "DELETE",
+      credentials: 'include'
     });
 
     toast.success("Usuário removido!");

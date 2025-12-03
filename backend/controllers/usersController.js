@@ -33,11 +33,12 @@ export const getUsers = async (req, res) => {
 export const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
+
     const { data, error } = await supabase
       .from('users')
       .select('*')
       .eq('id', id)
-      .eq('organization_id', req.organizationId)  // ALTERADO
+      .eq('organization_id', org.id)  
       // .single();
 
     if (error) throw error;
@@ -122,9 +123,8 @@ export const createUser = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id, slug } = req.params;
     const { username, email, password_plaintext, phone, aniversario, tipo, id_employee } = req.body;
-    const { slug } = req.params;
 
     const { data: org, orgError } = await supabase
       .from("organizations")
@@ -136,9 +136,9 @@ export const updateUser = async (req, res) => {
       return res.status(404).json({ error: "Organização não encontrada" });
     }
 
-    console.log(organization_id)
+    console.log(org.id)
 
-    if (!organization_id) {
+    if (!org.id) {
       return res.status(400).json({ error: 'Organização não identificada.' });
     }
 
