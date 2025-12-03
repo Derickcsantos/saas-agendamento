@@ -19,6 +19,7 @@ import UsersTab from "./components/UsersTab";
 import FasterScheduleTab from "./components/FasterScheduleTab";
 import SiteTab from "./components/SiteTab";
 import SettingsTab from "./components/SettingsTab";
+import PersonalCalendarTab from "./components/PersonalCalendarTab";
 
 export default function AdminDashboard({ slug }) {
   const router = useRouter();
@@ -109,6 +110,7 @@ export default function AdminDashboard({ slug }) {
       </div>
     );
 
+
   // ======================
   // Render por abas
   // ======================
@@ -134,6 +136,8 @@ export default function AdminDashboard({ slug }) {
         return <FasterScheduleTab org={org} />;
       case "site":
         return <SiteTab org={org} />;
+      case "calendar-google":
+        return <PersonalCalendarTab org={org} />;
       case "settings":
         return <SettingsTab org={org} />;
 
@@ -190,6 +194,8 @@ export default function AdminDashboard({ slug }) {
         );
     }
   };
+
+  
 
   return (
     <div className="flex min-h-screen bg-gray-100 overflow-hidden"> 

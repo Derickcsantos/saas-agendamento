@@ -37,7 +37,9 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
     { name: "Cupons", key: "coupons", icon: "bi-wallet2" },
     { name: "Usuários", key: "users", icon: "bi-person-badge" },
     { name: "Site", key: "site", icon: "bi-browser-chrome" },
+    { name: 'Calendário do google', key: 'calendar-google', icon: 'bi-calendar-check' },
     { name: "Configurações", key: "settings", icon: "bi-gear" },
+    { name: "Sair", key: "exit", icon: "bi-door" },
   ];
 
   useEffect(() => {
@@ -156,6 +158,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
                   </span>
                 )}
               </button>
+
             );
           })}
         </nav>
