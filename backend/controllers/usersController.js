@@ -57,6 +57,7 @@ export const createUser = async (req, res) => {
 
     console.log("Slug recebido no users:", slug);
 
+    console.log(username, email, password, phone, tipo, id_employee)
 
     const { data: org, orgError } = await supabase
       .from("organizations")
@@ -64,8 +65,8 @@ export const createUser = async (req, res) => {
       .eq("slug_organization", slug)
       .single();
 
-    console.log("Organizacao encontrada:", org);
-    console.log("Erro ao buscar org:", orgError);
+    console.log("Organizacao encontrada:", org.id);
+
 
     if (orgError || !org) {
       return res.status(404).json({ error: "Organização não encontrada" });
@@ -108,7 +109,9 @@ export const createUser = async (req, res) => {
       .select('*')
       .single();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      console.error('Não foi possivel cadastrar o novo usuário', insertError)
+    };
 
     res.status(201).json(newUser);
   } catch (err) {

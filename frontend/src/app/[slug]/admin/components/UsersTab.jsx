@@ -53,6 +53,8 @@ export default function UsersTab({ org }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    console.log(orgSlug)
+
     try {
       const method = editing ? "PUT" : "POST";
       const url = editing
@@ -63,7 +65,7 @@ export default function UsersTab({ org }) {
         username: form.username,
         email: form.email,
         tipo: form.tipo,
-        ...(form.password && { password_plaintext: form.password }),
+        ...(form.password && { password: form.password }),
         ...(form.tipo === "funcionario" && form.id_employee && {
           id_employee: form.id_employee,
         }),
