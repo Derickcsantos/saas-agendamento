@@ -3,12 +3,23 @@ import { supabase } from '../lib/supabase.js';
 
 export const getEmployeeServicesByEmployeeId = async (req, res) => {
   try {
-    const { employeeId } = req.params;
+    const { slug, employeeId } = req.params;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
     const { data, error } = await supabase
       .from('employee_services')
       .select('service_id')
       .eq('employee_id', employeeId)
-      .eq('organization_id', req.organizationId);
+      .eq('organization_id', org.id);
 
     if (error) throw error;
     res.json(data);
@@ -20,19 +31,26 @@ export const getEmployeeServicesByEmployeeId = async (req, res) => {
 
 export const updateEmployeeServices = async (req, res) => {
   try {
-    const { employeeId } = req.params;
+    const { slug, employeeId } = req.params;
     const services = req.body;
 
-    // Validar que todos os serviços têm employee_id
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
     const validServices = services.filter(service => {
-      // Se não tiver employee_id, usar o da URL
       if (!service.employee_id) {
         service.employee_id = parseInt(employeeId);
       }
-      return service.service_id; // Garantir que pelo menos tem service_id
+      return service.service_id; 
     });
 
-    // Primeiro deletar todos os serviços atuais
     const { error: deleteError } = await supabase
       .from('employee_services')
       .delete()
@@ -40,15 +58,16 @@ export const updateEmployeeServices = async (req, res) => {
 
     if (deleteError) throw deleteError;
 
-    // Depois inserir os novos serviços (se houver) em lotes
     if (validServices.length > 0) {
-      // Dividir em lotes de 10 serviços para evitar sobrecarga
       const batchSize = 10;
       for (let i = 0; i < validServices.length; i += batchSize) {
         const batch = validServices.slice(i, i + batchSize);
         const { error: insertError } = await supabase
           .from('employee_services')
-          .insert(batch);
+          .insert({
+            ...batch,
+            organization_id: org.id
+          });
 
         if (insertError) throw insertError;
       }

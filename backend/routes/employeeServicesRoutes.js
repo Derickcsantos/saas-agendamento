@@ -52,7 +52,7 @@ export const employeeServicesRouter = Router();
  *                 error:
  *                   type: string
  */
-employeeServicesRouter.get('/:employeeId', getEmployeeServicesByEmployeeId);
+employeeServicesRouter.get('/:slug/:employeeId', getEmployeeServicesByEmployeeId);
 
 /**
  * @swagger
@@ -119,4 +119,4 @@ employeeServicesRouter.get('/:employeeId', getEmployeeServicesByEmployeeId);
  *                 error:
  *                   type: string
  */
-employeeServicesRouter.put('/:employeeId', updateEmployeeServices);
+employeeServicesRouter.put('/:slug/:employeeId', updateEmployeeServices);
