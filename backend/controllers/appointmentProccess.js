@@ -180,8 +180,13 @@ export const getAvailableTimes = async (req, res) => {
     }
     
     
-    const dateObj = new Date(date);
-    const dayOfWeek = dateObj.getDay(); // 0=Domingo, 1=Segunda, 2=Terça, ..., 6=Sábado
+    // interpreta a data como local, sem UTC implícito
+    const [year, month, day] = date.split("-").map(Number);
+    const dateObj = new Date(year, month - 1, day);
+    const dayOfWeek = dateObj.getDay(); // 0 = domingo, 1 = segunda, ...
+
+    console.log("Dia da semana calculado (local):", dayOfWeek);
+
     console.log('Dia da semana calculado:', dayOfWeek);
 
     const { data: schedule, error: scheduleError } = await supabase
