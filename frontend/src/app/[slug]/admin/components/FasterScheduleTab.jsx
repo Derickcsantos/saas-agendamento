@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { toast } from 'react-toastify'
+import { toast } from "react-toastify";
 
 export default function FasterScheduleTab({ org }) {
   const [categories, setCategories] = useState([]);
@@ -29,36 +29,54 @@ export default function FasterScheduleTab({ org }) {
   async function loadCategories() {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/categories/${org.slug_organization}`,
-      { cache: "no-store" }
+      {
+        cache: "no-store",
+        credentials: "include",
+      }
     );
     setCategories(await res.json());
   }
 
   async function loadServices(categoryId) {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/services/${categoryId}/${org.slug_organization}`
+      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/services/${categoryId}/${org.slug_organization}`,
+      {
+        credentials: "include",
+      }
     );
     setServices(await res.json());
   }
 
   async function loadEmployees(serviceId) {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/employees/${serviceId}/${org.slug_organization}`
+      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/employees/${serviceId}/${org.slug_organization}`,
+      {
+        credentials: "include",
+      }
     );
     setEmployees(await res.json());
   }
 
-  async function loadSlots() {
-    if (!form.employee_id || !form.date || !selectedService?.duration) return;
+  // 👉 AGORA RECEBE employeeId, date e duration
+  async function loadSlots(employeeId, date, duration) {
+    if (!employeeId || !date || !duration) return;
 
-    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/available-times/${org.slug_organization}?employeeId=${form.employee_id}&date=${form.date}&duration=${selectedService.duration}`;
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/available-times/${org.slug_organization}?employeeId=${employeeId}&date=${date}&duration=${duration}`;
 
-    const res = await fetch(url);
-    setSlots(await res.json());
+    const res = await fetch(url, { credentials: "include" });
+    const data = await res.json();
+    setSlots(Array.isArray(data) ? data : []);
   }
 
   const handleCategory = (val) => {
-    setForm({ ...form, category_id: val, service_id: "", employee_id: "", time_slot: "" });
+    setForm({
+      ...form,
+      category_id: val,
+      service_id: "",
+      employee_id: "",
+      time_slot: "",
+      date: "",
+    });
     setServices([]);
     setEmployees([]);
     setSlots([]);
@@ -75,6 +93,7 @@ export default function FasterScheduleTab({ org }) {
       service_id: id,
       employee_id: "",
       time_slot: "",
+      date: "",
       final_price: service ? service.price : "",
     });
 
@@ -85,15 +104,23 @@ export default function FasterScheduleTab({ org }) {
   };
 
   const handleEmployee = (id) => {
-    setForm({ ...form, employee_id: id, time_slot: "" });
+    const nextForm = { ...form, employee_id: id, time_slot: "" };
+    setForm(nextForm);
     setSlots([]);
 
-    if (id && form.date) loadSlots();
+    if (id && nextForm.date && selectedService?.duration) {
+      loadSlots(id, nextForm.date, selectedService.duration);
+    }
   };
 
   const handleDate = (date) => {
-    setForm({ ...form, date, time_slot: "" });
-    if (date && form.employee_id) loadSlots();
+    const nextForm = { ...form, date, time_slot: "" };
+    setForm(nextForm);
+    setSlots([]);
+
+    if (date && nextForm.employee_id && selectedService?.duration) {
+      loadSlots(nextForm.employee_id, date, selectedService.duration);
+    }
   };
 
   const submit = async (e) => {

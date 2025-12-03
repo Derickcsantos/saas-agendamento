@@ -34,6 +34,8 @@ export const updateEmployeeServices = async (req, res) => {
     const { slug, employeeId } = req.params;
     const services = req.body;
 
+    console.log(employeeId, slug, services)
+
     const { data: org, orgError } = await supabase
       .from("organizations")
       .select("id")
@@ -62,12 +64,11 @@ export const updateEmployeeServices = async (req, res) => {
       const batchSize = 10;
       for (let i = 0; i < validServices.length; i += batchSize) {
         const batch = validServices.slice(i, i + batchSize);
+
+        console.log(batch)
         const { error: insertError } = await supabase
           .from('employee_services')
-          .insert({
-            ...batch,
-            organization_id: org.id
-          });
+          .insert(batch.map(b => ({ ...b, organization_id: org.id })))
 
         if (insertError) throw insertError;
       }

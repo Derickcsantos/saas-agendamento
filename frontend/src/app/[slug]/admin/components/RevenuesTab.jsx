@@ -37,7 +37,9 @@ export default function RevenueTab({ org }) {
       if (end) params.append("end_date", end);
       if (params.toString()) url += `?${params.toString()}`;
 
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        credentials: 'include'
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Erro ao carregar dados");
       setData(json);
@@ -56,7 +58,9 @@ export default function RevenueTab({ org }) {
       if (endDate) params.append("end_date", endDate);
       if (params.toString()) url += `?${params.toString()}`;
 
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        credentials: 'include'
+      });
       if (!res.ok) throw new Error("Erro ao exportar relatório");
 
       const blob = await res.blob();
