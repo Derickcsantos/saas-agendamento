@@ -39,7 +39,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
     { name: "Site", key: "site", icon: "bi-browser-chrome" },
     { name: 'Calendário do google', key: 'calendar-google', icon: 'bi-calendar-check' },
     { name: "Configurações", key: "settings", icon: "bi-gear" },
-    { name: "Sair", key: "exit", icon: "bi-door" },
+    { name: "Sair", key: "exit", icon: "bi bi-door-open" },
   ];
 
   useEffect(() => {
@@ -60,6 +60,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
 
     if (slug) fetchData();
   }, [slug]);
+
 
   const strong = palette?.strong_color || "#5E3BEE";
   const light = palette?.light_color || "#F5F5F5";
@@ -161,6 +162,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
 
             );
           })}
+          
         </nav>
 
         {/* FOOTER */}
