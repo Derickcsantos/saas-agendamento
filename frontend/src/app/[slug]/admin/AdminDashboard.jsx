@@ -67,6 +67,21 @@ export default function AdminDashboard({ slug }) {
     checkAuth();
   }, [router, slug]);
 
+  useEffect(() => {
+    if (activeTab === "exit") {
+      logout();
+    }
+  }, [activeTab]);
+
+  const logout = async () => {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, { 
+      method: "POST",
+      credentials: "include"
+    });
+
+    router.push(`/${slug}/login`);
+  };
+
   // ======================
   // Buscar dados
   // ======================
@@ -110,7 +125,6 @@ export default function AdminDashboard({ slug }) {
       </div>
     );
 
-
   // ======================
   // Render por abas
   // ======================
@@ -140,6 +154,9 @@ export default function AdminDashboard({ slug }) {
         return <PersonalCalendarTab org={org} />;
       case "settings":
         return <SettingsTab org={org} />;
+      case "exit":
+        return null;
+      
 
       default:
         return (
