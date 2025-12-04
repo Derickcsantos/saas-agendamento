@@ -25,10 +25,23 @@ export const getDashboardData = async (req, res) => {
       { count: servicesCount },
       { count: appointmentsCount }
     ] = await Promise.all([
-      supabase.from('employees').select('*', { count: 'exact', head: true }).eq('organization_id', orgData.id), 
-      supabase.from('categories').select('*', { count: 'exact', head: true }).eq('organization_id', orgData.id), 
-      supabase.from('services').select('*', { count: 'exact', head: true }).eq('organization_id', orgData.id), 
-      supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('organization_id', orgData.id).eq('status', 'confirmed') 
+      supabase
+        .from('employees')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', orgData.id), 
+      supabase
+        .from('categories')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', orgData.id), 
+      supabase
+        .from('services')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', orgData.id), 
+      supabase
+        .from('appointments')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', orgData.id)
+        .eq('status', 'confirmed') 
     ]);
 
     // 2. Dados detalhados para os gráficos
@@ -36,21 +49,70 @@ export const getDashboardData = async (req, res) => {
       { data: employeesData, error: employeesError },
       { data: usersData, error: usersError },
       { data: couponsData, error: couponsError },
-      { data: appointmentsData, error: appointmentsError }
+      { data: appointmentsData, error: appointmentsError },
+      { data: latestAppointmentsData, error: latestAppointmentsError },
+      { data: employeesListData, error: employeesListError }
     ] = await Promise.all([
-      supabase.from('employees').select('is_active').eq('organization_id', orgData.id), 
-      supabase.from('users').select('tipo').eq('organization_id', orgData.id), 
-      supabase.from('coupons').select('is_active').eq('organization_id',orgData.id), 
-      supabase.from('appointments').select('appointment_date').eq('organization_id', orgData.id).eq('status', 'confirmed') 
+      supabase
+        .from('employees')
+        .select('is_active')
+        .eq('organization_id', orgData.id),
+
+      supabase
+        .from('users')
+        .select('tipo')
+        .eq('organization_id', orgData.id),
+
+      supabase
+        .from('coupons')
+        .select('is_active')
+        .eq('organization_id', orgData.id),
+
+      // para gráficos (mês + serviços populares)
+      supabase
+        .from('appointments')
+        .select('appointment_date, services(name)')
+        .eq('organization_id', orgData.id)
+        .eq('status', 'confirmed'),
+
+      // últimos 5 agendamentos (tabela)
+      supabase
+        .from('appointments')
+        .select(`
+          id,
+          appointment_date,
+          status,
+          client_name,
+          services(name),
+          employees(name)
+        `)
+        .eq('organization_id', orgData.id)
+        .order('appointment_date', { ascending: false })
+        .limit(5),
+
+      // lista de funcionários (tabela)
+      supabase
+        .from('employees')
+        .select('name, email, phone, is_active')
+        .eq('organization_id', orgData.id)
     ]);
 
     // Verificar erros nas consultas
-    if (employeesError || usersError || couponsError || appointmentsError) {
+    if (
+      employeesError ||
+      usersError ||
+      couponsError ||
+      appointmentsError ||
+      latestAppointmentsError ||
+      employeesListError
+    ) {
       throw new Error(
-        employeesError?.message || 
-        usersError?.message || 
-        couponsError?.message || 
-        appointmentsError?.message
+        employeesError?.message ||
+        usersError?.message ||
+        couponsError?.message ||
+        appointmentsError?.message ||
+        latestAppointmentsError?.message ||
+        employeesListError?.message
       );
     }
 
@@ -79,6 +141,33 @@ export const getDashboardData = async (req, res) => {
       const month = new Date(item.appointment_date).getMonth(); // 0-11
       monthlyAppointments[month]++;
     });
+    
+    const servicesPopularityMap = {};
+    appointmentsData.forEach(item => {
+      const serviceName = item.services?.name || 'Outro';
+      servicesPopularityMap[serviceName] = (servicesPopularityMap[serviceName] || 0) + 1;
+    });
+
+    const servicesPopularity = Object.entries(servicesPopularityMap)
+      .map(([service, count]) => ({ service, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Últimos agendamentos (para tabela)
+    const latestAppointments = (latestAppointmentsData || []).map(a => ({
+      cliente: a.client_name || 'N/D',
+      serviço: a.services?.name || 'N/D',
+      profissional: a.employees?.name || 'N/D',
+      data: a.appointment_date,
+      status: a.status
+    }));
+
+    // Lista de funcionários (para tabela)
+    const employeesList = (employeesListData || []).map(e => ({
+      nome: e.name,
+      email: e.email,
+      telefone: e.phone,
+      status: e.is_active ? 'Ativo' : 'Inativo'
+    }));
 
     // 4. Retornar todos os dados consolidados
     res.json({
@@ -93,6 +182,9 @@ export const getDashboardData = async (req, res) => {
       employeesStatus,
       usersDistribution,
       couponsStatus,
+      servicesPopularity,
+      latestAppointments,
+      employeesList,
       
       // Metadados
       lastUpdated: new Date().toISOString()
