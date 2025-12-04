@@ -11,12 +11,12 @@ import {
 export const googleCalendarRouter = Router();
 
 googleCalendarRouter.get(
-  "/status/:slug",
+  "/status",
   getCalendarStatus
 );
 
 googleCalendarRouter.get(
-  "/connect/:slug",
+  "/connect",
   connectGoogleCalendar
 );
 
@@ -26,11 +26,11 @@ googleCalendarRouter.get(
 );
 
 googleCalendarRouter.get(
-  "/events/:slug",
+  "/events",
   getCalendarEvents
 );
 
 googleCalendarRouter.post(
-  "/disconnect/:slug",
+  "/disconnect",
   disconnectGoogleCalendar
 );

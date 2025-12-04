@@ -130,7 +130,7 @@ export default function MyAccountPage() {
               onClick={toggleTheme}
               className="px-3 py-1 rounded-lg bg-white/20 text-white shadow-sm hover:bg-white/30 transition"
             >
-              {theme === "dark" ? "☀️" : "🌙"}
+              {theme === "dark" ? "bi bi-brightness-low" : "bi bi-moon"}
             </button>
 
             <button
