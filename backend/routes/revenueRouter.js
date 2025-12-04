@@ -130,4 +130,4 @@ revenueRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, getReve
  *       500:
  *         description: Erro interno do servidor
  */
-revenueRouter.get('/export', authenticateJWT, requireAdminOfOrganization, exportRevenue)
+revenueRouter.get('/:slug/export', authenticateJWT, requireAdminOfOrganization, exportRevenue)

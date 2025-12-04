@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import jsPDF from "jspdf";
 import { toast } from 'react-toastify'
-import "jspdf-autotable";
+import autoTable from 'jspdf-autotable';
 
 export default function RevenueTab({ org }) {
   const [data, setData] = useState(null);
@@ -52,7 +52,7 @@ export default function RevenueTab({ org }) {
 
   const handleExportExcel = async () => {
     try {
-      let url = `${API}/api/admin/${slug}/revenue/export`;
+      let url = `${API}/api/admin/revenue/${slug}/export`;
       const params = new URLSearchParams();
       if (startDate) params.append("start_date", startDate);
       if (endDate) params.append("end_date", endDate);
@@ -112,14 +112,15 @@ export default function RevenueTab({ org }) {
         formatCurrency(d.net_profit),
       ]);
 
-      doc.autoTable({
+      autoTable(doc, {
         head: [headers],
         body,
         startY: 55,
         theme: "grid",
-        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        headStyles: { fillColor: [161, 156, 156], textColor: 255 },
         styles: { fontSize: 9 },
       });
+
 
       doc.text(
         `Gerado em: ${new Date().toLocaleDateString("pt-BR")}`,
@@ -136,6 +137,7 @@ export default function RevenueTab({ org }) {
       toast.success("PDF gerado com sucesso!");
     } catch (err) {
       toast.error("Erro ao gerar PDF: ");
+      console.log(err)
     }
   };
 

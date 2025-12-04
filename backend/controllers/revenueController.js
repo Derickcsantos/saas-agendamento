@@ -113,13 +113,24 @@ export const getRevenues = async (req, res) => {
 export const exportRevenue = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
+    const { slug } = req.params
+
+    const { data: org, error } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (error || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
     
     // Reutilizar a mesma lógica da rota principal
     let appointmentsQuery = supabase
       .from('appointments')
       .select('id, final_price, appointment_date, employees(id, name, comissao)')
       .eq('status', 'completed')
-      .eq('organization_id', req.organizationId);
+      .eq('organization_id', org.id);
     
     if (start_date && end_date) {
       appointmentsQuery = appointmentsQuery
