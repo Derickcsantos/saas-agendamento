@@ -246,6 +246,10 @@ export default function GlobalLogin() {
           <p className="text-gray-500 mr-1">Deseja voltar?</p>
           <a style={{color: "#5E3BEE"}}  href="/">clique aqui</a>
         </div>
+        <div className="w-full mt-4 flex justify-center">
+          <p className="text-gray-500 mr-1">Ainda não tem conta? </p>
+          <a style={{color: "#5E3BEE"}}  href="/criar-conta">clique aqui</a>
+        </div>
 
         {/* MENSAGENS */}
         {errorMsg && (

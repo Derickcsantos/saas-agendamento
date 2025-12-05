@@ -140,6 +140,9 @@ export default function CreateOrganization() {
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center py-8 px-4">
+      <div className="fixed top-5 left-5">
+        <a href="/"><i className="bi bi-arrow-left"></i></a>
+      </div>
       <div className="w-full max-w-xl bg-white shadow-2xl rounded-2xl p-6 sm:p-10 border border-black/5">
 
         {/* HEADER */}
@@ -520,8 +523,10 @@ export default function CreateOrganization() {
             </div>
 
           </div>
+          
         </div>
       )}
+      
     </div>
   );
 }
