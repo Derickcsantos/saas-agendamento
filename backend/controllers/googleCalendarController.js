@@ -19,7 +19,8 @@ if (!GOOGLE_CLIENT_ID || !OAUTH_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
 }
 
 const SCOPES = [
-  "https://www.googleapis.com/auth/calendar.readonly",
+  "https://www.googleapis.com/auth/calendar",
+  "https://www.googleapis.com/auth/calendar.events",
   "https://www.googleapis.com/auth/userinfo.email",
   "openid",
 ];
