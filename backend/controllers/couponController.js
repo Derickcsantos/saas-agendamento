@@ -82,47 +82,47 @@ export const createCoupon = async (req, res) => {
       .single();
 
     if (orgError || !orgData) {
-      return res.status(404).json({ error: "Organização não encontrada" });
+        return res.status(404).json({ error: "Organização não encontrada" });
+      }
+
+
+      const { valid_from, valid_until, ...restOfBody } = req.body;
+
+      const formatted_valid_from = valid_from 
+        ? new Date(valid_from).toISOString() 
+        : null; 
+      
+      const formatted_valid_until = valid_until
+        ? new Date(valid_until).toISOString()
+        : null; 
+
+      const couponData = {
+        ...restOfBody,
+        code: req.body.code.toUpperCase(),
+        organization_id: orgData.id,
+        valid_from: formatted_valid_from, 
+        valid_until: formatted_valid_until, 
+      };
+
+      console.log(couponData);
+
+      const { data, error } = await supabase
+        .from("coupons")
+        .insert(couponData)
+        .select()
+        .single();
+
+      if (error) {
+        console.log("Não foi possivel inserir", error);
+
+        return res.status(400).json({ error: "Erro ao inserir cupom: " + error.message }); 
+      }
+      
+      res.status(201).json(data);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
-
-
-    const { valid_from, valid_until, ...restOfBody } = req.body;
-
-    const formatted_valid_from = valid_from 
-      ? new Date(valid_from).toISOString() 
-      : null; 
-    
-    const formatted_valid_until = valid_until
-      ? new Date(valid_until).toISOString()
-      : null; 
-
-    const couponData = {
-      ...restOfBody,
-      code: req.body.code.toUpperCase(),
-      organization_id: orgData.id,
-      valid_from: formatted_valid_from, 
-      valid_until: formatted_valid_until, 
-    };
-
-    console.log(couponData);
-
-    const { data, error } = await supabase
-      .from("coupons")
-      .insert(couponData)
-      .select()
-      .single();
-
-    if (error) {
-      console.log("Não foi possivel inserir", error);
-
-      return res.status(400).json({ error: "Erro ao inserir cupom: " + error.message }); 
-    }
-    
-    res.status(201).json(data);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+  };
 
 export const updateCoupon = async (req, res) => {
   try {

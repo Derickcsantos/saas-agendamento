@@ -1,8 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 
+
+/* ------------------------------------------------------------
+   INPUT COMPONENT (FORA DO COMPONENTE PRINCIPAL)
+   Evita recriação a cada render → evita remount → evita perder foco
+------------------------------------------------------------- */
+const Input = React.memo(function Input({
+  label,
+  field,
+  value,
+  onChange,
+  onBlur,
+  savingField,
+  strongColor,
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="font-medium text-gray-700">{label}</label>
+      <input
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        className="border rounded-lg p-2 transition-all outline-none"
+        style={{
+          borderColor: savingField === field ? strongColor : "#ddd",
+          boxShadow: `0 0 0 1.5px ${
+            savingField === field ? strongColor : "transparent"
+          }`,
+        }}
+      />
+    </div>
+  );
+});
+
+
+/* ================================================================
+   COMPONENTE PRINCIPAL
+================================================================ */
 export default function SettingsTab({ org }) {
   const [loading, setLoading] = useState(true);
   const [savingField, setSavingField] = useState(null);
@@ -62,7 +99,7 @@ export default function SettingsTab({ org }) {
     };
 
     loadAll();
-  }, []);
+  }, [org.slug_organization]);
 
   // ============================
   // SALVAR CAMPO INDIVIDUAL
@@ -88,26 +125,21 @@ export default function SettingsTab({ org }) {
     }
   };
 
-  // ============================
-  // INPUT COMPONENT
-  // (com focus na strong_color)
-  // ============================
-  const Input = ({ label, field, value, onChange, api }) => (
-    <div className="flex flex-col gap-1">
-      <label className="font-medium text-gray-700">{label}</label>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={() => updateField(field, value, api)}
-        className="border rounded-lg p-2 transition-all outline-none"
-        style={{
-          borderColor: savingField === field ? strongColor : "#ddd",
-          boxShadow: `0 0 0 1.5px ${
-            savingField === field ? strongColor : "transparent"
-          }`,
-        }}
-      />
-    </div>
+  /* ================================================================
+     HANDLERS COM useCallback → identidade estável → sem remount
+  ================================================================ */
+  const handleSettingChange = useCallback(
+    (key) => (v) => {
+      setSettings((prev) => ({ ...prev, [key]: v }));
+    },
+    []
+  );
+
+  const handlePolicyChange = useCallback(
+    (key) => (v) => {
+      setPolicies((prev) => ({ ...prev, [key]: v }));
+    },
+    []
   );
 
   // ============================
@@ -198,7 +230,16 @@ export default function SettingsTab({ org }) {
             field="name"
             api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`}
             value={settings.name}
-            onChange={(v) => setSettings({ ...settings, name: v })}
+            onChange={handleSettingChange("name")}
+            onBlur={() =>
+              updateField(
+                "name",
+                settings.name,
+                `${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`
+              )
+            }
+            savingField={savingField}
+            strongColor={strongColor}
           />
 
           <Input
@@ -206,7 +247,16 @@ export default function SettingsTab({ org }) {
             field="slug_organization"
             api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`}
             value={settings.slug_organization}
-            onChange={(v) => setSettings({ ...settings, slug_organization: v })}
+            onChange={handleSettingChange("slug_organization")}
+            onBlur={() =>
+              updateField(
+                "slug_organization",
+                settings.slug_organization,
+                `${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`
+              )
+            }
+            savingField={savingField}
+            strongColor={strongColor}
           />
 
           <Input
@@ -214,7 +264,16 @@ export default function SettingsTab({ org }) {
             field="email"
             api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`}
             value={settings.email}
-            onChange={(v) => setSettings({ ...settings, email: v })}
+            onChange={handleSettingChange("email")}
+            onBlur={() =>
+              updateField(
+                "email",
+                settings.email,
+                `${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`
+              )
+            }
+            savingField={savingField}
+            strongColor={strongColor}
           />
 
           <Input
@@ -222,7 +281,16 @@ export default function SettingsTab({ org }) {
             field="phone"
             api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`}
             value={settings.phone}
-            onChange={(v) => setSettings({ ...settings, phone: v })}
+            onChange={handleSettingChange("phone")}
+            onBlur={() =>
+              updateField(
+                "phone",
+                settings.phone,
+                `${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`
+              )
+            }
+            savingField={savingField}
+            strongColor={strongColor}
           />
 
           <Input
@@ -230,7 +298,16 @@ export default function SettingsTab({ org }) {
             field="timezone"
             api={`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`}
             value={settings.timezone}
-            onChange={(v) => setSettings({ ...settings, timezone: v })}
+            onChange={handleSettingChange("timezone")}
+            onBlur={() =>
+              updateField(
+                "timezone",
+                settings.timezone,
+                `${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${org.slug_organization}`
+              )
+            }
+            savingField={savingField}
+            strongColor={strongColor}
           />
         </div>
 
@@ -243,7 +320,16 @@ export default function SettingsTab({ org }) {
             field="max_schedule_days"
             api={`${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`}
             value={policies.max_schedule_days}
-            onChange={(v) => setPolicies({ ...policies, max_schedule_days: Number(v) })}
+            onChange={handlePolicyChange("max_schedule_days")}
+            onBlur={() =>
+              updateField(
+                "max_schedule_days",
+                policies.max_schedule_days,
+                `${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`
+              )
+            }
+            savingField={savingField}
+            strongColor={strongColor}
           />
 
           <Input
@@ -251,7 +337,16 @@ export default function SettingsTab({ org }) {
             field="min_hours_before_booking"
             api={`${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`}
             value={policies.min_hours_before_booking}
-            onChange={(v) => setPolicies({ ...policies, min_hours_before_booking: Number(v) })}
+            onChange={handlePolicyChange("min_hours_before_booking")}
+            onBlur={() =>
+              updateField(
+                "min_hours_before_booking",
+                policies.min_hours_before_booking,
+                `${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`
+              )
+            }
+            savingField={savingField}
+            strongColor={strongColor}
           />
 
           {/* PLAN CARD */}

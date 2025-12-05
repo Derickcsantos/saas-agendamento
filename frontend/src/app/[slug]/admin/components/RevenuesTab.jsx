@@ -2,8 +2,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import jsPDF from "jspdf";
+import autotable, { autoTable } from "jspdf-autotable";
 import { toast } from 'react-toastify'
-import "jspdf-autotable";
 
 export default function RevenueTab({ org }) {
   const [data, setData] = useState(null);
@@ -112,29 +112,31 @@ export default function RevenueTab({ org }) {
         formatCurrency(d.net_profit),
       ]);
 
-      doc.autoTable({
+      const table = autoTable(doc, {
         head: [headers],
-        body,
+        body: body,
         startY: 55,
         theme: "grid",
         headStyles: { fillColor: [41, 128, 185], textColor: 255 },
         styles: { fontSize: 9 },
       });
 
+      // Use um fallback caso lastAutoTable não exista
+      const finalY = doc.lastAutoTable?.finalY || 55;
+
       doc.text(
         `Gerado em: ${new Date().toLocaleDateString("pt-BR")}`,
         14,
-        doc.lastAutoTable.finalY + 15
+        finalY + 15
       );
 
       doc.save(
-        `relatorio-receitas-${new Date()
-          .toLocaleDateString("pt-BR")
-          .replace(/\//g, "-")}.pdf`
+        `relatorio-receitas-${new Date().toLocaleDateString("pt-BR").replace(/\//g, "-")}.pdf`
       );
 
       toast.success("PDF gerado com sucesso!");
     } catch (err) {
+      console.error(err.message)
       toast.error("Erro ao gerar PDF: ");
     }
   };

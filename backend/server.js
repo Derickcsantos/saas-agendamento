@@ -82,7 +82,7 @@ app.use('/api/galeria', galleryRouter);
 app.use("/api/schedules", employeeScheduleRouter)
 app.use('/api/admin/dashboard', dashboardDataRouter) 
 app.use('/api/coupons', couponRouter); 
-app.use('/api/admin/revenue', revenueRouter) 
+app.use('/api/admin/revenue', revenueRouter)
 app.use('/api/landing-page', landingPageRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/organizations', organizationRouter)

@@ -1,0 +1,12 @@
+{
+  "name": "saas-agendamento",
+  "version": "1.0.0",
+  "description": "Sistema de agendamento online com direcionado para salões de beleza. Desenvolvido com objetivo de otimizar o processo de agendamento, gerenciamento de serviços e gestão financeira. O sistema oferece uma solução completa e eficiente para gerenciamento de salões de beleza, combinando tecnologias modernas e boas práticas de desenvolvimento.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
