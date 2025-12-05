@@ -1,6 +1,5 @@
 import { supabase } from '../lib/supabase.js';
-import express from 'express';
-
+import { google } from "googleapis";
 
 export const getAppointmentCategories = async (req, res) => {
   try {
@@ -158,8 +157,31 @@ export const getAppointmentEmployeeByService = async (req, res) => {
 export const getAvailableTimes = async (req, res) => {
   try {
     const { employeeId, date, duration } = req.query;
-    const employeeIdInt = parseInt(employeeId, 10);
     const { slug } = req.params;
+    const employeeIdInt = parseInt(employeeId, 10);
+
+
+    const { data: employeeData, error: employeeError } = await supabase
+      .from("employees")
+      .select("user_id")
+      .eq("id", employeeIdInt)
+      .single();
+
+    if (employeeError || !employeeData) {
+      console.error("Erro ao buscar employee.user_id", employeeError);
+      return res.status(404).json({ error: "Funcionário não encontrado" });
+    }
+
+    const employeeUserId = employeeData.user_id;
+
+    const { data: googleData, error: googleError } = await supabase
+      .from("organization_google_calendar")
+      .select("access_token, refresh_token, token_type, scope, expiry_date")
+      .eq("user_id", employeeUserId)
+      .maybeSingle();
+
+    const hasGoogleCalendar = !!googleData;
+
 
     console.log('Parâmetros recebidos:', { employeeIdInt, date, duration, slug });
 
@@ -215,6 +237,62 @@ export const getAvailableTimes = async (req, res) => {
 
     if (appointmentsError) throw appointmentsError;
 
+    let googleEvents = [];
+
+    function parseGoogleDate(value, date) {
+      if (!value) return null;
+
+      // Evento com horário definido
+      if (value.includes("T")) {
+        return new Date(value);
+      }
+
+      // Evento de dia inteiro → assumimos ocupação total do dia
+      return new Date(`${date}T00:00:00-03:00`);
+    }
+
+
+    if (hasGoogleCalendar) {
+      try {
+        const oauth2Client = new google.auth.OAuth2(
+          process.env.GOOGLE_CLIENT_ID,
+          process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_SECRET_KEY,
+          process.env.GOOGLE_REDIRECT_URI
+        );
+
+        oauth2Client.setCredentials({
+          access_token: googleData.access_token,
+          refresh_token: googleData.refresh_token,
+          token_type: googleData.token_type,
+          scope: googleData.scope,
+          expiry_date: googleData.expiry_date,
+        });
+
+        const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+        const timeMin = new Date(`${date}T00:00:00-03:00`).toISOString();
+        const timeMax = new Date(`${date}T23:59:59-03:00`).toISOString();
+
+
+        const { data: googleRaw } = await calendar.events.list({
+          calendarId: "primary",
+          timeMin,
+          timeMax,
+          singleEvents: true,
+          orderBy: "startTime",
+        });
+
+        googleEvents = googleRaw.items?.map((ev) => ({
+          start: parseGoogleDate(ev.start.dateTime || ev.start.date, date),
+          end: parseGoogleDate(ev.end.dateTime || ev.end.date, date),
+        })) || [];
+
+      } catch (err) {
+        console.error("Erro ao buscar Google Calendar do funcionário:", err);
+      }
+    }
+
+
     const workStart = new Date(`${date}T${schedule.start_time}`);
     const workEnd = new Date(`${date}T${schedule.end_time}`);
     const interval = 15 * 60 * 1000;
@@ -227,17 +305,30 @@ export const getAvailableTimes = async (req, res) => {
       const slotStart = new Date(currentSlot);
       const slotEnd = new Date(slotStart.getTime() + durationMs);
       
-      const isAvailable = !appointments.some(appointment => {
-        const apptStart = new Date(`${date}T${appointment.start_time}`);
-        const apptEnd = new Date(`${date}T${appointment.end_time}`);
-        
+      function rangesOverlap(aStart, aEnd, bStart, bEnd) {
         return (
-          (slotStart >= apptStart && slotStart < apptEnd) ||
-          (slotEnd > apptStart && slotEnd <= apptEnd) ||
-          (slotStart <= apptStart && slotEnd >= apptEnd)
+          (aStart >= bStart && aStart < bEnd) ||
+          (aEnd > bStart && aEnd <= bEnd) ||
+          (aStart <= bStart && aEnd >= bEnd)
         );
-      });
-      
+      }
+
+      // Transformar os appointments do banco
+      const dbBusy = appointments.map((appt) => ({
+        start: new Date(`${date}T${appt.start_time}`),
+        end: new Date(`${date}T${appt.end_time}`),
+      }));
+
+      // Transformar eventos do Google
+      const googleBusy = googleEvents;
+
+      // Unificar ocupações
+      const allBusy = [...dbBusy, ...googleBusy];
+
+      const isAvailable = !allBusy.some((busy) =>
+        rangesOverlap(slotStart, slotEnd, busy.start, busy.end)
+      );
+
       if (isAvailable) {
         availableSlots.push({
           start: slotStart.toTimeString().substring(0, 5),

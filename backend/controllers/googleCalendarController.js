@@ -217,16 +217,12 @@ export async function getCalendarEvents(req, res) {
       orderBy: "startTime",
     });
 
-    console.log("📅 EVENTOS BRUTOS DO GOOGLE:", JSON.stringify(data, null, 2));
-
     const events = data.items?.map((ev) => ({
       id: ev.id,
       summary: ev.summary || "Evento",
       start: ev.start?.dateTime || ev.start?.date,
       end: ev.end?.dateTime || ev.end?.date,
     })) ?? [];
-
-    console.log("📌 EVENTOS FORMATADOS PARA O FRONT:", events);
 
     // Atualiza token se Google renovou
     const newCreds = oauth2Client.credentials;
