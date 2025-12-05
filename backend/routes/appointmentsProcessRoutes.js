@@ -5,7 +5,7 @@ import {
   getAppointmentServicesByCategory,
   getAppointmentEmployeeByService,
   getAvailableTimes
-} from '../controllers/appointmentProccess.js';
+} from '../controllers/appointmentProccessController.js';
 
 
 export const appointmentProcessRouter = Router();

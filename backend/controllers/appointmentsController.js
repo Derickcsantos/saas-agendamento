@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase.js';
-import express from 'express';
+import { google } from "googleapis";
 
 export const getAppointmentsByEmployee = async (req, res) => {
   try {
@@ -78,18 +78,17 @@ export const createAppointment = async (req, res) => {
   try {
     const { client_name, client_email, client_phone, service_id, employee_id, date, start_time, end_time , final_price , coupon_code , original_price } = req.body;
     const { slug } = req.params;
-    console.log({ client_name, client_email, client_phone, service_id, employee_id, date, start_time, end_time , final_price , coupon_code , original_price })
+
+    console.log("📌 Dados recebidos para criar agendamento:", req.body);
 
     if (!slug) {
       return res.status(400).json({ error: 'Slug não fornecido' });
     }
 
-    if (!client_name || !service_id || !employee_id || !date) {
-      return res.status(400).json({ error: 'Campos obrigatórios faltando.' });
+    if (!client_name || !service_id || !employee_id || !date || !start_time || !end_time) {
+      return res.status(400).json({ error: "Campos obrigatórios faltando." });
     }
 
-
-    // Busca o organization_id correspondente ao slug
     const { data: orgData, error: orgError } = await supabase
       .from('organizations')
       .select('id')
@@ -99,8 +98,20 @@ export const createAppointment = async (req, res) => {
     if (orgError || !orgData) {
       return res.status(404).json({ error: 'Organização não encontrada' });
     }
+
+    const { data: policy, error: policyError } = await supabase
+      .from("organization_policies")
+      .select("sync_google_calendar")
+      .eq("organization_id", orgData.id)
+      .maybeSingle();
+
+    console.log("📌 Política encontrada:", policy);
+
+    if (policyError) {
+      console.error("Erro buscando políticas:", policyError);
+    }
     
-    const { data, error } = await supabase
+    const { data: created, error: createError } = await supabase
       .from('appointments')
       .insert([{
         organization_id: orgData.id,
@@ -117,10 +128,84 @@ export const createAppointment = async (req, res) => {
         original_price, 
         status: 'confirmed'
       }])
-      .select();
+      .select()
+      .single();
 
-    if (error) throw error;
-    res.status(201).json(data[0]);
+    if (createError) throw createError;
+    
+    console.log("✅ Agendamento criado:", created);
+
+    if (!policy?.sync_google_calendar) {
+      console.log("🔕 Organização não sincroniza com Google Calendar.");
+      return res.status(201).json(created);
+    }
+
+    console.log("🔄 Tentando sincronizar com Google Calendar...");
+
+    const { data: employee, error: employeeError } = await supabase
+      .from("employees")
+      .select("user_id, name")
+      .eq("id", employee_id)
+      .single();
+
+    if (employeeError || !employee) {
+      console.error("❌ Funcionário não encontrado para Google Calendar");
+      return res.status(201).json(created);
+    }
+
+    const { data: googleData } = await supabase
+      .from("organization_google_calendar")
+      .select("*")
+      .eq("user_id", employee.user_id)
+      .maybeSingle();
+
+    if (!googleData) {
+      console.log("🔕 Funcionário não tem Google Calendar conectado.");
+      return res.status(201).json(created);
+    }
+
+    console.log("📌 Tokens encontrados:", googleData);
+
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_SECRET_KEY,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+
+    oauth2Client.setCredentials({
+      access_token: googleData.access_token,
+      refresh_token: googleData.refresh_token,
+      token_type: googleData.token_type,
+      scope: googleData.scope,
+      expiry_date: googleData.expiry_date,
+    });
+
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+    const eventStart = new Date(`${date}T${start_time}:00-03:00`).toISOString();
+    const eventEnd = new Date(`${date}T${end_time}:00-03:00`).toISOString();
+
+    const eventBody = {
+      summary: `Agendamento: ${client_name}`,
+      description: `Serviço ID: ${service_id}\nCliente: ${client_name}\nTelefone: ${client_phone}`,
+      start: { dateTime: eventStart, timeZone: "America/Sao_Paulo" },
+      end: { dateTime: eventEnd, timeZone: "America/Sao_Paulo" },
+    };
+
+    console.log("📌 Enviando evento ao Google:", eventBody);
+
+    try {
+      const result = await calendar.events.insert({
+        calendarId: "primary",
+        requestBody: eventBody,
+      });
+
+      console.log("📌 Evento criado no Google Calendar:", result.data.id);
+    } catch (googleErr) {
+      console.error("❌ Erro ao criar evento no Google Calendar:", googleErr);
+    }
+
+    return res.status(201).json(created);
   } catch (error) {
     console.error('Error creating appointment:', error);
     res.status(500).json({ error: 'Internal server error' });
