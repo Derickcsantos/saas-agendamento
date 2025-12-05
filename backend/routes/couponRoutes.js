@@ -14,6 +14,52 @@ export const couponRouter = Router();
 
 /**
  * @swagger
+ * /api/coupons/validate-coupon:
+ *   get:
+ *     summary: Valida um cupom para um serviço específico
+ *     description: Verifica se um cupom é válido para aplicação em determinado serviço
+ *     tags: [Cupons]
+ *     parameters:
+ *       - in: query
+ *         name: code
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Código do cupom
+ *       - in: query
+ *         name: serviceId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID do serviço
+ *     responses:
+ *       200:
+ *         description: Resultado da validação
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 valid:
+ *                   type: boolean
+ *                   description: Indica se o cupom é válido
+ *                 message:
+ *                   type: string
+ *                   description: Mensagem descritiva
+ *                 discount:
+ *                   type: number
+ *                   description: Valor do desconto (apenas se válido)
+ *                 discountType:
+ *                   type: string
+ *                   enum: [percentage, fixed]
+ *                   description: Tipo do desconto (apenas se válido)
+ *       500:
+ *         description: Erro interno do servidor
+ */
+couponRouter.get('/validate-coupon/:slug', validateCoupon)
+
+/**
+ * @swagger
  * tags:
  *   - name: Cupons
  *     description: Endpoints para gestão e validação de cupons de desconto
@@ -148,49 +194,3 @@ couponRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, upda
  *         description: Erro interno do servidor
  */
 couponRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, deleteCoupon);
-
-/**
- * @swagger
- * /api/coupons/validate-coupon:
- *   get:
- *     summary: Valida um cupom para um serviço específico
- *     description: Verifica se um cupom é válido para aplicação em determinado serviço
- *     tags: [Cupons]
- *     parameters:
- *       - in: query
- *         name: code
- *         required: true
- *         schema:
- *           type: string
- *         description: Código do cupom
- *       - in: query
- *         name: serviceId
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID do serviço
- *     responses:
- *       200:
- *         description: Resultado da validação
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 valid:
- *                   type: boolean
- *                   description: Indica se o cupom é válido
- *                 message:
- *                   type: string
- *                   description: Mensagem descritiva
- *                 discount:
- *                   type: number
- *                   description: Valor do desconto (apenas se válido)
- *                 discountType:
- *                   type: string
- *                   enum: [percentage, fixed]
- *                   description: Tipo do desconto (apenas se válido)
- *       500:
- *         description: Erro interno do servidor
- */
-couponRouter.get('/validate-coupon/:slug', validateCoupon)
