@@ -223,7 +223,7 @@ export default function PersonalCalendarTab({ org }) {
           Agenda Pessoal
         </h1>
         {connectedEmail && (
-          <p className="text-sm opacity-70">Conectado como {connectedEmail}</p>
+          <p className="opacity-70 mt-2" style={{fontSize:'12px'}}>Conectado como {connectedEmail}</p>
         )}
       </div>
 
