@@ -1,16 +1,36 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter} from "next/navigation";
-import { FiHome, FiBarChart2, FiCreditCard, FiUsers } from "react-icons/fi";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-const PagarmeTab = dynamic(() => import('./components/PagarmeTab'), { ssr: false });
+import { useRouter } from "next/navigation";
+import {
+  FiHome,
+  FiBarChart2,
+  FiCreditCard,
+  FiUsers,
+  FiMenu,
+  FiX,
+  FiLogOut
+} from "react-icons/fi";
+
+const PagarmeTab = dynamic(() => import("./components/PagarmeTab"), { ssr: false });
 
 export default function AdminDashboard() {
   const [section, setSection] = useState("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const logout = async () => {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+    router.push(`/login`);
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -20,128 +40,159 @@ export default function AdminDashboard() {
         });
         const data = await res.json();
 
-        if (!data.authenticated) {
+        if (!data.authenticated || data.user.tipo !== "master") {
           router.push(`/login`);
           return;
         }
 
-        if (data.user.tipo !== 'master') {
-          router.push(`/login`)
-          return
-        }
-
         setUser(data.user);
-      } catch (error) {
-        console.error("Erro ao verificar autenticação:", error);
+      } catch {
         router.push(`/login`);
       } finally {
         setLoading(false);
       }
     };
+
     checkAuth();
-  }, [router]);
-  
+  }, []);
+
+  const menu = [
+    { key: "overview", label: "Visão Geral", icon: <FiHome size={18} /> },
+    { key: "analytics", label: "Analytics", icon: <FiBarChart2 size={18} /> },
+    { key: "pagarme", label: "Pagar.me", icon: <FiCreditCard size={18} /> },
+    { key: "users", label: "Usuários", icon: <FiUsers size={18} /> },
+  ];
+
+  if (loading) return <div className="p-10 text-gray-600">Carregando...</div>
 
   return (
-    <div className="flex min-h-screen bg-[#f7f7f7]">
+    <div className="flex h-screen bg-gray-100">
 
-      {/* SIDEBAR PREMIUM */}
-      <aside className="w-72 bg-white border-r border-gray-200 px-6 py-8 flex flex-col gap-8 shadow-sm">
-        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Dashboard</h1>
+      {/* BOTÃO MOBILE */}
+      <button
+        className="md:hidden fixed top-4 right-4 z-50 bg-white shadow-lg p-3 rounded-xl"
+        onClick={() => setSidebarOpen(true)}
+      >
+        <FiMenu size={22} />
+      </button>
 
-        <nav className="flex flex-col gap-2">
+      {/* SIDEBAR */}
+      <aside
+        className={`
+          fixed md:static top-0 left-0 h-full bg-white shadow-xl border-r border-gray-200
+          transition-all duration-300 z-40 flex flex-col
+          ${collapsed ? "w-20" : "w-72"}
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+        `}
+      >
+        
+        {/* HEADER DO SIDEBAR */}
+        <div className="flex items-center justify-between px-5 py-5 border-b">
+          {!collapsed && (
+            <h2 className="font-bold text-xl text-gray-800 tracking-tight">Admin</h2>
+          )}
 
-          <SidebarItem
-            icon={<FiHome size={18} />}
-            label="Visão Geral"
-            active={section === "overview"}
-            onClick={() => setSection("overview")}
-          />
+          <div className="flex gap-2 items-center">
+            {/* COLAPSAR (DESKTOP) */}
+            <button
+              className="hidden md:block p-2 rounded-md hover:bg-gray-200 transition"
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              {collapsed ? <FiMenu /> : <FiX />}
+            </button>
 
-          <SidebarItem
-            icon={<FiBarChart2 size={18} />}
-            label="Analytics"
-            active={section === "analytics"}
-            onClick={() => setSection("analytics")}
-          />
+            {/* FECHAR (MOBILE) */}
+            <button
+              className="md:hidden p-2 rounded-md hover:bg-gray-200"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <FiX size={20} />
+            </button>
+          </div>
+        </div>
 
-          <SidebarItem
-            icon={<FiCreditCard size={18} />}
-            label="Pagar.me"
-            active={section === "pagarme"}
-            onClick={() => setSection("pagarme")}
-          />
+        {/* MENU */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
 
-          <SidebarItem
-            icon={<FiUsers size={18} />}
-            label="Usuários"
-            active={section === "users"}
-            onClick={() => setSection("users")}
-          />
+          {menu.map((item) => {
+            const active = section === item.key;
 
+            return (
+              <button
+                key={item.key}
+                onClick={() => {
+                  setSection(item.key);
+                  setSidebarOpen(false);
+                }}
+                className={`
+                  w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium
+                  transition-all
+                  ${
+                    active
+                      ? "bg-[#711b96] text-white shadow"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }
+                `}
+              >
+                {item.icon}
+                {!collapsed && <span>{item.label}</span>}
+              </button>
+            );
+          })}
+
+          <button
+            onClick={() => window.location.href = "/marcafy/admin"}
+            className="w-full flex items-center gap-3 px-4  rounded-lg text-sm mt-3 
+            text-gray-800 hover:bg-red-50 transition"
+          >
+            <img width="18" height="18" src="https://img.icons8.com/ios/50/combo-chart--v1.png" alt="combo-chart--v1"/>
+            {!collapsed && <span>Painel admin</span>}
+          </button>
+
+          {/* LOGOUT */}
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm mt-6 
+            text-red-600 hover:bg-red-50 transition"
+          >
+            <FiLogOut size={18} />
+            {!collapsed && <span>Sair</span>}
+          </button>
         </nav>
+
       </aside>
 
-      {/* CONTENT AREA */}
-      <main className="flex-1 p-10">
+      {/* ÁREA PRINCIPAL */}
+      <main className="flex-1 p-6 md:p-10 overflow-y-auto">
         {section === "overview" && <OverviewSection />}
         {section === "analytics" && <AnalyticsSection />}
         {section === "pagarme" && <PagarmeTab />}
         {section === "users" && <UsersSection />}
       </main>
-
     </div>
   );
 }
 
-/* ================================
-   SIDEBAR ITEM COMPONENT
-================================ */
-function SidebarItem({ icon, label, active, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        flex items-center gap-3 px-4 py-2 rounded-lg transition-all 
-        text-sm font-medium
-        ${active
-          ? "bg-[#711b96] text-white shadow-sm"
-          : "text-gray-700 hover:bg-gray-100"}
-      `}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
+/* ————————————————————————————————
+   COMPONENTES DAS SEÇÕES
+——————————————————————————————— */
 
-/* ================================
-   SEÇÃO: OVERVIEW (Padrão Stripe)
-================================ */
 function OverviewSection() {
   return (
     <div className="space-y-10">
-
       <h2 className="text-3xl font-bold text-gray-900">Visão Geral</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
         <StatCard label="Clientes Ativos" value="423" />
         <StatCard label="Planos Ativos" value="12" />
         <StatCard label="Receita Mensal" value="R$ 32.450,00" />
-
       </div>
 
-      {/* Gráfico de Receita */}
       <RevenueChart />
-
     </div>
   );
 }
 
-/* ================================
-   SEÇÃO: ANALYTICS
-================================ */
 function AnalyticsSection() {
   return (
     <div className="space-y-10">
@@ -154,9 +205,6 @@ function AnalyticsSection() {
   );
 }
 
-/* ================================
-   SEÇÃO: USERS
-================================ */
 function UsersSection() {
   return (
     <div>
@@ -166,29 +214,25 @@ function UsersSection() {
   );
 }
 
-/* ================================
-   CARDS
-================================ */
+/* ————————————————————————————————
+   COMPONENTES UTILITÁRIOS
+——————————————————————————————— */
+
 function StatCard({ label, value }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow p-6">
       <p className="text-gray-500 text-sm">{label}</p>
-      <p className="mt-2 text-3xl font-semibold text-gray-900">{value}</p>
+      <p className="mt-2 text-3xl font-semibold">{value}</p>
     </div>
   );
 }
-
-/* ================================
-   GRÁFICOS
-================================ */
 
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 function RevenueChart() {
   return (
-    <div className="bg-white rounded-xl shadow-sm border p-6">
-
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Receita Mensal</h3>
+    <div className="bg-white rounded-xl shadow border p-6">
+      <h3 className="text-lg font-semibold mb-4">Receita Mensal</h3>
 
       <Chart
         type="area"
@@ -201,10 +245,7 @@ function RevenueChart() {
           xaxis: { categories: ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"] },
         }}
         series={[
-          {
-            name: "Receita",
-            data: [15000, 18000, 22000, 25000, 27000, 32450],
-          },
+          { name: "Receita", data: [15000, 18000, 22000, 25000, 27000, 32450] },
         ]}
       />
     </div>
@@ -213,9 +254,8 @@ function RevenueChart() {
 
 function UsersChart() {
   return (
-    <div className="bg-white rounded-xl shadow-sm border p-6">
-
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Novos Usuários</h3>
+    <div className="bg-white rounded-xl shadow border p-6">
+      <h3 className="text-lg font-semibold mb-4">Novos Usuários</h3>
 
       <Chart
         type="bar"
@@ -227,10 +267,7 @@ function UsersChart() {
           xaxis: { categories: ["Seg", "Ter", "Qua", "Qui", "Sex"] },
         }}
         series={[
-          {
-            name: "Usuários",
-            data: [32, 45, 51, 62, 58],
-          },
+          { name: "Usuários", data: [32, 45, 51, 62, 58] },
         ]}
       />
     </div>
