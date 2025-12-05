@@ -213,6 +213,7 @@ export const validateCoupon = async (req, res) => {
     const cleanCode = code.trim().toUpperCase();
     const { slug } = req.params;
 
+
     if (!slug) {
       return res.status(400).json({ error: 'Slug não fornecido' });
     }

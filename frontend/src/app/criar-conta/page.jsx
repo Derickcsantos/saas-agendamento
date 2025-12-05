@@ -140,8 +140,10 @@ export default function CreateOrganization() {
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center py-8 px-4">
-      <div className="fixed top-5 left-5">
-        <a href="/"><i className="bi bi-arrow-left"></i></a>
+      <div className="fixed top-10 left-10 w-12 h-12">
+        <a href="/" >
+        <img width="50" height="50" src="https://img.icons8.com/ios/50/left--v1.png" alt="left--v1"/>
+        </a>
       </div>
       <div className="w-full max-w-xl bg-white shadow-2xl rounded-2xl p-6 sm:p-10 border border-black/5">
 

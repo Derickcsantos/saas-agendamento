@@ -4,9 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from 'react-toastify'
-// ===============================
-// APPOINTMENT PAGE
-// ===============================
+
 export default function AppointmentPage({ slug }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -45,10 +43,9 @@ export default function AppointmentPage({ slug }) {
   });
   const [loading, setLoading] = useState(false);
   const [appointmentResult, setAppointmentResult] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [appointmentData, setAppointmentData] = useState(null);
 
-  // ================================
-  // 1️⃣ CHECK AUTH
-  // ================================
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -72,7 +69,6 @@ export default function AppointmentPage({ slug }) {
   useEffect(() => {
     async function fetchData() {
       try {
-        // Executa ambas as chamadas em paralelo
         const [orgRes, colorRes, policiesRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${slug}`, {
             credentials: 'include',
@@ -214,7 +210,9 @@ export default function AppointmentPage({ slug }) {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/coupons/validate-coupon/${slug}?code=${encodeURIComponent(
           couponInput
-        )}&serviceId=${selected.service.id}`
+        )}&serviceId=${selected.service.id}`, {
+          credentials: 'include'
+        }
       );
 
       const result = await res.json();
@@ -252,10 +250,6 @@ export default function AppointmentPage({ slug }) {
     }
   };
 
-
-  // ================================
-  // 8️⃣ CONFIRMAR AGENDAMENTO
-  // ================================
   const handleConfirmAppointment = async (clientData) => {
     if (!selected.service || !selected.employee || !selected.time || !selected.date) {
       toast.info("Preencha todos os dados do agendamento antes de confirmar.");
@@ -306,9 +300,32 @@ export default function AppointmentPage({ slug }) {
         return;
       }
 
-      setAppointmentResult(data);
-      toast.success("Agendamento confirmado com sucesso!");
-      setStep(7); // já está no 7, mas mantém consistência
+      setAppointmentData({
+        category: selected.category,
+        service: selected.service,
+        employee: selected.employee,
+        date: selected.date,
+        time: selected.time,
+        client: clientData,
+        prices: {
+          original: originalPrice,
+          final: finalPrice,
+          coupon: selected.coupon,
+        }
+      });
+
+      setSelected({
+        category: null,
+        service: null,
+        employee: null,
+        date: "",
+        time: null,
+        coupon: null,
+      });
+      setCouponInput("");
+
+      toast.success("Agendamento confirmado!");
+      setShowModal(true);
     } catch (err) {
       console.error("Erro ao confirmar agendamento:", err);
       toast.error("Erro interno. Tente novamente mais tarde.");
@@ -317,10 +334,6 @@ export default function AppointmentPage({ slug }) {
     }
   };
 
-
-  // ================================
-  // STEPS NAVIGATION
-  // ================================
   const next = () => setStep((s) => Math.min(s + 1, 7));
   const back = () => setStep((s) => Math.max(s - 1, 1));
 
@@ -328,9 +341,6 @@ export default function AppointmentPage({ slug }) {
     setSelected((prev) => ({ ...prev, [field]: value }));
   };
 
-  // ================================
-  // RENDER
-  // ================================
   if (checkingAuth)
     return (
       <div className="h-screen flex bg-white items-center justify-center text-gray-500">
@@ -355,10 +365,86 @@ export default function AppointmentPage({ slug }) {
   maxDate.setDate(maxDate.getDate() + (policies?.max_schedule_days || 30));
   const maxDateStr = maxDate.toISOString().split("T")[0];
 
+  const formattedPrice = (value) =>
+  value?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const ModalConfirm = () => {
+    if (!showModal || !appointmentData) return null;
+
+    const a = appointmentData;
+
+    const whatsappMessage = encodeURIComponent(
+      `Olá! Aqui está a confirmação do seu agendamento:\n\n` +
+      `• Serviço: ${a.service?.name}\n` +
+      `• Categoria: ${a.category?.name}\n` +
+      `• Profissional: ${a.employee?.name}\n` +
+      `• Data: ${a.date}\n` +
+      `• Horário: ${a.time?.start} - ${a.time?.end}\n` +
+      `• Valor final: ${formattedPrice(a.prices.final)}\n\n`
+    );
+
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 animate-fadeIn scale-[0.98]">
+          
+          {/* Header */}
+          <h2 className="text-2xl font-bold text-gray-800 text-center mb-4">
+            Agendamento Confirmado 🎉
+          </h2>
+
+          {/* Conteúdo */}
+          <div className="space-y-2 text-gray-700">
+            <p><strong>Cliente:</strong> {a.client?.name}</p>
+            <p><strong>Serviço:</strong> {a.service?.name}</p>
+            <p><strong>Profissional:</strong> {a.employee?.name}</p>
+            <p><strong>Data:</strong> {a.date}</p>
+            <p><strong>Horário:</strong> {a.time?.start} - {a.time?.end}</p>
+            <p><strong>Valor:</strong> {formattedPrice(a.prices.final)}</p>
+
+            {a.prices.coupon && (
+              <p className="text-green-600"><strong>Cupom aplicado:</strong> {a.prices.coupon.code}</p>
+            )}
+          </div>
+
+          {/* Botões */}
+          <div className="mt-6 space-y-3">
+            <a
+              href={`https://wa.me/55${a.client?.phone}?text=${whatsappMessage}`}
+              target="_blank"
+              className="block w-full text-center bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg shadow-md transition"
+            >
+              Enviar via WhatsApp
+            </a>
+
+            <button
+              onClick={() => window.location.href = `mailto:${a.client?.email}?subject=Confirmação de Agendamento&body=${whatsappMessage}`}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg shadow-md transition"
+            >
+              Enviar por Email
+            </button>
+
+            <button
+              onClick={() => gerarPDF(a)}
+              className="w-full bg-gray-800 hover:bg-black text-white py-3 rounded-lg shadow-md transition"
+            >
+              Baixar Comprovante
+            </button>
+          </div>
+
+          <button
+            onClick={() => setShowModal(false)}
+            className="mt-6 text-gray-500 hover:text-gray-700 block mx-auto"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    );
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* HEADER */}
       <header className="flex justify-between items-center p-4 border-b bg-white shadow-sm">
         <div
           onClick={() => router.push(`/${slug}`)}
@@ -487,7 +573,6 @@ export default function AppointmentPage({ slug }) {
               </motion.div>
             )}
 
-            {/* 3️⃣ Profissional */}
             {step === 3 && (
               <motion.div key="emp" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 <h2 className="text-xl text-gray-800 font-semibold mb-4">
@@ -519,7 +604,6 @@ export default function AppointmentPage({ slug }) {
               </motion.div>
             )}
 
-            {/* 4️⃣ Data */}
             {step === 4 && (
               <motion.div key="date" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 <h2 className="text-xl text-gray-800 font-semibold mb-4">
@@ -547,7 +631,6 @@ export default function AppointmentPage({ slug }) {
               </motion.div>
             )}
 
-            {/* 5️⃣ Horário */}
             {step === 5 && (
               <motion.div
                 key="time"
@@ -574,7 +657,7 @@ export default function AppointmentPage({ slug }) {
                         key={i}
                         onClick={() => {
                           handleSelect("time", slot);
-                          next(); // avança automaticamente para o próximo step
+                          next(); 
                         }}
                         className={`px-4 py-2 text-gray-800 rounded-lg border transition-all ${
                           selected.time?.start === slot.start
@@ -590,7 +673,6 @@ export default function AppointmentPage({ slug }) {
               </motion.div>
             )}
 
-            {/* 6️⃣ Cupom */}
             {step === 6 && (
               <motion.div
                 key="coupon"
@@ -623,7 +705,6 @@ export default function AppointmentPage({ slug }) {
                   </button>
                 </div>
 
-                {/* Mensagem de feedback */}
                 {couponStatus.message && (
                   <p
                     className={`text-sm ${
@@ -634,20 +715,9 @@ export default function AppointmentPage({ slug }) {
                   </p>
                 )}
 
-                {/* Botão de continuar (caso cupom seja opcional)
-                <div className="mt-6 flex justify-end">
-                  <button
-                    onClick={next}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg"
-                  >
-                    Continuar
-                  </button>
-                </div> */}
               </motion.div>
             )}
 
-
-            {/* 7️⃣ Confirmação */}
             {step === 7 && (
               <motion.div key="confirm" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 <h2 className="text-xl font-semibold mb-4 text-gray-800">Confirme seu agendamento</h2>
@@ -687,7 +757,6 @@ export default function AppointmentPage({ slug }) {
                     {selected.time ? `${selected.time.start} - ${selected.time.end}` : ""}
                   </p>
 
-                  {/* Preço com desconto aplicado */}
                   <p>
                     <strong>Valor:</strong>{" "}
                     {selected.service && (
@@ -738,7 +807,6 @@ export default function AppointmentPage({ slug }) {
           </AnimatePresence>
         </div>
 
-        {/* Navegação entre passos */}
         <div className="flex justify-between mt-8">
           <button
             onClick={back}
@@ -752,19 +820,24 @@ export default function AppointmentPage({ slug }) {
             Voltar
           </button>
 
-          <button
-            onClick={next}
-            disabled={step === 7}
-            className={`px-6 py-2 rounded-lg ${
-              step === 7
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-purple-600 text-white hover:bg-purple-700"
-            }`}
-            style={{backgroundColor: palette?.strong_color}}
-          >
-            Próximo
-          </button>
+          {step === 7 ? (
+            <></>
+          ) : (
+            <button
+              onClick={next}
+              disabled={step === 7}
+              className={`px-6 py-2 rounded-lg ${
+                step === 7
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-purple-600 text-white hover:bg-purple-700"
+              }`}
+              style={{backgroundColor: palette?.strong_color}}
+            >
+              Próximo
+            </button>
+          )}
         </div>
+        <ModalConfirm />
       </main>
     </div>
   );
