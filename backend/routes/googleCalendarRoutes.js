@@ -16,7 +16,7 @@ googleCalendarRouter.get(
 );
 
 googleCalendarRouter.get(
-  "/connect",
+  "/:slug/connect",
   connectGoogleCalendar
 );
 

@@ -211,7 +211,7 @@ export default function PersonalCalendarTab({ org }) {
 
   function handleConnect() {
     if (!userId) return toast.error("Usuário não identificado.");
-    window.location.href = `${API_BASE_URL}/api/google-calendar/connect?userId=${userId}`;
+    window.location.href = `${API_BASE_URL}/api/google-calendar/${slug}/connect?userId=${userId}`;
   }
 
   return (
