@@ -12,6 +12,7 @@ export default function EmployeesTab({ org }) {
     email: "",
     phone: "",
     comissao: "",
+    salary: '',
     is_active: true,
   });
   const [image, setImage] = useState(null);
@@ -95,6 +96,7 @@ export default function EmployeesTab({ org }) {
         email: "",
         phone: "",
         comissao: "",
+        salary: '',
         is_active: true,
       });
       setImage(null);
@@ -115,6 +117,7 @@ export default function EmployeesTab({ org }) {
       name: emp.name,
       email: emp.email,
       phone: emp.phone,
+      salary: emp.salary,
       comissao: emp.comissao,
       is_active: emp.is_active,
     });
@@ -148,6 +151,7 @@ export default function EmployeesTab({ org }) {
       email: "",
       phone: "",
       comissao: "",
+      salary: '',
       is_active: true,
     });
     setImage(null);
@@ -215,6 +219,9 @@ export default function EmployeesTab({ org }) {
 
           <input type="number" placeholder="Comissão (%)" className="border p-2 rounded-md"
             value={form.comissao} onChange={(e) => setForm({ ...form, comissao: e.target.value })} />
+
+          <input type="number" placeholder="Salário" className="border p-2 rounded-md"
+            value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} />
 
           <label className="flex items-center gap-2 col-span-2">
             <input type="checkbox" checked={form.is_active}
@@ -315,6 +322,7 @@ export default function EmployeesTab({ org }) {
               <th className="px-3 py-2 text-left">Nome</th>
               <th className="px-3 py-2 text-left">Email</th>
               <th className="px-3 py-2 text-left">Telefone</th>
+              <th className="px-3 py-2 text-left">Salário</th>
               <th className="px-3 py-2 text-left">Comissão</th>
               <th className="px-3 py-2 text-left">Status</th>
               <th className="px-3 py-2 text-left">Ações</th>
@@ -327,6 +335,7 @@ export default function EmployeesTab({ org }) {
                 <td className="px-3 py-2">{e.name}</td>
                 <td className="px-3 py-2">{e.email}</td>
                 <td className="px-3 py-2">{e.phone}</td>
+                <td className="px-3 py-2">{e.salary}</td>
                 <td className="px-3 py-2">{e.comissao}%</td>
                 <td className="px-3 py-2">
                   <span className={`px-2 py-1 text-xs rounded-full ${e.is_active ? "bg-green-100 text-green-700" : "bg-gray-200"}`}>
