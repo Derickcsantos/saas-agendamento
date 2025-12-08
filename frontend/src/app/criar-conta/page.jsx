@@ -10,7 +10,8 @@ import { useRouter } from "next/navigation";
 export default function CreateOrganization() {
   const [step, setStep] = useState(1);
   const router = useRouter();
-
+  const [slugExists, setSlugExists] = useState(false);
+  const [checkingSlug, setCheckingSlug] = useState(false);
   const [orgData, setOrgData] = useState({
     name: "",
     setor: "",
@@ -138,11 +139,42 @@ export default function CreateOrganization() {
     "Representante",
   ];
 
+  const checkSlugAvailability = async () => {
+    const slug = orgData.name.toLowerCase().replace(/\s+/g, "-");
+
+    if (!slug.trim()) return;
+
+    setCheckingSlug(true);
+
+    try {
+      const res = await axios.get(
+        `http://localhost:3000/api/organizations/slug/${slug}`
+      );
+
+      // SE RETORNAR UMA ORGANIZAÇÃO → slug já existe
+      if (res.data?.id) {
+        setSlugExists(true);
+      } else {
+        setSlugExists(false);
+      }
+    } catch (err) {
+      // 404 significa que NÃO existe → slug disponível
+      if (err.response?.status === 404) {
+        setSlugExists(false);
+      } else {
+        console.error(err);
+      }
+    }
+
+    setCheckingSlug(false);
+  };
+
+
   return (
     <div className="min-h-screen bg-white flex items-center justify-center py-8 px-4">
-      <div className="fixed top-10 left-10 w-12 h-12">
+      <div className="absolute top-1 left-4 w-10 h-10 ">
         <a href="/" >
-        <img width="50" height="50" src="https://img.icons8.com/ios/50/left--v1.png" alt="left--v1"/>
+        <img width="30" height="30" src="https://img.icons8.com/ios/50/left--v1.png" alt="left--v1"/>
         </a>
       </div>
       <div className="w-full max-w-xl bg-white shadow-2xl rounded-2xl p-6 sm:p-10 border border-black/5">
@@ -150,7 +182,7 @@ export default function CreateOrganization() {
         {/* HEADER */}
         <div className="text-center mb-8 sm:mb-10">
           <h1 className="text-2xl sm:text-3xl font-bold text-[#5E3BEE]">
-            Crie sua conta Marcafy
+            Crie sua conta 
           </h1>
           <p className="text-gray-500 mt-2 text-xs sm:text-sm">
             Inovação, controle e otimização do seu tempo — tudo começa aqui.
@@ -198,9 +230,35 @@ export default function CreateOrganization() {
                     name="name"
                     value={orgData.name}
                     onChange={handleOrgChange}
+                    onBlur={checkSlugAvailability}
                     className="w-full mt-1 border border-black/10 rounded-lg p-3 placeholder-gray-400 shadow-sm text-gray-900 focus:ring-2 focus:ring-[#5E3BEE]/40 focus:outline-none"
                     placeholder="Digite o nome da sua empresa"
                   />
+                  {orgData.name? (
+                    <div className="flex justify-center mt-4">
+                      <p className="text-gray-500" style={{fontSize: '12px'}}>www.marcafy.com.br/{orgData.name.toLowerCase().replace(/\s+/g, "-")}
+                      </p>
+                    </div>
+                    ) : (
+                      ''
+                    )}
+
+                    {checkingSlug && (
+                      <p className="text-blue-500 text-xs text-center mt-1">Verificando disponibilidade...</p>
+                    )}
+
+                    {!checkingSlug && slugExists && (
+                      <p className="text-red-500 text-xs text-center mt-1">
+                        ❌ Este nome já está em uso. Escolha outro.
+                      </p>
+                    )}
+
+                    {!checkingSlug && !slugExists && orgData.name && (
+                      <p className="text-green-600 text-xs text-center mt-1">
+                        ✔ Nome disponível!
+                      </p>
+                    )}
+
                 </div>
 
                 <div>
