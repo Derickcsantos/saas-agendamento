@@ -185,10 +185,8 @@
     --color-red-700: #bf000f;
     --color-red-800: #9f0712;
     --color-red-900: #82181a;
-    --color-yellow-100: #fef9c2;
     --color-yellow-500: #edb200;
     --color-yellow-600: #cd8900;
-    --color-yellow-700: #a36100;
     --color-green-100: #dcfce7;
     --color-green-400: #05df72;
     --color-green-500: #00c758;
@@ -302,10 +300,8 @@
       --color-red-700: color(display-p3 .692737 .116232 .104679);
       --color-red-800: color(display-p3 .569606 .121069 .108493);
       --color-red-900: color(display-p3 .466906 .133198 .12139);
-      --color-yellow-100: color(display-p3 .993436 .977463 .782913);
       --color-yellow-500: color(display-p3 .903651 .703062 .0745389);
       --color-yellow-600: color(display-p3 .776342 .542492 .041709);
-      --color-yellow-700: color(display-p3 .613146 .386658 .0579687);
       --color-green-100: color(display-p3 .885269 .984329 .910368);
       --color-green-400: color(display-p3 .399536 .862346 .49324);
       --color-green-500: color(display-p3 .308734 .774754 .374307);
@@ -365,10 +361,8 @@
       --color-red-700: lab(40.4273% 67.2623 53.7441);
       --color-red-800: lab(33.7174% 55.8993 41.0293);
       --color-red-900: lab(28.5139% 44.5539 29.0463);
-      --color-yellow-100: lab(97.3564% -4.51407 27.344);
       --color-yellow-500: lab(76.3898% 14.5258 98.4589);
       --color-yellow-600: lab(62.7799% 22.4198 86.1544);
-      --color-yellow-700: lab(47.8202% 25.2426 66.5015);
       --color-green-100: lab(96.186% -13.8464 6.52362);
       --color-green-400: lab(78.503% -64.9265 39.7492);
       --color-green-500: lab(70.5521% -66.5147 45.8072);
@@ -818,6 +812,10 @@
     top: calc(var(--spacing) * 0);
   }
 
+  .top-1 {
+    top: calc(var(--spacing) * 1);
+  }
+
   .top-1\/2 {
     top: 50%;
   }
@@ -832,10 +830,6 @@
 
   .top-6 {
     top: calc(var(--spacing) * 6);
-  }
-
-  .top-10 {
-    top: calc(var(--spacing) * 10);
   }
 
   .top-\[3\%\] {
@@ -878,8 +872,8 @@
     left: 50%;
   }
 
-  .left-10 {
-    left: calc(var(--spacing) * 10);
+  .left-4 {
+    left: calc(var(--spacing) * 4);
   }
 
   .-z-10 {
@@ -2127,10 +2121,6 @@
     }
   }
 
-  .bg-yellow-100 {
-    background-color: var(--color-yellow-100);
-  }
-
   .bg-yellow-500 {
     background-color: var(--color-yellow-500);
   }
@@ -2467,10 +2457,6 @@
     color: var(--color-blue-700);
   }
 
-  .text-gray-50 {
-    color: var(--color-gray-50);
-  }
-
   .text-gray-400 {
     color: var(--color-gray-400);
   }
@@ -2557,10 +2543,6 @@
 
   .text-white {
     color: var(--color-white);
-  }
-
-  .text-yellow-700 {
-    color: var(--color-yellow-700);
   }
 
   .capitalize {
@@ -3482,12 +3464,6 @@
   @media (min-width: 64rem) {
     .lg\:grid-cols-2 {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (min-width: 64rem) {
-    .lg\:grid-cols-3 {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 
