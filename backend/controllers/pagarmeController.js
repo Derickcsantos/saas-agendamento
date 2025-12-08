@@ -237,7 +237,14 @@ export const PagarmeController = {
   // =========================================
   async createSubscription(req, res) {
     try {
-      const payload = req.body;
+      const payload = {
+        ...req.body,
+        items: [
+          {
+            pricing_scheme: { price: req.body.amount }
+          }
+        ]
+      };
 
       const response = await pagarme.post("/subscriptions", payload);
       const sub = response.data;
@@ -282,7 +289,7 @@ export const PagarmeController = {
         created_at: sub.created_at,
         updated_at: sub.updated_at,
         latest_invoice_id: sub.latest_invoice?.id,
-        latest_invoice_amount: chargeAmount / 100,
+        latest_invoice_amount: sub.plan?.amount ? sub.plan.amount / 100 : null,
         nfe_document_id: nota?.id || null,
       });
 

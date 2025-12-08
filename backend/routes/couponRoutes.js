@@ -6,7 +6,8 @@ import {
   createCoupon,
   updateCoupon,
   deleteCoupon,  
-  validateCoupon
+  validateCoupon,
+  validateCouponMarcafy
 } from '../controllers/couponController.js';
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
 
@@ -57,6 +58,8 @@ export const couponRouter = Router();
  *         description: Erro interno do servidor
  */
 couponRouter.get('/validate-coupon/:slug', validateCoupon)
+
+couponRouter.get('/validate', validateCouponMarcafy)
 
 /**
  * @swagger

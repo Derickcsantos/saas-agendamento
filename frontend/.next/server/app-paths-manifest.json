@@ -6,6 +6,7 @@
   "/[slug]/profissional/page": "app/[slug]/profissional/page.js",
   "/_not-found/page": "app/_not-found/page.js",
   "/admin-dashboard/page": "app/admin-dashboard/page.js",
+  "/escolher-plano/[slug]/page": "app/escolher-plano/[slug]/page.js",
   "/login/page": "app/login/page.js",
   "/page": "app/page.js",
   "/termos/page": "app/termos/page.js"
