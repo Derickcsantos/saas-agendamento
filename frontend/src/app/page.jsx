@@ -213,7 +213,7 @@ export default function MarcafyLanding() {
               className="rounded-full px-8 py-3 font-semibold text-white transition"
               style={{ background: BRAND, boxShadow: "0 14px 28px rgba(94,59,238,0.25)" }}
             >
-              Começar agora
+              Criar conta
             </a>
             <a
               href="#recursos"
@@ -228,15 +228,15 @@ export default function MarcafyLanding() {
           <div className="mt-10 grid grid-cols-2 gap-4 max-w-md">
             <SoftCard className="p-4 text-center">
               <div className="text-3xl font-extrabold" style={{ color: BRAND }}>
-                98%
+                Rápido
               </div>
-              <div className="text-xs text-neutral-500">Satisfação dos clientes</div>
+              <div className="text-xs text-neutral-500">Velocidade para você e para seu cliente</div>
             </SoftCard>
             <SoftCard className="p-4 text-center">
               <div className="text-3xl font-extrabold" style={{ color: BRAND }}>
-                +90%
+                Completo
               </div>
-              <div className="text-xs text-neutral-500">Mais eficiência operacional</div>
+              <div className="text-xs text-neutral-500">Criado para o seu negócio</div>
             </SoftCard>
           </div>
         </motion.div>
@@ -320,33 +320,6 @@ export default function MarcafyLanding() {
         </div>
       </section>
 
-      {/* BENEFÍCIOS EM BLOCOS (estilo cápsulas) */}
-      <section className="mx-auto max-w-7xl px-6 py-20 md:px-8">
-        <div className="mb-14 text-center">
-          <Chip>Benefícios</Chip>
-          <h2 className="mt-4 text-4xl font-bold">Transforme seu negócio</h2>
-        </div>
-
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            { label: "Escala", value: "Milhões+" },
-            { label: "Disponibilidade", value: "99,9%" },
-            { label: "Atendimentos/sem", value: "↑ 90%" },
-            { label: "Exportações", value: "CSV & PDF" },
-            { label: "Backups", value: "Diários" },
-            { label: "Latência média", value: "Baixa" },
-          ].map((k, i) => (
-            <SoftCard key={i} className="rounded-[32px] p-6 text-center">
-              <div className="text-3xl font-extrabold" style={{ color: BRAND }}>
-                {k.value}
-              </div>
-              <div className="text-sm text-neutral-500">{k.label}</div>
-            </SoftCard>
-          ))}
-        </div>
-      </section>
-
-      {/* COMO FUNCIONA */}
       <section id="como-funciona" className="mx-auto max-w-7xl grid items-center gap-10 px-6 py-10 md:grid-cols-2 md:px-8">
         <div className="order-2 md:order-1">
           <SoftCard className="p-6">
@@ -425,7 +398,7 @@ export default function MarcafyLanding() {
 
             <div className="mt-8">
               <a
-                href="https://wa.me/5511999999999"
+                href="/criar-conta"
                 className="w-full inline-block text-center rounded-full bg-[#5E3BEE] px-6 py-3 text-white font-semibold shadow-md hover:shadow-lg transition"
               >
                 Contratar
@@ -468,7 +441,7 @@ export default function MarcafyLanding() {
 
             <div className="mt-8">
               <a
-                href="https://wa.me/5511999999999"
+                href="/criar-conta"
                 className="w-full inline-block text-center rounded-full bg-[#5E3BEE] px-6 py-3 text-white font-semibold shadow-md hover:shadow-lg transition"
               >
                 Contratar
@@ -507,7 +480,7 @@ export default function MarcafyLanding() {
 
             <div className="mt-8">
               <a
-                href="https://wa.me/5511999999999"
+                href="/criar-conta"
                 className="w-full inline-block text-center rounded-full bg-[#5E3BEE] px-6 py-3 text-white font-semibold shadow-md hover:shadow-lg transition"
               >
                 Contratar
@@ -522,18 +495,18 @@ export default function MarcafyLanding() {
       <section className="mx-auto max-w-6xl px-6 pb-24 md:px-8">
         <SoftCard className="flex flex-col items-center justify-between gap-6 p-10 md:flex-row">
           <div>
-            <h3 className="text-2xl font-bold">Pronto para elevar o nível do seu negócio?</h3>
+            <h3 className="text-2xl font-bold">Ainda tem dúvidas sobre nossa plataforma?</h3>
             <p className="mt-2 max-w-xl text-neutral-700">
-              Centralize agendamentos, finanças e relatórios. A Marcafy cresce com você.
+              Tudo bem, eu entendo. Estamos disponíveis 24h no whatsapp prontos para esclarecer suas dúvidas.
             </p>
           </div>
           <div className="flex gap-3">
             <a
-              href="https://wa.me/551199999999999"
+              href="https://wa.me/5511953404003"
               className="rounded-full px-7 py-3 font-semibold text-white transition"
               style={{ background: BRAND, boxShadow: "0 14px 28px rgba(94,59,238,0.25)" }}
             >
-              Solicitar demonstração
+              Conversar no whatsapp
             </a>
             <a
               href="#planos"

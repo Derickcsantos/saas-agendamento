@@ -151,8 +151,9 @@ export default function TermsAndPolicies() {
               alt="Marcafy"
               className="h-9 w-9 rounded-xl"
               style={{ border: `1px solid ${BRAND}26` }}
+              href="/"
             />
-            <span className="text-xl font-extrabold tracking-tight">Marcafy</span>
+            <a href="/"><span className="text-xl font-extrabold tracking-tight">Marcafy</span></a>
           </div>
 
           <nav className="hidden items-center gap-6 md:flex">
@@ -233,14 +234,17 @@ export default function TermsAndPolicies() {
       </section>
 
       <section className="mx-auto max-w-6xl px-6 pb-24 md:px-8">
+        <div className="flex justify-center mb-5">
+          <h2>
+            <span className="font-extrabold" style={{fontSize: '25px', color: "rgba(27, 26, 26, 1)" }}>Termos e condições</span>
+          </h2>
+        </div>
         <SoftCard className="flex flex-col items-center justify-between gap-6 p-10 md:flex-row">
           <div>
-              <h2>
-                <span style={{ color: "rgb(68, 68, 68)" }}>1. Termos</span>
-              </h2>
+            
               <p>
                 <span style={{ color: "rgb(68, 68, 68)" }}>
-                  Ao acessar ao site <a href="https://www.marcafy.com.br">Marcafy</a>,
+                  1. Ao acessar ao site <a href="https://www.marcafy.com.br">Marcafy</a>,
                   concorda em cumprir estes termos de serviço, todas as leis e regulamentos
                   aplicáveis ​​e concorda que é responsável pelo cumprimento de todas as
                   leis locais aplicáveis. Se você não concordar com algum desses termos,
@@ -393,11 +397,13 @@ export default function TermsAndPolicies() {
       </section>
 
       <section className="mx-auto max-w-6xl px-6 pb-24 md:px-8">
+        <div className="flex justify-center mb-5">
+          <h2>
+            <span className="font-extrabold" style={{fontSize: '25px', color: "rgba(27, 26, 26, 1)" }}>Política de Privacidade</span>
+          </h2>
+        </div>
         <SoftCard className="flex flex-col items-center justify-between gap-6 p-10 md:flex-row">
           <div>
-            <h2>
-              <span style={{ color: "rgb(68, 68, 68)" }}>Política Privacidade</span>
-            </h2>
             <p>
               <span style={{ color: "rgb(68, 68, 68)" }}>
                 A sua privacidade é importante para nós. É política do Marcafy respeitar a
