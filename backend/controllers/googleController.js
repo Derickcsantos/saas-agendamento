@@ -1,35 +1,42 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { supabase } from "../lib/supabase.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-export const handleGoogleAuth = (req, res, next) => {
-  const organizationId = req.query.organization_id;
-  req.session.organizationId = organizationId;
-  next();
-};
+import generateAccessToken from "../utils/jwt.js";
+import setTokenCookie from "../utils/setTokenCookie.js";
 
 export const googleCallback = async (req, res) => {
   const user = req.user;
 
-  // Buscar slug
+  if (!user) {
+    return res.redirect("/login?error=unauthorized");
+  }
+
+  // Buscar slug da organização
   const { data: org } = await supabase
     .from("organizations")
     .select("slug_organization")
     .eq("id", user.organization_id)
     .single();
 
-  const slug = org?.slug_organization;
+  const slug = org.slug_organization;
 
-  let redirectUrl = `/${slug}/logado`;
+  // Gerar JWT igual ao login normal
+  const token = generateAccessToken({
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    phone: user.phone,
+    aniversario: user.aniversario,
+    organization_id: user.organization_id,
+    tipo: user.tipo,
+  });
 
-  if (user.tipo === "admin") {
-    redirectUrl = `/${slug}/admin`;
-  } else if (user.tipo === "funcionario") {
-    redirectUrl = `/${slug}/funcionario`;
-  }
+  // Set cookie httpOnly igual login normal
+  setTokenCookie(res, token);
 
-  res.redirect(redirectUrl);
+  // Redirecionamento por tipo
+  let redirectUrl = `${process.env.FRONTEND_URL}/${slug}/minha-conta`;
+
+  if (user.tipo === "admin") redirectUrl = `${process.env.FRONTEND_URL}/${slug}/admin`;
+  if (user.tipo === "funcionario") redirectUrl = `${process.env.FRONTEND_URL}/${slug}/profissional`;
+
+  return res.redirect(redirectUrl);
 };
