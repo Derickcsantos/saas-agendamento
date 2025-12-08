@@ -196,6 +196,7 @@
     --color-green-700: #008138;
     --color-emerald-400: #00d294;
     --color-emerald-500: #00bb7f;
+    --color-blue-100: #dbeafe;
     --color-blue-400: #54a2ff;
     --color-blue-500: #3080ff;
     --color-blue-600: #155dfc;
@@ -312,6 +313,7 @@
       --color-green-700: color(display-p3 .198355 .501799 .245335);
       --color-emerald-400: color(display-p3 .334701 .819603 .591575);
       --color-emerald-500: color(display-p3 .267113 .726847 .508397);
+      --color-blue-100: color(display-p3 .869214 .915931 .989622);
       --color-blue-400: color(display-p3 .397443 .62813 .992116);
       --color-blue-500: color(display-p3 .266422 .491219 .988624);
       --color-blue-600: color(display-p3 .174493 .358974 .950247);
@@ -374,6 +376,7 @@
       --color-green-700: lab(47.0329% -47.0239 31.4788);
       --color-emerald-400: lab(75.0771% -60.7313 19.4146);
       --color-emerald-500: lab(66.9756% -58.27 19.5419);
+      --color-blue-100: lab(92.0301% -2.24757 -11.6453);
       --color-blue-400: lab(65.0361% -1.42062 -56.9803);
       --color-blue-500: lab(54.1736% 13.3368 -74.6839);
       --color-blue-600: lab(44.0605% 29.0279 -86.0352);
@@ -1970,6 +1973,10 @@
     }
   }
 
+  .bg-blue-100 {
+    background-color: var(--color-blue-100);
+  }
+
   .bg-blue-500 {
     background-color: var(--color-blue-500);
   }
@@ -2454,6 +2461,10 @@
 
   .text-blue-600 {
     color: var(--color-blue-600);
+  }
+
+  .text-blue-700 {
+    color: var(--color-blue-700);
   }
 
   .text-gray-50 {

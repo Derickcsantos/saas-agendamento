@@ -4,7 +4,7 @@ import {
   getAdminAppointmentById, 
   updateAdminAppointmentToCompleted, 
   updateAdminAppointmentToCompletedYesterday,
-  updateAdminAppointmentToCanceled,
+  updateAdminAppointment,
   getAdminAppointmentsByEmployee,
   getCancelledAppointments
 } from '../controllers/adminAppointmentsController.js';
@@ -99,6 +99,34 @@ adminAppointmentRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganiza
 
 /**
  * @swagger
+ * /api/admin/appointments/{slug}/{id}/cancel:
+ *   put:
+ *     summary: Cancela um agendamento
+ *     tags: [Agendamentos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Agendamento cancelado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Appointment'
+ *       400:
+ *         description: Agendamento já concluído ou cancelado
+ *       404:
+ *         description: Agendamento não encontrado
+ *       500:
+ *         description: Erro interno do servidor
+ */
+adminAppointmentRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, updateAdminAppointment);
+
+/**
+ * @swagger
  * /api/admin/appointments/{id}/complete:
  *   put:
  *     summary: Marca agendamento como concluído
@@ -123,38 +151,11 @@ adminAppointmentRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganiza
  *       500:
  *         description: Erro interno do servidor
  */
-adminAppointmentRouter.put('/:id/complete', authenticateJWT, updateAdminAppointmentToCompleted);
+adminAppointmentRouter.put('/:slug/:id/complete', authenticateJWT, requireAdminOfOrganization, updateAdminAppointmentToCompleted);
 
 
 adminAppointmentRouter.put('/complete-yesterday', updateAdminAppointmentToCompletedYesterday);
 
-/**
- * @swagger
- * /api/admin/appointments/{id}/cancel:
- *   put:
- *     summary: Cancela um agendamento
- *     tags: [Agendamentos]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Agendamento cancelado com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Appointment'
- *       400:
- *         description: Agendamento já concluído ou cancelado
- *       404:
- *         description: Agendamento não encontrado
- *       500:
- *         description: Erro interno do servidor
- */
-adminAppointmentRouter.put('/:id/cancel', updateAdminAppointmentToCanceled);
 
 /**
  * @swagger

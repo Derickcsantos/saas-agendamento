@@ -121,13 +121,10 @@ export default function AdminDashboard({ slug }) {
   if (!org)
     return (
       <div className="flex h-screen items-center justify-center bg-white text-gray-500">
-        Organização não encontrada.
+        Sincronizando informações
       </div>
     );
 
-  // ======================
-  // Render por abas
-  // ======================
   const renderContent = () => {
     switch (activeTab) {
       case "categories":
@@ -161,15 +158,13 @@ export default function AdminDashboard({ slug }) {
       default:
         return (
           <>
-            {/* CARDS */}
             <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card title="Serviços" value={stats?.totalServices} />
-              <Card title="Funcionários" value={stats?.totalEmployees} />
-              <Card title="Categorias" value={stats?.totalCategories} />
-              <Card title="Agendamentos" value={stats?.totalAppointments} />
+              <Card title="Serviços" value={stats?.totalServices} org={org} />
+              <Card title="Funcionários" value={stats?.totalEmployees} org={org} />
+              <Card title="Categorias" value={stats?.totalCategories} org={org} />
+              <Card title="Agendamentos" value={stats?.totalAppointments} org={org} />
             </section>
 
-            {/* GRÁFICOS */}
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 w-full overflow-x-hidden">
               <ChartCard
                 id="appointmentsChart"
@@ -178,6 +173,7 @@ export default function AdminDashboard({ slug }) {
                   labels: ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"],
                   values: stats?.monthlyAppointments || [],
                 }}
+                org={org}
               />
               <ChartCard
                 id="servicesChart"
@@ -186,10 +182,10 @@ export default function AdminDashboard({ slug }) {
                   labels: stats?.servicesPopularity?.map((s) => s.service) || [],
                   values: stats?.servicesPopularity?.map((s) => s.count) || [],
                 }}
+                org={org}
               />
             </section>
 
-            {/* TABELAS */}
             <section className="mt-6 space-y-6 overflow-hidden">
               <div className="overflow-x-auto">
                 <Table
@@ -211,8 +207,6 @@ export default function AdminDashboard({ slug }) {
         );
     }
   };
-
-  
 
   return (
     <div className="flex min-h-screen bg-gray-100 overflow-hidden"> 
