@@ -25,6 +25,10 @@ passport.use(
           .eq('email', email)
           .single();
 
+        if (!existingUser) {
+          return done(null, false, { message: "Usuário não pertence à organização" });
+        }
+
         if (existingUser) return done(null, existingUser);
 
         const { data: newUser, error } = await supabase

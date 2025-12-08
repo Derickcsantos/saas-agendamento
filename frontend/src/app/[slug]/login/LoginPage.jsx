@@ -113,12 +113,22 @@ export default function LoginPage({ slug }) {
     }
   };
 
-   // ========================
-  // LOGIN GOOGLE
-  // ========================
-  const handleGoogleLogin = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google?slug=${slug}`;
+  const handleGoogleLogin = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${slug}`);
+      const org = await res.json();
+
+      if (!org?.id) {
+        return toast.error("Organização não encontrada.");
+      }
+
+      window.location.href =
+        `${process.env.NEXT_PUBLIC_API_URL}/auth/google?organization_id=${org.id}`;
+    } catch (err) {
+      toast.error("Erro ao iniciar login com Google.");
+    }
   };
+
 
   if (checkingAuth) {
     return (

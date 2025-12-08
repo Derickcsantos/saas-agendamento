@@ -1,5 +1,6 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { supabase } from "../lib/supabase.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,22 +11,24 @@ export const handleGoogleAuth = (req, res, next) => {
   next();
 };
 
-export const googleCallback = (req, res) => {
-  const userData = {
-    id: req.user.id,
-    username: req.user.username,
-    email: req.user.email,
-    aniversario: req.user.aniversario,
-    phone: req.user.phone,
-    organization_id: req.user.organization_id,
-    tipo: req.user.tipo,
-  };
+export const googleCallback = async (req, res) => {
+  const user = req.user;
 
-  let redirectUrl = `/logado?organization_id=${userData.organization_id}`;
-  if (userData.tipo === 'admin') {
-    redirectUrl = `/admin?organization_id=${userData.organization_id}`;
-  } else if (userData.tipo === 'funcionario') {
-    redirectUrl = `/funcionario?organization_id=${userData.organization_id}`;
+  // Buscar slug
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("slug_organization")
+    .eq("id", user.organization_id)
+    .single();
+
+  const slug = org?.slug_organization;
+
+  let redirectUrl = `/${slug}/logado`;
+
+  if (user.tipo === "admin") {
+    redirectUrl = `/${slug}/admin`;
+  } else if (user.tipo === "funcionario") {
+    redirectUrl = `/${slug}/funcionario`;
   }
 
   res.redirect(redirectUrl);
