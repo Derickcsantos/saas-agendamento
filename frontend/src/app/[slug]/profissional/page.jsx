@@ -20,6 +20,8 @@ export default function EmployeePanel() {
   const [showProfile, setShowProfile] = useState(false);
   const [palette, setPalette] = useState(null);
   const [orgData, setOrgData] = useState(null);
+  const [org, setOrg] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [page, setPage] = useState(1);
   const perPage = 10;
 
@@ -42,7 +44,7 @@ export default function EmployeePanel() {
           return;
         }
 
-        setUser(data.user); // user.id = 18 etc.
+        setUser(data.user); 
       } catch (error) {
         console.error("Erro ao verificar autenticação:", error);
         router.push(`/${slug}/login`);
@@ -55,15 +57,18 @@ export default function EmployeePanel() {
   useEffect(() => {
     async function loadOrg() {
       try {
-        const [landingRes, colorRes] = await Promise.all([
+        const [landingRes, orgRes, colorRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/landing-page/${slug}`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${slug}`),
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`),
         ]);
 
         const landingData = await landingRes.json();
+        const orgData = await orgRes.json();
         const paletteData = await colorRes.json();
 
         setOrgData(landingData);
+        setOrg(orgData);
         setPalette(paletteData);
       } catch (err) {
         console.error("Erro ao carregar org/palette:", err);
@@ -156,9 +161,6 @@ export default function EmployeePanel() {
     }
   };
 
-  // =========================
-  // 6️⃣ TEMA E LOGOUT
-  // =========================
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
@@ -173,9 +175,6 @@ export default function EmployeePanel() {
     router.push(`/${slug}/login`);
   };
 
-  // =========================
-  // 7️⃣ LOADING
-  // =========================
   if (loading || !palette)
     return (
       <div className="flex h-screen items-center justify-center text-gray-600 dark:text-gray-200">
@@ -184,9 +183,6 @@ export default function EmployeePanel() {
       </div>
     );
 
-  // =========================
-  // 8️⃣ RENDER
-  // =========================
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 transition">
 
@@ -206,7 +202,7 @@ export default function EmployeePanel() {
             className="flex items-center gap-2 cursor-pointer"
           >
             <img
-              src={orgData?.organizations?.logo_organization}
+              src={org?.logo_organization}
               alt="Logo"
               className="w-10 h-10 rounded-full border border-white"
             />
@@ -232,47 +228,101 @@ export default function EmployeePanel() {
 
             <button
               onClick={() => setShowProfile(true)}
-              className="bg-white text-black px-3 py-1 rounded-lg font-medium hover:bg-gray-100 transition"
+              className="bg-white text-black px-3 hidden md:flex py-1 rounded-lg font-medium hover:bg-gray-100 transition"
             >
               Perfil
             </button>
 
             <button
               onClick={logout}
-              className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded-lg text-white transition"
+              className="bg-red-600 hover:bg-red-700 hidden md:flex px-3 py-1 rounded-lg text-white transition"
             >
               Sair
+            </button>
+
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="md:hidden p-2 rounded-lg bg-white/20 hover:bg-white/30 transition"
+            >
+              <img
+                src="https://img.icons8.com/ios-filled/50/menu--v1.png"
+                width="22"
+                className="invert"
+              />
             </button>
           </div>
         </div>
       </nav>
 
-      {/* CABEÇALHO BONITO */}
+      {/* SIDEBAR RESPONSIVO */}
+      <div 
+        className={`
+          fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl border-r 
+          transform transition-transform duration-300 
+          ${menuOpen ? "translate-x-0" : "-translate-x-64"}
+          md:hidden
+        `}
+      >
+        <div className="p-4 flex justify-between items-center border-b">
+          <h2 className="text-lg font-semibold text-gray-800">Menu</h2>
+
+          <button
+            onClick={() => setMenuOpen(false)}
+            className="p-2 rounded-lg hover:bg-gray-100"
+          >
+            <img src="https://img.icons8.com/ios-glyphs/30/delete-sign.png" width="20" />
+          </button>
+        </div>
+
+        <nav className="p-4 flex flex-col gap-3">
+          {[
+            { label: "Dashboard", action: () => router.push(`/${slug}/profissional`) },
+            { label: "Meu Perfil", action: () => setShowProfile(true) },
+            { label: "Agendamentos", action: () => {} },
+            { label: "Calendário do google", action: () => router.push(`/${slug}/profissional/calendario`) },
+            { label: "Sair", action: logout, color: "text-red-600" }
+          ].map((item) => (
+            <button
+              key={item.label}
+              onClick={() => {
+                item.action();
+                setMenuOpen(false);
+              }}
+              className={`text-left px-4 py-2 rounded-lg hover:bg-gray-100 transition font-medium ${item.color || "text-gray-800"}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* BACKDROP QUANDO O MENU ESTÁ ABERTO */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setMenuOpen(false)}
+        ></div>
+      )}
+
+
       <header className="max-w-6xl mx-auto w-full px-6 mt-10">
         <div
-          className="rounded-xl p-8 shadow-sm"
+          className="rounded-2xl p-8 shadow-md backdrop-blur-sm"
           style={{
-            backgroundColor: palette?.soft_color,
-            border: `1px solid ${palette?.medium_color}40`,
+            backgroundColor: palette?.soft_color + "CC",
+            border: `1px solid ${palette?.medium_color}50`,
           }}
         >
-          <h1
-            className="text-3xl font-semibold mb-2"
-            style={{ color: palette?.text_dark_color }}
-          >
+          <h1 className="text-3xl font-bold mb-2" style={{ color: palette?.text_dark_color }}>
             Olá, {user?.username}
           </h1>
 
-          <p
-            className="text-gray-600 dark:text-gray-300 text-sm"
-            style={{ color: palette?.text_dark_color }}
-          >
-            Acompanhe seus agendamentos e mantenha sua rotina organizada ✨
+          <p className="text-gray-600 dark:text-gray-300 text-sm">
+            Organize seus agendamentos e acompanhe sua rotina ✨
           </p>
         </div>
       </header>
 
-      {/* FILTROS */}
       <section className="max-w-6xl mx-auto w-full px-6 mt-8">
         <div className="flex flex-wrap gap-2">
           {[
@@ -284,7 +334,8 @@ export default function EmployeePanel() {
             <button
               key={btn.key}
               onClick={() => applyFilter(btn.key)}
-              className="px-4 py-2 rounded-lg border transition"
+              className={`px-4 py-2 rounded-lg border transition font-medium shadow-sm 
+                ${filter === btn.key ? "scale-[1.03]" : ""}`}
               style={{
                 backgroundColor:
                   filter === btn.key ? palette?.strong_color : "white",
@@ -301,13 +352,12 @@ export default function EmployeePanel() {
         </div>
       </section>
 
-      {/* TABELA DE AGENDAMENTOS */}
       <section className="max-w-6xl mx-auto w-full px-6 mt-6 mb-10">
         <div
-          className="overflow-x-auto shadow-sm rounded-xl"
+          className="overflow-x-auto shadow-lg rounded-2xl"
           style={{
             backgroundColor: "white",
-            border: `1px solid ${palette?.medium_color}40`,
+            border: `1px solid ${palette?.medium_color}30`,
           }}
         >
           <table className="w-full border-collapse">
@@ -337,7 +387,7 @@ export default function EmployeePanel() {
                 filtered.map((a) => (
                   <tr
                     key={a.id}
-                    className="border-b text-gray-950 hover:bg-gray-50 transition"
+                    className="border-b hover:bg-gray-50 transition-all duration-150"
                     style={{
                       borderBottomColor: `${palette?.medium_color}40`,
                     }}
@@ -370,14 +420,13 @@ export default function EmployeePanel() {
           </table>
         </div>
 
-        {/* PAGINAÇÃO */}
         {totalPages > 1 && (
           <div className="flex justify-center gap-2 mt-6">
             {Array.from({ length: totalPages }).map((_, i) => (
               <button
                 key={i}
                 onClick={() => setPage(i + 1)}
-                className="px-3 py-1 rounded-lg border transition"
+                className="px-4 py-2 rounded-lg border font-medium shadow-sm transition-all"
                 style={{
                   backgroundColor:
                     i + 1 === page ? palette?.strong_color : "white",
