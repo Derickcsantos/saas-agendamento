@@ -152,13 +152,18 @@ export const getDashboardData = async (req, res) => {
       .map(([service, count]) => ({ service, count }))
       .sort((a, b) => b.count - a.count);
 
+    const statusMap = {
+      confirmed: "Confirmado",
+      completed: "Completo",
+      cancelled: "Cancelado",
+    };
     // Últimos agendamentos (para tabela)
     const latestAppointments = (latestAppointmentsData || []).map(a => ({
       cliente: a.client_name || 'N/D',
       serviço: a.services?.name || 'N/D',
       profissional: a.employees?.name || 'N/D',
       data: a.appointment_date,
-      status: a.status
+      status: statusMap[a.status] || 'N/D', 
     }));
 
     // Lista de funcionários (para tabela)

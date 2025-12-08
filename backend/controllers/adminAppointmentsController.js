@@ -201,87 +201,60 @@ export const updateAdminAppointmentToCompletedYesterday = async (req, res) => {
   }
 };
 
-export const updateAdminAppointmentToCanceled = async (req, res) => {
-  const { cancel_reason } = req.body || null;
-  const { slug } = req.params;
+export const updateAdminAppointment = async (req, res) => {
+  try {
+    const { slug, id } = req.params;
+    const updates = req.body || {};
 
+    // 1. Buscar organização
     const { data: org, error: orgErr } = await supabase
-      .from('organizations')
-      .select('id, name, logo_organization')
-      .eq('slug_organization', slug)
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
       .single();
 
     if (orgErr || !org) {
-      return res.status(404).json({ error: 'Organização não encontrada' });
+      return res.status(404).json({ error: "Organização não encontrada" });
     }
 
-
-  try {
-    // 1. Buscar agendamento pelo id
-    const { data: appointment, error: fetchError } = await supabase
-      .from('appointments')
-      .select('*')
-      .eq('id', id)
-      .eq('organization_id', org.id)
+    // 2. Buscar agendamento existente
+    const { data: appointment, error: fetchErr } = await supabase
+      .from("appointments")
+      .select("*")
+      .eq("id", id)
+      .eq("organization_id", org.id)
       .single();
 
-    if (fetchError) throw fetchError;
-    if (!appointment) return res.status(404).json({ error: 'Agendamento não encontrado' });
-
-    // 2. Verificar se pode cancelar
-    if (appointment.status === 'completed') {
-      return res.status(400).json({ error: 'Agendamento concluído não pode ser cancelado' });
+    if (fetchErr || !appointment) {
+      return res.status(404).json({ error: "Agendamento não encontrado" });
     }
 
-    // (Não precisa verificar cancelado, pois vai remover da tabela)
-
-    // 3. Inserir dados na tabela canceled_appointments
-    const { data: canceledData, error: insertError } = await supabase
-      .from('canceled_appointments')
-      .insert([{
-        original_appointment_id: appointment.id,
-        client_name: appointment.client_name,
-        client_email: appointment.client_email,
-        client_phone: appointment.client_phone,
-        service_id: appointment.service_id,
-        employee_id: appointment.employee_id,
-        appointment_date: appointment.appointment_date,
-        start_time: appointment.start_time,
-        end_time: appointment.end_time,
-        status: 'canceled',
-        notes: appointment.notes,
-        created_at: appointment.created_at,
-        updated_at: appointment.updated_at,
-        final_price: appointment.final_price,
-        original_price: appointment.original_price,
-        coupon_code: appointment.coupon_code,
-        cancel_reason: cancel_reason || null,
-        canceled_at: new Date().toISOString()
-      }])
+    // 3. Atualização normal (inclui: confirmed, completed, canceled)
+    const { data: updated, error: updateErr } = await supabase
+      .from("appointments")
+      .update(updates)
+      .eq("id", id)
+      .eq("organization_id", org.id)
       .select()
       .single();
 
-    if (insertError) throw insertError;
+    if (updateErr) throw updateErr;
 
-    // 4. Apagar o agendamento original da tabela appointments
-    const { error: deleteError } = await supabase
-      .from('appointments')
-      .delete()
-      .eq('id', id);
-
-    if (deleteError) throw deleteError;
-
-    // 5. Responder com os dados do cancelamento
-    res.json(canceledData);
+    return res.json({
+      message: "Agendamento atualizado com sucesso",
+      updated,
+    });
 
   } catch (error) {
-    console.error('Error canceling appointment:', error);
-    res.status(500).json({ 
-      error: 'Erro interno no servidor',
-      details: error.message
+    console.error("Error updating appointment:", error);
+    return res.status(500).json({
+      error: "Internal server error",
+      details: error.message,
     });
   }
 };
+
+
 
 export const getAdminAppointmentsByEmployee = async (req, res) => {
   try {

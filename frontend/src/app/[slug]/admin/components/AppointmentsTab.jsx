@@ -7,6 +7,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import ptLocale from "@fullcalendar/core/locales/pt-br";
 import formatDateFromYYYYMMDD from "@/app/utils/formatDateFromYYYYMMDD";
 import { statusClasses } from "@/app/utils/appointmentStatus";
+import { statusInfo } from "@/app/utils/appointmentsInfo";
 
 const calendarStyles = `
   .fc-theme-standard td, 
@@ -163,7 +164,9 @@ export default function AppointmentsTab({ org }) {
 
   useEffect(() => {
     loadAppointments();
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/employees/${org.slug_organization}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/employees/${org.slug_organization}`, {
+      credentials: 'include'
+    })
       .then((r) => r.json())
       .then((data) => setEmployees(data));
   }, []);
@@ -182,6 +185,7 @@ export default function AppointmentsTab({ org }) {
       `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}/${id}`,
       {
         method: "PUT",
+        credentials: 'include',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       }
@@ -278,8 +282,8 @@ export default function AppointmentsTab({ org }) {
                     </td>
 
                     <td className="px-4 py-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusClasses[a.status]}`}>
-                        {savingId === a.id ? "Salvando..." : a.status}
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusInfo[a.status]?.className || 'bg-gray-100 text-gray-700'}`}>
+                        {savingId === a.id ? "Salvando..." : statusInfo[a.status]?.label || 'Indefinido'}
                       </span>
                     </td>
 
@@ -289,7 +293,7 @@ export default function AppointmentsTab({ org }) {
                         value={a.status}
                         onChange={(e) => handleStatusChange(a.id, e.target.value)}
                       >
-                        <option value="pending">Pendente</option>
+                        <option value="confirmed">Pendente</option>
                         <option value="completed">Concluído</option>
                         <option value="canceled">Cancelado</option>
                       </select>
