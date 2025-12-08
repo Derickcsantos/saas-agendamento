@@ -19,7 +19,7 @@ export const getEmployees = async (req, res) => {
     // Buscar funcionários
     const { data: employees, error: employeesError } = await supabase
       .from('employees')
-      .select('name, email, phone, comissao, is_active, id')
+      .select('name, email, phone, comissao, salary, is_active, id')
       .eq('organization_id', org.id)
       .order('created_at', { ascending: false });
 
@@ -102,7 +102,7 @@ export const getEmployeeById = async (req, res) => {
 
 export const createEmployee = async (req, res) => {
   try {
-    const { name, email, phone, comissao, is_active } = req.body;
+    const { name, email, phone, comissao, salary, is_active } = req.body;
     let imageData = null;
     const { slug } = req.params;
 
@@ -133,6 +133,7 @@ export const createEmployee = async (req, res) => {
         email, 
         phone,
         comissao, 
+        salary,
         imagem_funcionario: imageData,
         is_active: is_active === 'true' || is_active === true,
         organization_id: org.id
@@ -150,7 +151,7 @@ export const createEmployee = async (req, res) => {
 export const updateEmployee = async (req, res) => {
   try {
     const { slug, id } = req.params;
-    const { name, email, phone, comissao, is_active } = req.body;
+    const { name, email, phone, comissao, salary, is_active } = req.body;
     let imageData = null;
 
     const { data: org, orgError } = await supabase
@@ -176,7 +177,8 @@ export const updateEmployee = async (req, res) => {
     const updateData = { 
       name, 
       email, 
-      phone, 
+      phone,
+      salary, 
       comissao,
       organization_id: org.id,
       is_active: is_active === 'true' || is_active === true,

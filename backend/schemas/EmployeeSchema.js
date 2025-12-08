@@ -23,6 +23,10 @@
  *           type: number
  *           format: float
  *           example: 10.5
+ *         salary: 
+ *            type: number
+ *            format: float
+ *            example: 10.5
  *         imagem_funcionario:
  *           type: string
  *           description: Imagem em base64 ou data URL
