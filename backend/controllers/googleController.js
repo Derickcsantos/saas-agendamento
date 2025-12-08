@@ -6,7 +6,7 @@ export const googleCallback = async (req, res) => {
   const user = req.user;
 
   if (!user) {
-    return res.redirect("/login?error=unauthorized");
+    return res.redirect(`${process.env.FRONTEND_URL}/login?error=unauthorized`);
   }
 
   // Buscar slug da organização
