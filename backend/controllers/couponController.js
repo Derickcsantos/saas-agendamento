@@ -286,3 +286,52 @@ export const validateCoupon = async (req, res) => {
     return res.status(500).json({ valid: false, message: 'Erro interno ao validar cupom' });
   }
 };
+
+export const validateCouponMarcafy = async (req, res) => {
+  try {
+    const { code } = req.query;
+    const cleanCode = code.trim().toUpperCase();
+    const slug = "marcafy"; // FIXO — impossível manipular do frontend
+
+    // Buscar org
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ valid: false, message: 'Organização não encontrada' });
+    }
+
+    // Buscar cupom
+    const { data: coupon, error: couponError } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('code', cleanCode)
+      .eq('organization_id', orgData.id)
+      .eq('is_active', true)
+      .single();
+
+    if (couponError || !coupon)
+      return res.json({ valid: false, message: 'Cupom inválido ou inativo' });
+
+    const now = new Date();
+
+    if (coupon.valid_until && new Date(coupon.valid_until) < now)
+      return res.json({ valid: false, message: 'Este cupom expirou' });
+
+    if (coupon.max_uses && coupon.current_uses >= coupon.max_uses)
+      return res.json({ valid: false, message: 'Este cupom atingiu o limite' });
+
+    return res.json({
+      valid: true,
+      discount: coupon.discount_value,
+      type: coupon.discount_type // percentage | fixed
+    });
+
+  } catch (err) {
+    console.error("Erro:", err);
+    return res.status(500).json({ valid: false, message: 'Erro interno' });
+  }
+};

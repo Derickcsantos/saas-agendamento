@@ -16,7 +16,9 @@ export default function EscolherPlano({ slug }) {
   const [representante, setRepresentante] = useState(null);
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState([]);
-
+  const [couponCode, setCouponCode] = useState("");
+  const [discountValue, setDiscountValue] = useState(0);
+  const [discountType, setDiscountType] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [selectedBilling, setSelectedBilling] = useState("prepaid");
 
@@ -74,10 +76,60 @@ export default function EscolherPlano({ slug }) {
     loadRep();
   }, [slug]);
 
+  const validateCoupon = async () => {
+    if (!couponCode.trim()) return toast.error("Digite um cupom");
+
+    try {
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/coupons/validate?code=${couponCode}`, {
+          credentials: 'include'
+        }
+      );
+
+      if (!res.data.valid) {
+        toast.error(res.data.message || "Cupom inválido");
+        return;
+      }
+
+      setDiscountValue(res.data.discount);
+      setDiscountType(res.data.type);
+
+      toast.success("Cupom aplicado!");
+    } catch (err) {
+      toast.error("Erro ao validar cupom");
+    }
+  };
+
+  const finalPrice = (() => {
+    if (!selectedPlan) return 0;
+
+    if (!discountType) return selectedPlan.minimum_price;
+
+    if (discountType === "percentage") {
+      return selectedPlan.minimum_price - (selectedPlan.minimum_price * discountValue / 100);
+    }
+
+    if (discountType === "fixed") {
+      return Math.max(0, selectedPlan.minimum_price - discountValue * 100);
+    }
+
+    return selectedPlan.minimum_price;
+  })();
+
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!selectedPlan) return toast.error("Selecione um plano antes");
+    if (!selectedPlan) {
+      toast.error("Selecione um plano antes");
+      return;
+    }
+
+    if (!finalPrice || finalPrice <= 0) {
+      toast.error("Valor final inválido");
+      return;
+    }
 
     setProcessing(true);
 
@@ -86,6 +138,7 @@ export default function EscolherPlano({ slug }) {
         plan_id: selectedPlan.id,
         billing_type: selectedBilling,
         payment_method: "credit_card",
+        amount: Math.round(finalPrice),
         slug,
         customer: {
           name: representante?.users?.username?.normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
@@ -421,6 +474,37 @@ export default function EscolherPlano({ slug }) {
             <h2 className="font-bold text-xl text-gray-900 flex items-center gap-2">
               <CreditCard size={20} /> Dados do Cartão
             </h2>
+
+            <div className="border rounded-xl p-4 bg-gray-50">
+              <label className="font-medium text-gray-900 text-sm">
+                Cupom de desconto
+              </label>
+
+              <div className="flex gap-3 mt-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  placeholder="Digite seu cupom"
+                  className="flex-1 border rounded-lg p-3"
+                />
+                <button
+                  type="button"
+                  onClick={validateCoupon}
+                  className="px-4 py-2 bg-purple-600 rounded-lg text-white"
+                >
+                  Aplicar
+                </button>
+              </div>
+
+              {discountType && (
+                <p className="mt-2 text-green-600 font-semibold">
+                  Desconto aplicado: {discountValue}
+                  {discountType === "percentage" ? "%" : "R$"}
+                </p>
+              )}
+            </div>
+
 
             <form onSubmit={handleSubmit} className="space-y-4">
 
