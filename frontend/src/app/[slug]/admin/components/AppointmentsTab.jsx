@@ -104,7 +104,14 @@ export default function AppointmentsTab({ org }) {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("calendar");
   const [savingId, setSavingId] = useState(null);
-
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState(null);
+  const [editTimeSlots, setEditTimeSlots] = useState([]);
+  const [editData, setEditData] = useState({
+    employee: null,
+    date: "",
+    time: "",
+  });
   const [filters, setFilters] = useState({
     search: "",
     employee: "",
@@ -195,6 +202,191 @@ export default function AppointmentsTab({ org }) {
     setSavingId(null);
   };
 
+  const loadEditAvailableTimes = async (employeeId, date, duration) => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/available-times/${org.slug_organization}?employeeId=${employeeId}&date=${date}&duration=${duration}`
+      );
+
+      const data = await res.json();
+      setEditTimeSlots(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Erro ao carregar horários:", err);
+    }
+  };
+
+  const openEditModal = async (id) => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}/${id}`,
+        { credentials: "include" }
+      );
+
+      const data = await res.json();
+      setEditingAppointment(data);
+
+      setEditData({
+        employee: data.employees,
+        date: data.appointment_date,
+        time: data.start_time,
+      });
+
+      // Carregar horários disponíveis
+      await loadEditAvailableTimes(
+        data.employees.id,
+        data.appointment_date,
+        data.services.duration
+      );
+
+      setShowEditModal(true);
+    } catch (err) {
+      console.error("Erro ao abrir modal:", err);
+    }
+  };
+
+  const saveAppointmentChanges = async () => {
+    try {
+      const body = {
+        employee_id: editData.employee.id,
+        appointment_date: editData.date,
+        start_time: editData.time.start,
+        end_time: editData.time.end,
+      };
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}/${editingAppointment.id}`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      );
+
+      if (!res.ok) {
+        alert("Erro ao atualizar agendamento.");
+        return;
+      }
+
+      setShowEditModal(false);
+      loadAppointments();
+    } catch (err) {
+      console.error("Erro ao salvar alterações:", err);
+    }
+  };
+
+  const EditModal = () => {
+    if (!showEditModal || !editingAppointment) return null;
+
+    const a = editingAppointment;
+
+    return (
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+        <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-2xl p-6 shadow-xl">
+
+          <h2 className="text-xl font-bold mb-4">Editar Agendamento</h2>
+
+          {/* infos */}
+          <p><strong>Cliente:</strong> {a.client_name}</p>
+          <p><strong>Serviço:</strong> {a.services.name}</p>
+
+          {/* LINK DO MEET */}
+          {a.meeting_url && (
+            <div className="flex items-center gap-2 mt-3">
+              <a
+                href={a.meeting_url}
+                target="_blank"
+                className="text-blue-600 underline truncate"
+              >
+                {a.meeting_url}
+              </a>
+              <button
+                onClick={() => navigator.clipboard.writeText(a.meeting_url)}
+                className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
+              >
+                📋
+              </button>
+            </div>
+          )}
+
+          {/* SELECT FUNCIONÁRIO */}
+          <label className="block mt-4 font-medium">Profissional</label>
+          <select
+            className="w-full border p-2 rounded"
+            value={editData.employee?.id}
+            onChange={(e) => {
+              const emp = employees.find((x) => x.id == e.target.value);
+              setEditData({ ...editData, employee: emp });
+              setEditTimeSlots([]);
+            }}
+          >
+            {employees.map((emp) => (
+              <option key={emp.id} value={emp.id}>{emp.name}</option>
+            ))}
+          </select>
+
+          {/* SELECT DATA */}
+          <label className="block mt-4 font-medium">Data</label>
+          <input
+            type="date"
+            className="w-full border p-2 rounded"
+            value={editData.date}
+            onChange={(e) => {
+              setEditData({ ...editData, date: e.target.value });
+              loadEditAvailableTimes(
+                editData.employee.id,
+                e.target.value,
+                a.services.duration
+              );
+            }}
+          />
+
+          {/* SELECT HORÁRIO */}
+          <label className="block mt-4 font-medium">Horário</label>
+
+          {editTimeSlots.length === 0 ? (
+            <p className="text-gray-500">Selecione funcionário e data.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {editTimeSlots.map((slot) => (
+                <button
+                  key={slot.start}
+                  onClick={() => setEditData({ ...editData, time: slot })}
+                  className={`px-3 py-1 rounded border ${
+                    editData.time?.start === slot.start
+                      ? "bg-purple-600 text-white"
+                      : "bg-gray-100"
+                  }`}
+                >
+                  {slot.start} — {slot.end}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Botões */}
+          <div className="flex justify-end mt-6 gap-3">
+            <button
+              onClick={() => setShowEditModal(false)}
+              className="px-4 py-2 border rounded"
+            >
+              Cancelar
+            </button>
+
+            <button
+              onClick={saveAppointmentChanges}
+              className="px-4 py-2 bg-purple-600 text-white rounded"
+              disabled={!editData.time}
+            >
+              Salvar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+
   return (
     <div className="space-y-8 bg-white dark:bg-gray-900 p-6 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-gray-200 dark:border-gray-700">
 
@@ -272,7 +464,11 @@ export default function AppointmentsTab({ org }) {
                 </tr>
               ) : (
                 appointments.map(a => (
-                  <tr key={a.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                  <tr 
+                  key={a.id} 
+                  className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition" 
+                  onDoubleClick={() => openEditModal(a.id)}
+                  >
                     <td className="px-4 py-3">{a.client_name}</td>
                     <td className="px-4 py-3">{a.services.name}</td>
                     <td className="px-4 py-3">{a.employees.name}</td>
@@ -328,6 +524,8 @@ export default function AppointmentsTab({ org }) {
           />
         </div>
       )}
+
+      <EditModal />
 
     </div>
   );

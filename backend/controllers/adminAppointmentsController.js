@@ -72,46 +72,126 @@ export const getAdminAppointmentById = async (req, res) => {
   try {
     const { slug, id } = req.params;
 
+    // Buscar organização
     const { data: org, error: orgErr } = await supabase
-      .from('organizations')
-      .select('id, name, logo_organization')
-      .eq('slug_organization', slug)
+      .from("organizations")
+      .select("id, name, logo_organization")
+      .eq("slug_organization", slug)
       .single();
 
     if (orgErr || !org) {
-      return res.status(404).json({ error: 'Organização não encontrada' });
+      return res.status(404).json({ error: "Organização não encontrada" });
     }
 
+    // Buscar agendamento completo
     const { data, error } = await supabase
-      .from('appointments')
+      .from("appointments")
       .select(`
         *,
-        services(name, price),
-        employees(name)
+        services:service_id (
+          id,
+          name,
+          description,
+          price,
+          duration,
+          is_online,
+          imagem_service,
+          categories:category_id (
+            id,
+            name
+          )
+        ),
+        employees:employee_id (
+          id,
+          name,
+          email,
+          phone,
+          imagem_funcionario,
+          is_active,
+          comissao,
+          user_id
+        )
       `)
-      .eq('id', id)
-      .eq('organization_id', org.id)
+      .eq("id", id)
+      .eq("organization_id", org.id)
       .single();
 
     if (error) throw error;
-    if (!data) return res.status(404).json({ error: 'Agendamento não encontrado' });
+    if (!data) return res.status(404).json({ error: "Agendamento não encontrado" });
 
-    res.json({
+    // Formatar resposta
+    return res.json({
       id: data.id,
-      client_name: data.client_name,
-      service: data.services?.name || 'N/A',
-      professional: data.employees?.name || 'N/A',
-      date: data.appointment_date, // Formato YYYY-MM-DD
-      start_time: data.start_time, // Formato HH:MM:SS
-      end_time: data.end_time,     // Formato HH:MM:SS
+      organization_id: org.id,
+
+      // Para o modal funcionar
+      appointment_date: data.appointment_date,
+      start_time: data.start_time,
+      end_time: data.end_time,
+
+      employees: data.employees,
+      services: data.services,
+
+      client: {
+        name: data.client_name,
+        email: data.client_email,
+        phone: data.client_phone,
+      },
+
+      service: {
+        id: data.services?.id,
+        name: data.services?.name,
+        description: data.services?.description,
+        price: data.services?.price,
+        duration: data.services?.duration,
+        is_online: data.services?.is_online,
+        image: data.services?.imagem_service,
+        category: data.services?.categories || null,
+      },
+
+      employee: {
+        id: data.employees?.id,
+        name: data.employees?.name,
+        email: data.employees?.email,
+        phone: data.employees?.phone,
+        image: data.employees?.imagem_funcionario,
+        is_active: data.employees?.is_active,
+        commission: data.employees?.comissao,
+        user_id: data.employees?.user_id,
+      },
+
+      schedule: {
+        date: data.appointment_date,
+        start_time: data.start_time,
+        end_time: data.end_time,
+      },
+
+      price: {
+        original_price: data.original_price,
+        final_price: data.final_price,
+        coupon_code: data.coupon_code,
+      },
+
       status: data.status,
-      price: data.services?.price || 0,
+      notes: data.notes,
+
+      meeting: {
+        url: data.meeting_url,
+        provider: data.meeting_provider,
+        google_event_id: data.google_event_id,
+      },
+
+      created_at: data.created_at,
+      updated_at: data.updated_at,
     });
+
+
   } catch (error) {
-    console.error('Error fetching appointment:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Error fetching appointment by ID:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 export const updateAdminAppointmentToCompleted = async (req, res) => {
   try {
