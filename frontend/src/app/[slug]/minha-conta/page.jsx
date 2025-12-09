@@ -107,7 +107,7 @@ export default function MyAccountPage() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push(`/${slug}/minha-conta`)}>
             <img
-              src={orgData?.organizations?.logo_organization || "/img/LogoPaulaTrancas.png"}
+              src={orgData?.organizations?.logo_organization || "/mTopbar.jpg"}
               className="w-11 h-11 rounded-full border border-white shadow-sm"
               alt="Logo"
             />
