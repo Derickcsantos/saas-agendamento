@@ -13,6 +13,7 @@ export default function ServicesTab({ org }) {
     category_id: "",
     duration: "",
     price: "",
+    is_online: false,
   });
 
   const [image, setImage] = useState(null);
@@ -78,6 +79,7 @@ export default function ServicesTab({ org }) {
         category_id: "",
         duration: "",
         price: "",
+        is_online: false,
       });
 
       setPreview("");
@@ -100,6 +102,7 @@ export default function ServicesTab({ org }) {
       category_id: service.category_id || "",
       duration: service.duration || "",
       price: service.price || "",
+      is_online: service.is_online || false,
     });
     setPreview(service.imagem_service || "");
   };
@@ -189,6 +192,12 @@ export default function ServicesTab({ org }) {
               setPreview(URL.createObjectURL(file));
             }}
           />
+
+          <label className="flex items-center gap-2 col-span-2">
+            <input type="checkbox" checked={form.is_online}
+              onChange={(e) => setForm({ ...form, is_online: e.target.checked })} />
+            É online?
+          </label>
         </div>
 
         {preview && (
@@ -216,6 +225,7 @@ export default function ServicesTab({ org }) {
                   category_id: "",
                   duration: "",
                   price: "",
+                  is_online: false,
                 })
               }
               className="border px-5 py-2 rounded-lg dark:border-gray-700 shadow"
@@ -239,6 +249,7 @@ export default function ServicesTab({ org }) {
                 <th className="px-4 py-3 text-left">Categoria</th>
                 <th className="px-4 py-3 text-left">Duração</th>
                 <th className="px-4 py-3 text-left">Preço</th>
+                <th className="px-4 py-3 text-left">É online ?</th>
                 <th className="px-4 py-3 text-left">Ações</th>
               </tr>
             </thead>
@@ -254,6 +265,7 @@ export default function ServicesTab({ org }) {
                   <td className="px-4 py-3">{s.categories?.name || "-"}</td>
                   <td className="px-4 py-3">{s.duration} min</td>
                   <td className="px-4 py-3">R$ {s.price?.toFixed(2)}</td>
+                  <td className="px-4 py-3">{s.is_online? 'Sim' : 'Não'}</td>
                   <td className="px-4 py-3 flex gap-3">
                     <button
                       onClick={() => handleEdit(s)}

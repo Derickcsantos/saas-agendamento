@@ -190,22 +190,61 @@ export const createAppointment = async (req, res) => {
       description: `Serviço ID: ${service_id}\nCliente: ${client_name}\nTelefone: ${client_phone}`,
       start: { dateTime: eventStart, timeZone: "America/Sao_Paulo" },
       end: { dateTime: eventEnd, timeZone: "America/Sao_Paulo" },
+
+      conferenceData: {
+        createRequest: {
+          requestId: `${created?.id}-${Date.now()}`,
+          conferenceSolutionKey: { type: 'hangoutsMeet'},
+        },
+      },
     };
 
     console.log("📌 Enviando evento ao Google:", eventBody);
+
+    // Buscar serviço para verificar se é online
+    const { data: serviceData } = await supabase
+      .from("services")
+      .select("is_online, name")
+      .eq("id", service_id)
+      .single();
+
+    if (!serviceData?.is_online) {
+      console.log("🔕 Serviço não é online. Nenhum link será criado.");
+      console.log("📌 Evento criado no Google Calendar sem link", result.data.id);
+      return res.status(201).json(created);
+    }
+
+    let meetingUrl = null;
 
     try {
       const result = await calendar.events.insert({
         calendarId: "primary",
         requestBody: eventBody,
+        conferenceDataVersion: 1,
       });
 
-      console.log("📌 Evento criado no Google Calendar:", result.data.id);
+      const googleEvent = result.data;
+      meetingUrl =
+        googleEvent?.conferenceData?.entryPoints?.find((e) => e.entryPointType === "video")?.uri || null;
+
+      await supabase
+        .from("appointments")
+        .update({
+          meeting_url: meetingUrl,
+          meeting_provider: "google_meet",
+          google_event_id: googleEvent.id,
+        })
+        .eq("id", created.id);
+
+      console.log("📌 Evento criado no Google Calendar com link:", result.data.id);
     } catch (googleErr) {
-      console.error("❌ Erro ao criar evento no Google Calendar:", googleErr);
+      console.error("❌ Erro ao criar evento no Google Calendar com link:", googleErr);
     }
 
-    return res.status(201).json(created);
+    return res.status(201).json({
+      ...created,
+      meeting_url: meetingUrl
+    });
   } catch (error) {
     console.error('Error creating appointment:', error);
     res.status(500).json({ error: 'Internal server error' });
