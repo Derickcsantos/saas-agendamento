@@ -105,7 +105,7 @@ export const getAdminAppointmentById = async (req, res) => {
       start_time: data.start_time, // Formato HH:MM:SS
       end_time: data.end_time,     // Formato HH:MM:SS
       status: data.status,
-      price: data.services?.price || 0
+      price: data.services?.price || 0,
     });
   } catch (error) {
     console.error('Error fetching appointment:', error);

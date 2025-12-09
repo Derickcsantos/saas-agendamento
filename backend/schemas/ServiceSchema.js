@@ -25,6 +25,9 @@
  *           type: number
  *           format: float
  *           example: 50.00
+ *         is_online:
+ *           type: boolean
+ *           example: TRUE
  *         imagem_service:
  *           type: string
  *           description: Imagem em base64 ou null
