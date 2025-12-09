@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase.js';
 import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
+import brevo from "../lib/brevo.js"; // ajuste o caminho conforme seu projeto
 
 export async function getOrganizations(req, res) {
   try {
@@ -209,6 +210,21 @@ export async function createOrganization(req, res) {
 
       console.log("Landing Organization criada:", landingOrganizationResult);
 
+      try{
+        await brevo.sendTransacEmail({
+          to: [{email, name}],
+          sender: { email: 'marcafy.ofc@gmail.com', name: 'Marcafy' },
+          template: 1,
+          params: {
+            organizationName: name,
+            email: email
+          }
+        });
+
+        console.log("E-mail de boas vindas enviado com sucesso")
+      } catch (emailError) {
+        console.error('Não foi possivel enviar o email de boas vindas: ', emailError)
+      }
 
     res.status(201).json(data[0]);
   } catch (error) {
