@@ -148,7 +148,7 @@ export default function CreateOrganization() {
 
     try {
       const res = await axios.get(
-        `http://localhost:3000/api/organizations/slug/${slug}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${slug}`
       );
 
       // SE RETORNAR UMA ORGANIZAÇÃO → slug já existe
