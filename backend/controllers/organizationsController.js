@@ -214,7 +214,7 @@ export async function createOrganization(req, res) {
         await brevo.sendTransacEmail({
           to: [{email, name}],
           sender: { email: 'marcafy.ofc@gmail.com', name: 'Marcafy' },
-          templateId: 1,
+          templateId: 3,
           params: {
             organizationName: name,
             email: email
