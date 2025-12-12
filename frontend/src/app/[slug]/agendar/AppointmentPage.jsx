@@ -482,10 +482,16 @@ export default function AppointmentPage({ slug }) {
           {steps.map((s, i) => (
             <div key={i} className="flex-1 text-center">
               <div
-                className={`h-2 rounded-full ${
-                  i + 1 <= step ? "bg-purple-600" : "bg-gray-200"
-                }`}
-              ></div>
+                className="h-2 rounded-full transition-all"
+                  style={{
+                    backgroundColor:
+                      i + 1 <= step
+                        ? palette?.strong_color || "#7e22ce"
+                        : "#e5e7eb",
+                  }}
+              >
+                
+              </div>
               <p
                 className={`text-xs mt-2 ${
                   i + 1 <= step ? "text-purple-600 font-semibold" : "text-gray-400"

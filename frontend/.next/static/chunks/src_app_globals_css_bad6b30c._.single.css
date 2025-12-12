@@ -239,6 +239,7 @@
     --container-lg: 32rem;
     --container-xl: 36rem;
     --container-2xl: 42rem;
+    --container-3xl: 48rem;
     --container-4xl: 56rem;
     --container-6xl: 72rem;
     --container-7xl: 80rem;
@@ -1328,6 +1329,10 @@
     max-width: var(--container-2xl);
   }
 
+  .max-w-3xl {
+    max-width: var(--container-3xl);
+  }
+
   .max-w-4xl {
     max-width: var(--container-4xl);
   }
@@ -1484,6 +1489,10 @@
 
   .resize {
     resize: both;
+  }
+
+  .resize-none {
+    resize: none;
   }
 
   .grid-cols-1 {
@@ -2455,6 +2464,10 @@
 
   .text-blue-700 {
     color: var(--color-blue-700);
+  }
+
+  .text-gray-200 {
+    color: var(--color-gray-200);
   }
 
   .text-gray-400 {

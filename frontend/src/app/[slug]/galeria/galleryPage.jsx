@@ -119,7 +119,7 @@ export default function GalleryPage({ slug }) {
               alt="Logo"
               className="w-10 h-10 rounded-full border border-white"
             />
-            <span className="font-bold text-gray-900 dark:text-gray-200 text-lg">
+            <span className="font-bold text-gray-200 dark:text-gray-200 text-lg">
               {organization?.name || "Galeria"}
             </span>
           </div>
