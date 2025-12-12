@@ -45,9 +45,14 @@ export async function sendSpreadsheetController(req, res) {
     for (let i = 0; i < phones.length; i++) {
       const phone = phones[i];
 
-      await sendWhatsappMessage(phone, message);
+      try {
+        await sendWhatsappMessage(phone, message);
+      } catch (err) {
+        console.error(`Erro ao enviar para ${phone}:`, err);
+        // continua o loop normalmente
+      }
 
-      // ⏱ espera entre envios
+      // ⏱ delay entre envios (mesmo se falhar)
       if (i < phones.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
