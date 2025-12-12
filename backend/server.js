@@ -38,6 +38,7 @@ import { userRepresentativeRouter } from './routes/userRepresentativeRoutes.js';
 import { plansRouter } from "./routes/plansRoutes.js";
 import { subscriptionsRouter } from "./routes/subscriptionRoutes.js";
 import { googleCalendarRouter } from './routes/googleCalendarRoutes.js';
+import { sendWhatsappRouter } from "./routes/sendWhatsappRoutes.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -95,6 +96,7 @@ app.use('/api/representative-organization', userRepresentativeRouter)
 app.use("/api/plans", plansRouter);
 app.use("/api/subscriptions", subscriptionsRouter);
 app.use('/api/google-calendar', googleCalendarRouter)
+app.use("/api/whatsapp-send", sendWhatsappRouter);
 
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);

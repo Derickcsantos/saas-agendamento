@@ -12,6 +12,8 @@ import {
   FiX,
   FiLogOut
 } from "react-icons/fi";
+import { FaWhatsapp } from "react-icons/fa";
+import WhatsappSendTab from "./components/WhatsappSenderTab";
 
 const PagarmeTab = dynamic(() => import("./components/PagarmeTab"), { ssr: false });
 
@@ -59,6 +61,7 @@ export default function AdminDashboard() {
   const menu = [
     { key: "overview", label: "Visão Geral", icon: <FiHome size={18} /> },
     { key: "analytics", label: "Analytics", icon: <FiBarChart2 size={18} /> },
+    { key: "whatsapp", label: "Whatsapp", icon: <FaWhatsapp size={18} /> },
     { key: "pagarme", label: "Pagar.me", icon: <FiCreditCard size={18} /> },
     { key: "users", label: "Usuários", icon: <FiUsers size={18} /> },
   ];
@@ -166,6 +169,7 @@ export default function AdminDashboard() {
       <main className="flex-1 p-6 md:p-10 overflow-y-auto">
         {section === "overview" && <OverviewSection />}
         {section === "analytics" && <AnalyticsSection />}
+        {section === "whatsapp" && <WhatsappSendTab />}
         {section === "pagarme" && <PagarmeTab />}
         {section === "users" && <UsersSection />}
       </main>
