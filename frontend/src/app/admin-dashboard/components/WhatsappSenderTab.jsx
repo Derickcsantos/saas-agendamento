@@ -35,7 +35,7 @@ export default function WhatsappSendTab() {
       });
 
       if (!res.ok) {
-        throw new Error("Erro ao enviar mensagens");
+        console.log("Erro ao enviar mensagens");
       }
 
       const json = await res.json();
