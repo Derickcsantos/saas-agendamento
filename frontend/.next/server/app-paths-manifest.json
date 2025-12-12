@@ -5,6 +5,8 @@
   "/[slug]/login/page": "app/[slug]/login/page.js",
   "/[slug]/minha-conta/page": "app/[slug]/minha-conta/page.js",
   "/[slug]/page": "app/[slug]/page.js",
+  "/[slug]/profissional/calendario/page": "app/[slug]/profissional/calendario/page.js",
+  "/[slug]/profissional/page": "app/[slug]/profissional/page.js",
   "/_not-found/page": "app/_not-found/page.js",
   "/admin-dashboard/page": "app/admin-dashboard/page.js",
   "/page": "app/page.js"
