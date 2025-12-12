@@ -209,7 +209,7 @@ export default function SiteTab({ org }) {
           />
 
           <textarea
-            style={inputStyle}
+            style={inputStyle || ''}
             className={inputClass}
             placeholder="Meta Description"
             rows={3}
