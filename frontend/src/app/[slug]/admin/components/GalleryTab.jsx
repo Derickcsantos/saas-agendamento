@@ -88,7 +88,7 @@ export default function GalleryTab({ org }) {
   // 4️⃣ Excluir
   // ======================
   const handleDelete = async (id) => {
-    if (!confirm("Deseja realmente excluir este serviço?")) return;
+    if (!confirm("Deseja realmente excluir esssa imagem?")) return;
 
     await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/admin/galeria/${org.slug_organization}/${id}`,
