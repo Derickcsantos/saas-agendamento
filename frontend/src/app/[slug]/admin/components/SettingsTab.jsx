@@ -340,6 +340,29 @@ export default function SettingsTab({ org }) {
             strongColor={strongColor}
           />
 
+          <label htmlFor="google_calendar_sync">Sincronização com google calendário</label>
+          <select
+            id="google_calendar_sync"
+            value={policies.sync_google_calendar ? "true" : "false"}
+            onChange={(e) =>
+              handlePolicyChange("sync_google_calendar")(
+                e.target.value === "true"
+              )
+            }
+            onBlur={() =>
+              updateField(
+                "sync_google_calendar",
+                policies.sync_google_calendar,
+                `${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`
+              )
+            }
+            className="w-full rounded-md border px-3 py-2"
+          >
+            <option value="true">Sim</option>
+            <option value="false">Não</option>
+          </select>
+
+
           {/* PLAN CARD */}
           <div className="p-6 border rounded-xl shadow-sm bg-gradient-to-br from-white to-gray-50">
             <h3 className="text-lg font-semibold text-gray-700 mb-2">Plano Atual</h3>

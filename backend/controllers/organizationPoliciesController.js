@@ -25,6 +25,7 @@ export const getOrganizationPolicies = async (req, res) => {
         organization_id: org.id,
         max_schedule_days: 30,
         min_hours_before_booking: 0,
+        sync_google_calendar: true,
       });
     }
 
@@ -37,7 +38,7 @@ export const getOrganizationPolicies = async (req, res) => {
 export const updateOrganizationPolicies = async (req, res) => {
   try {
     const { slug } = req.params;
-    const { max_schedule_days, allow_same_day, min_hours_before_booking } =
+    const { max_schedule_days, allow_same_day, min_hours_before_booking, sync_google_calendar } =
       req.body;
 
     const { data: org, error: orgError } = await supabase
@@ -57,6 +58,7 @@ export const updateOrganizationPolicies = async (req, res) => {
           organization_id: org.id,
           max_schedule_days,
           min_hours_before_booking,
+          sync_google_calendar: Boolean(sync_google_calendar),
         },
         { onConflict: "organization_id" }
       );
