@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 export default function UsersTab({ org }) {
   const [users, setUsers] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(null);
+  const { palette } = useOrganizationColors(org.slug_organization);
 
   const [form, setForm] = useState({
     username: "",
@@ -186,7 +188,8 @@ export default function UsersTab({ org }) {
         <div className="flex gap-3">
           <button
             type="submit"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg shadow"
+            className=" text-white px-5 py-2 rounded-lg shadow"
+            style={{backgroundColor: palette?.strong_color}}
           >
             Salvar
           </button>

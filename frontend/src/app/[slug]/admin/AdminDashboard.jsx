@@ -20,6 +20,7 @@ import FasterScheduleTab from "./components/FasterScheduleTab";
 import SiteTab from "./components/SiteTab";
 import SettingsTab from "./components/SettingsTab";
 import PersonalCalendarTab from "./components/PersonalCalendarTab";
+import GalleryTab from "./components/GalleryTab";
 
 export default function AdminDashboard({ slug }) {
   const router = useRouter();
@@ -139,6 +140,8 @@ export default function AdminDashboard({ slug }) {
         return <ClientsTab org={org} />;
       case "revenues":
         return <RevenuesTab org={org} />;
+      case "gallery":
+        return <GalleryTab org={org} />;
       case "coupons":
         return <CouponsTab org={org} />;
       case "users":

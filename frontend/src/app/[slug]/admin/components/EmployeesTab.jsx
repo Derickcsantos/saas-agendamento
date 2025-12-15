@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { toast } from 'react-toastify'
+import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 export default function EmployeesTab({ org }) {
   const [employees, setEmployees] = useState([]);
@@ -25,6 +26,7 @@ export default function EmployeesTab({ org }) {
   const [allServices, setAllServices] = useState([]);
   const [showServicesModal, setShowServicesModal] = useState(false);
   const [searchService, setSearchService] = useState("");
+  const { palette } = useOrganizationColors(org.slug_organization);
 
   useEffect(() => {
     loadEmployees();
@@ -289,7 +291,13 @@ export default function EmployeesTab({ org }) {
         </div>
 
         <div className="flex gap-2">
-          <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-md">Salvar</button>
+          <button 
+            type="submit" 
+            className=" text-white px-4 py-2 rounded-md"
+            style={{backgroundColor: palette?.strong_color}}
+          >
+            Salvar
+          </button>
 
           {editing && (
             <>
@@ -413,8 +421,9 @@ export default function EmployeesTab({ org }) {
                 Fechar
               </button>
               <button
-                className="bg-indigo-600 text-white px-4 py-2 rounded-md"
+                className=" text-white px-4 py-2 rounded-md"
                 onClick={saveEmployeeServices}
+                style={{backgroundColor: palette?.strong_color}}
               >
                 Salvar
               </button>
