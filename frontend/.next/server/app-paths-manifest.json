@@ -5,5 +5,7 @@
   "/[slug]/page": "app/[slug]/page.js",
   "/_not-found/page": "app/_not-found/page.js",
   "/admin-dashboard/page": "app/admin-dashboard/page.js",
-  "/login/page": "app/login/page.js"
+  "/criar-conta/page": "app/criar-conta/page.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js"
 }
