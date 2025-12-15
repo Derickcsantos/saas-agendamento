@@ -8,6 +8,7 @@ import ptLocale from "@fullcalendar/core/locales/pt-br";
 import formatDateFromYYYYMMDD from "@/app/utils/formatDateFromYYYYMMDD";
 import { statusClasses } from "@/app/utils/appointmentStatus";
 import { statusInfo } from "@/app/utils/appointmentsInfo";
+import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 const calendarStyles = `
   .fc-theme-standard td, 
@@ -107,6 +108,7 @@ export default function AppointmentsTab({ org }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState(null);
   const [editTimeSlots, setEditTimeSlots] = useState([]);
+  const { palette } = useOrganizationColors(org.slug_organization);
   const [editData, setEditData] = useState({
     employee: null,
     date: "",
@@ -375,7 +377,8 @@ export default function AppointmentsTab({ org }) {
 
             <button
               onClick={saveAppointmentChanges}
-              className="px-4 py-2 bg-purple-600 text-white rounded"
+              className="px-4 py-2 text-white rounded"
+              style={{backgroundColor: palette?.strong_color}}
               disabled={!editData.time}
             >
               Salvar

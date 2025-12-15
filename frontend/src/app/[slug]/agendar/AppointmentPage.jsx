@@ -456,7 +456,8 @@ export default function AppointmentPage({ slug }) {
         {authenticated? (
           <button
             onClick={() => router.push(`/${slug}/minha-conta`)}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-all"
+            className="text-white px-4 py-2 rounded-lg transition-all"
+            style={{backgroundColor: palette?.strong_color}}
           >
             Entrar
           </button>

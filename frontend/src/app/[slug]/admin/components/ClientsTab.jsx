@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { toast } from 'react-toastify'
+import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 export default function ClientsTab({ org }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState("");
+  const { palette } = useOrganizationColors(org.slug_organization);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -139,7 +141,8 @@ export default function ClientsTab({ org }) {
         <div className="flex gap-2">
           <button
             type="submit"
-            className="bg-indigo-600 text-white px-4 py-2 rounded-md"
+            className="text-white px-4 py-2 rounded-md"
+            style={{backgroundColor: palette?.strong_color}}
           >
             {editing ? "Atualizar" : "Salvar"}
           </button>
@@ -165,7 +168,8 @@ export default function ClientsTab({ org }) {
         />
         <button
           onClick={handleSearch}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-md"
+          className=" text-white px-4 py-2 rounded-md"
+          style={{backgroundColor: palette?.strong_color}}
         >
           Buscar
         </button>

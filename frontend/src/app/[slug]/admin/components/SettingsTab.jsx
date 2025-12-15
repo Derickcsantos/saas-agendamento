@@ -3,11 +3,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 
-
-/* ------------------------------------------------------------
-   INPUT COMPONENT (FORA DO COMPONENTE PRINCIPAL)
-   Evita recriação a cada render → evita remount → evita perder foco
-------------------------------------------------------------- */
 const Input = React.memo(function Input({
   label,
   field,
@@ -36,10 +31,6 @@ const Input = React.memo(function Input({
   );
 });
 
-
-/* ================================================================
-   COMPONENTE PRINCIPAL
-================================================================ */
 export default function SettingsTab({ org }) {
   const [loading, setLoading] = useState(true);
   const [savingField, setSavingField] = useState(null);
