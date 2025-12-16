@@ -15,6 +15,7 @@ export default function ServicesTab({ org }) {
     duration: "",
     price: "",
     is_online: false,
+    durability_days: 0,
   });
 
   const [image, setImage] = useState(null);
@@ -79,6 +80,7 @@ export default function ServicesTab({ org }) {
         duration: "",
         price: "",
         is_online: false,
+        durability_days: 0,
       });
 
       setPreview("");
@@ -99,6 +101,7 @@ export default function ServicesTab({ org }) {
       duration: service.duration || "",
       price: service.price || "",
       is_online: service.is_online || false,
+      durability_days: service.durability_days || 0,
     });
     setPreview(service.imagem_service || "");
   };
@@ -185,6 +188,15 @@ export default function ServicesTab({ org }) {
             }}
           />
 
+          <input
+            type="number"
+            placeholder="Durabilidade do serviço (em dias)"
+            className="bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3"
+            value={form.durability_days}
+            step="0.01"
+            onChange={(e) => setForm({ ...form, durability_days: e.target.value })}
+          />
+
           <label className="flex items-center gap-2 col-span-2">
             <input type="checkbox" checked={form.is_online}
               onChange={(e) => setForm({ ...form, is_online: e.target.checked })} />
@@ -219,6 +231,7 @@ export default function ServicesTab({ org }) {
                   duration: "",
                   price: "",
                   is_online: false,
+                  durability_days: 0,
                 })
               }
               className="border px-5 py-2 rounded-lg dark:border-gray-700 shadow"
@@ -243,6 +256,7 @@ export default function ServicesTab({ org }) {
                 <th className="px-4 py-3 text-left">Duração</th>
                 <th className="px-4 py-3 text-left">Preço</th>
                 <th className="px-4 py-3 text-left">É online ?</th>
+                <th className="px-4 py-3 text-left">Durabilidade</th>
                 <th className="px-4 py-3 text-left">Ações</th>
               </tr>
             </thead>
@@ -259,6 +273,7 @@ export default function ServicesTab({ org }) {
                   <td className="px-4 py-3">{s.duration} min</td>
                   <td className="px-4 py-3">R$ {s.price?.toFixed(2)}</td>
                   <td className="px-4 py-3">{s.is_online? 'Sim' : 'Não'}</td>
+                  <td className="px-4 py-3">{s.durability_days} {s.durability_days === 1 ? 'dia' : 'dias'}</td>
                   <td className="px-4 py-3 flex gap-3">
                     <button
                       onClick={() => handleEdit(s)}
