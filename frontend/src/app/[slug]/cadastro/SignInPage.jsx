@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 export default function SignInPage({ slug }) {
   const router = useRouter();
@@ -15,7 +16,7 @@ export default function SignInPage({ slug }) {
     confirmPassword: "",
   });
 
-  const [palette, setPalette] = useState(null);
+  const { palette } = useOrganizationColors(slug);
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -50,34 +51,6 @@ export default function SignInPage({ slug }) {
     checkAuth();
   }, [router, slug]);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        // Executa ambas as chamadas em paralelo
-        const [colorRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`, {
-            credentials: "include",
-          }),
-        ]);
-  
-        if (!colorRes.ok) throw new Error("Palette not found");
-  
-        const paletteData = await colorRes.json();
-  
-        setPalette(paletteData); 
-  
-      } catch (err) {
-        console.error("Erro ao buscar dados:", err);
-        setNotFound(true);
-      }
-    }
-  
-    if (slug) fetchData();
-  }, [slug]);
-
-  // ==========================
-  // 2️⃣ Envia cadastro
-  // ==========================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");

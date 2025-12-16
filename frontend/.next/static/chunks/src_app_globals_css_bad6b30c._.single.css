@@ -1112,6 +1112,10 @@
     height: 16.6667%;
   }
 
+  .h-1 {
+    height: calc(var(--spacing) * 1);
+  }
+
   .h-1\/4 {
     height: 25%;
   }
@@ -1158,6 +1162,10 @@
 
   .h-20 {
     height: calc(var(--spacing) * 20);
+  }
+
+  .h-22 {
+    height: calc(var(--spacing) * 22);
   }
 
   .h-24 {
@@ -1232,6 +1240,10 @@
     min-height: 100vh;
   }
 
+  .w-1 {
+    width: calc(var(--spacing) * 1);
+  }
+
   .w-1\/2 {
     width: 50%;
   }
@@ -1274,6 +1286,10 @@
 
   .w-16 {
     width: calc(var(--spacing) * 16);
+  }
+
+  .w-17 {
+    width: calc(var(--spacing) * 17);
   }
 
   .w-20 {

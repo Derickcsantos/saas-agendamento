@@ -3,11 +3,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 
-
-/* ------------------------------------------------------------
-   INPUT COMPONENT (FORA DO COMPONENTE PRINCIPAL)
-   Evita recriação a cada render → evita remount → evita perder foco
-------------------------------------------------------------- */
 const Input = React.memo(function Input({
   label,
   field,
@@ -36,10 +31,6 @@ const Input = React.memo(function Input({
   );
 });
 
-
-/* ================================================================
-   COMPONENTE PRINCIPAL
-================================================================ */
 export default function SettingsTab({ org }) {
   const [loading, setLoading] = useState(true);
   const [savingField, setSavingField] = useState(null);
@@ -348,6 +339,29 @@ export default function SettingsTab({ org }) {
             savingField={savingField}
             strongColor={strongColor}
           />
+
+          <label htmlFor="google_calendar_sync">Sincronização com google calendário</label>
+          <select
+            id="google_calendar_sync"
+            value={policies.sync_google_calendar ? "true" : "false"}
+            onChange={(e) =>
+              handlePolicyChange("sync_google_calendar")(
+                e.target.value === "true"
+              )
+            }
+            onBlur={() =>
+              updateField(
+                "sync_google_calendar",
+                policies.sync_google_calendar,
+                `${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`
+              )
+            }
+            className="w-full rounded-md border px-3 py-2"
+          >
+            <option value="true">Sim</option>
+            <option value="false">Não</option>
+          </select>
+
 
           {/* PLAN CARD */}
           <div className="p-6 border rounded-xl shadow-sm bg-gradient-to-br from-white to-gray-50">

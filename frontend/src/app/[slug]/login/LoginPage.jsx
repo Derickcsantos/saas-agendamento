@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 export default function LoginPage({ slug }) {
   const router = useRouter();
@@ -11,11 +12,8 @@ export default function LoginPage({ slug }) {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  const [palette, setPalette] = useState(null);
+  const { palette } = useOrganizationColors(slug);
 
-  // ==============================
-  // 1️⃣ Verifica se já está autenticado
-  // ==============================
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -47,34 +45,6 @@ export default function LoginPage({ slug }) {
     checkAuth();
   }, [router, slug]);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        // Executa ambas as chamadas em paralelo
-        const [colorRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`, {
-            credentials: "include",
-          }),
-        ]);
-  
-        if (!colorRes.ok) throw new Error("Palette not found");
-  
-        const paletteData = await colorRes.json();
-  
-        setPalette(paletteData); 
-  
-      } catch (err) {
-        console.error("Erro ao buscar dados:", err);
-        setNotFound(true);
-      }
-    }
-  
-    if (slug) fetchData();
-  }, [slug]);
-
-  // ========================
-  // LOGIN NORMAL
-  // ========================
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);

@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import jsPDF from "jspdf";
 import { toast } from 'react-toastify'
 import autoTable from 'jspdf-autotable';
+import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 export default function RevenueTab({ org }) {
   const [data, setData] = useState(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(false);
+  const { palette } = useOrganizationColors(org.slug_organization);
 
   const API = process.env.NEXT_PUBLIC_API_URL;
   const slug = org.slug_organization;
@@ -170,7 +172,8 @@ export default function RevenueTab({ org }) {
 
         <button
           onClick={() => loadRevenue(startDate, endDate)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-md shadow"
+          className="text-white px-4 py-2 rounded-md shadow"
+          style={{backgroundColor: palette?.strong_color}}
         >
           Aplicar Filtro
         </button>

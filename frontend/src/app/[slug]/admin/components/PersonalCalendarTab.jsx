@@ -6,6 +6,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import ptLocale from "@fullcalendar/core/locales/pt-br";
 import { toast } from "react-toastify";
+import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 function normalizeDate(dateString) {
   if (!dateString) return null;
@@ -95,6 +96,7 @@ export default function PersonalCalendarTab({ org }) {
   const [connectedEmail, setConnectedEmail] = useState(null);
   const [user, setUser] = useState(null);
   const [calendarView, setCalendarView] = useState("timeGridWeek");
+  const { palette } = useOrganizationColors(org.slug_organization);
 
   const calendarRef = useRef(null);
 
@@ -228,7 +230,7 @@ export default function PersonalCalendarTab({ org }) {
       </div>
 
       {loading && (
-        <div className="flex flex-col items-center py-10 text-indigo-600">
+        <div className="flex flex-col items-center py-10" style={{color: palette?.strong_color}}>
           <div className="animate-spin h-10 w-10 border-4 border-indigo-400 border-t-transparent rounded-full" />
           <p className="mt-3 text-sm">Carregando calendário...</p>
         </div>
@@ -239,7 +241,8 @@ export default function PersonalCalendarTab({ org }) {
           <h2 className="text-xl font-bold">Conectar Google Calendar</h2>
           <button
             onClick={handleConnect}
-            className="mt-4 px-6 py-3 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-700 transition"
+            className="mt-4 px-6 py-3 text-white rounded-xl shadow-lg transition"
+            style={{backgroundColor: palette?.strong_color }}
           >
             Conectar agora
           </button>

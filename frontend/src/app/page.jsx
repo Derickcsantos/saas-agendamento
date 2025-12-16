@@ -149,7 +149,7 @@ export default function MarcafyLanding() {
             <img
               src="/marcafyTopbar.jpg"
               alt="Marcafy"
-              className="hidden sm:block h-25 w-47 rounded-xl"
+              className="hidden sm:block h-22 w-47 rounded-xl"
             />
 
             {/* Mobile */}

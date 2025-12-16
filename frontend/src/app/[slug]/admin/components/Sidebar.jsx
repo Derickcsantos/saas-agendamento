@@ -2,15 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
-  const [palette, setPalette] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
+  const { palette } = useOrganizationColors(org.slug_organization);
 
-  // MOBILE: abre/fecha o menu lateral
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // FECHAR AO CLICAR FORA NO MOBILE
   useEffect(() => {
     function handleOutsideClick(e) {
       const sidebar = document.getElementById("sidebar-wrapper");
@@ -34,6 +33,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
     { name: "Agendamentos", key: "appointments", icon: "bi-calendar-check" },
     { name: "Agendamento rápido", key: "faster-schedule", icon: "bi-lightning" },
     { name: "Receitas", key: "revenues", icon: "bi-cash-coin" },
+    { name: "Galeria", key: "gallery", icon: "bi-cash-coin" },
     { name: "Cupons", key: "coupons", icon: "bi-wallet2" },
     { name: "Usuários", key: "users", icon: "bi-person-badge" },
     { name: "Galeria", key: "gallery", icon: "bi-image" },
@@ -42,26 +42,6 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
     { name: "Configurações", key: "settings", icon: "bi-gear" },
     { name: "Sair", key: "exit", icon: "bi bi-door-open" },
   ];
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const colorRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`,
-          { credentials: "include" }
-        );
-        if (!colorRes.ok) throw new Error("Palette not found");
-
-        const paletteData = await colorRes.json();
-        setPalette(paletteData);
-      } catch (err) {
-        console.error("Erro ao buscar paleta:", err);
-      }
-    }
-
-    if (slug) fetchData();
-  }, [slug]);
-
 
   const strong = palette?.strong_color || "#5E3BEE";
   const light = palette?.light_color || "#F5F5F5";

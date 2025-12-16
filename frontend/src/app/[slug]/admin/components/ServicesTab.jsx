@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 export default function ServicesTab({ org }) {
   const [services, setServices] = useState([]);
@@ -18,6 +19,7 @@ export default function ServicesTab({ org }) {
 
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState("");
+  const { palette } = useOrganizationColors(org.slug_organization);
 
   // ======================
   // 1️⃣ Carregar dados
@@ -45,9 +47,6 @@ export default function ServicesTab({ org }) {
     setServices(data);
   }
 
-  // ======================
-  // 2️⃣ Salvar serviço
-  // ======================
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -91,9 +90,6 @@ export default function ServicesTab({ org }) {
     }
   };
 
-  // ======================
-  // 3️⃣ Editar
-  // ======================
   const handleEdit = (service) => {
     setForm({
       id: service.id,
@@ -107,9 +103,6 @@ export default function ServicesTab({ org }) {
     setPreview(service.imagem_service || "");
   };
 
-  // ======================
-  // 4️⃣ Excluir
-  // ======================
   const handleDelete = async (id) => {
     if (!confirm("Deseja realmente excluir este serviço?")) return;
 
@@ -124,7 +117,6 @@ export default function ServicesTab({ org }) {
   return (
     <div className="space-y-8">
 
-      {/* FORMULÁRIO */}
       <form
         onSubmit={handleSubmit}
         className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 space-y-6"
@@ -209,7 +201,8 @@ export default function ServicesTab({ org }) {
         <div className="flex gap-3">
           <button
             type="submit"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg shadow"
+            className="text-white px-5 py-2 rounded-lg shadow"
+            style={{backgroundColor: palette?.strong_color}}
           >
             Salvar
           </button>

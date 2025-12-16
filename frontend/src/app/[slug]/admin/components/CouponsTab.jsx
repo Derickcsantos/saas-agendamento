@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { toast } from 'react-toastify'
+import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 export default function CouponsTab({ org }) {
   const [coupons, setCoupons] = useState([]);
@@ -18,6 +19,7 @@ export default function CouponsTab({ org }) {
   });
 
   const [loading, setLoading] = useState(false);
+  const { palette } = useOrganizationColors(org.slug_organization);
 
   useEffect(() => {
     loadCoupons();
@@ -246,7 +248,8 @@ export default function CouponsTab({ org }) {
           <button
             type="submit"
             disabled={loading}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-md"
+            className=" text-white px-4 py-2 rounded-md"
+            style={{backgroundColor: palette?.strong_color}}
           >
             {loading ? "Salvando..." : "Salvar"}
           </button>

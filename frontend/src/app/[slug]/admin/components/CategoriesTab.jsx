@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 export default function CategoriesTab({ org }) {
   const [categories, setCategories] = useState([]);
@@ -11,6 +12,7 @@ export default function CategoriesTab({ org }) {
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(false);
+  const { palette } = useOrganizationColors(org.slug_organization);
 
   const loadCategories = async () => {
     try {
@@ -32,7 +34,6 @@ export default function CategoriesTab({ org }) {
   useEffect(() => {
     loadCategories();
   }, []);
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -131,7 +132,8 @@ export default function CategoriesTab({ org }) {
         <div className="flex gap-3">
           <button
             type="submit"
-            className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg shadow transition"
+            className=" text-white px-5 py-2 rounded-lg shadow transition"
+            style={{backgroundColor: palette?.strong_color}}
           >
             Salvar
           </button>
