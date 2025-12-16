@@ -570,7 +570,7 @@ export default function AppointmentPage({ slug }) {
                         <div>
                           <p className="font-semibold text-gray-700">{srv.name}</p>
                           <p className="text-sm text-gray-500">
-                            R$ {srv.price?.toFixed(2)} • {srv.duration} min
+                            R$ {srv.price?.toFixed(2)} • {srv.duration} min • Dura {srv.durability_days || 0} {srv.durability_days === 1 ? 'dia' : 'dias'}
                           </p>
                         </div>
                       </div>

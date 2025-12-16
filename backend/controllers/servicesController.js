@@ -20,7 +20,7 @@ export const getServices = async (req, res) => {
 
     let query = supabase
       .from('services')
-      .select('id, name, category_id, duration, price, categories(name), is_online')
+      .select('id, name, category_id, duration, price, categories(name), is_online, durability_days')
       .eq('organization_id', org.id)
       .order('name', { ascending: true });
 
@@ -84,7 +84,7 @@ export const getServicesBySlug = async (req, res) => {
 
     const { data, error } = await supabase
       .from('services')
-      .select('id, name, category_id, duration, price, categories(name), is_online')
+      .select('id, name, category_id, duration, price, categories(name), is_online, durability_days')
       .eq('organization_id', orgData.id)
 
 
@@ -100,7 +100,7 @@ export const getServicesBySlug = async (req, res) => {
 
 export const createService = async (req, res) => {
   try {
-    const { category_id, name, description, duration, price, is_online } = req.body;
+    const { category_id, name, description, duration, price, is_online, durability_days } = req.body;
     const { slug } = req.params;
     let imageUrl = null;
 
@@ -156,7 +156,8 @@ export const createService = async (req, res) => {
         organization_id: orgData.id,
         price,
         imagem_service: imageUrl, 
-        is_online: !!is_online
+        is_online: !!is_online,
+        durability_days
       }])
       .select();
 
@@ -172,7 +173,7 @@ export const updateService = async (req, res) => {
   try {
     console.log('api funcionando')
     const { slug, id } = req.params;
-    const { category_id, name, description, duration, price, is_online } = req.body;
+    const { category_id, name, description, duration, price, is_online, durability_days } = req.body;
     let imageData = null;
 
     // Se enviou nova imagem, converte para base64
@@ -192,6 +193,7 @@ export const updateService = async (req, res) => {
       duration,
       price,
       is_online: !!is_online,
+      durability_days,
       ...(imageData && { imagem_service: imageData })
     };
 

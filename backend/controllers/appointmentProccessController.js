@@ -49,7 +49,7 @@ export const getAppointmentServices =  async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('services')
-      .select('id, name, category_id, duration, price, imagem_service')
+      .select('id, name, category_id, duration, price, imagem_service, durability_days')
       .eq('organization_id', req.organizationId)
       .order('name', { ascending: true });
 
@@ -82,7 +82,7 @@ export const getAppointmentServicesByCategory = async (req, res) => {
 
     const { data, error } = await supabase
       .from('services')
-      .select('id, name, price, duration, imagem_service')
+      .select('id, name, price, duration, imagem_service, durability_days')
       .eq('category_id', categoryId)
       .eq('organization_id', orgData.id)
       .order('name', { ascending: true });
