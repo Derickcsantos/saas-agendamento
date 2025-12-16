@@ -12,8 +12,8 @@ export default function GalleryTab({ org }) {
 
   const [form, setForm] = useState({
     id: null,
-    name: "",
-    description: ""
+    titulo: "",
+    descricao: ""
   });
 
 
@@ -31,7 +31,7 @@ export default function GalleryTab({ org }) {
 
   async function loadImages() {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/galeria/${org.slug_organization}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/galeria/${org.slug_organization}`,
       { credentials: "include" }
     );
     const data = await res.json();
@@ -48,12 +48,12 @@ export default function GalleryTab({ org }) {
     try {
       const formData = new FormData();
       for (const [key, value] of Object.entries(form)) formData.append(key, value);
-
+      
       formData.append("imagem", uploadFile);
 
       const method = "POST";
 
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/galeria/${org.slug_organization}/upload`;
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/galeria/${org.slug_organization}/upload`;
 
       const res = await fetch(url, {
         method,
@@ -67,8 +67,8 @@ export default function GalleryTab({ org }) {
 
       setForm({
         id: null,
-        name: "",
-        description: ""
+        titulo: "",
+        descricao: ""
       });
 
       setPreview("");
@@ -91,7 +91,7 @@ export default function GalleryTab({ org }) {
     if (!confirm("Deseja realmente excluir esssa imagem?")) return;
 
     await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/galeria/${org.slug_organization}/${id}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/galeria/${org.slug_organization}/${id}`,
       { method: "DELETE", credentials: "include" }
     );
 
@@ -136,7 +136,7 @@ export default function GalleryTab({ org }) {
       const params = new URLSearchParams(customFilters);
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/galeria/${org.slug_organization}?${params}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/galeria/${org.slug_organization}?${params}`,
         { credentials: "include" }
       );
 
@@ -175,16 +175,16 @@ export default function GalleryTab({ org }) {
             type="text"
             placeholder="Nome da Imagem"
             className="bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3 md:col-span-2"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            value={form.titulo}
+            onChange={(e) => setForm({ ...form, titulo: e.target.value })}
             required
           />
 
           <textarea
             placeholder="Descrição da Imagem"
             className="bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3 md:col-span-2"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            value={form.descricao}
+            onChange={(e) => setForm({ ...form, descricao: e.target.value })}
             required
           />
 
@@ -227,7 +227,7 @@ export default function GalleryTab({ org }) {
       </form>
 
       <div className="flex flex-col gap-4 bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl shadow-inner border border-gray-200 dark:border-gray-700">  
-
+        
         <h4 className="text-lg font-bold text-gray-700 dark:text-gray-200">
           Pesquisar Imagem por Nome
         </h4>

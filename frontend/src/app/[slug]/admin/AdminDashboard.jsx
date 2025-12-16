@@ -148,6 +148,8 @@ export default function AdminDashboard({ slug }) {
         return <UsersTab org={org} />;
       case "faster-schedule":
         return <FasterScheduleTab org={org} />;
+      case "gallery":
+        return <GalleryTab org={org} />;
       case "site":
         return <SiteTab org={org} />;
       case "calendar-google":

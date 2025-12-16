@@ -20,7 +20,7 @@ export const galleryRouter = Router();
  * @swagger
  * /api/galeria/{slug}:
  *   get:
- *     summary: Lista imagens da galeria por organização (slug)
+ *     summary: Lista imagens da galeria por organização (slug), permitindo também a busca por filtro de nome
  *     description: Retorna as imagens de uma organização com paginação e busca opcional por nome.
  *     tags: [Galeria]
  *     parameters:
