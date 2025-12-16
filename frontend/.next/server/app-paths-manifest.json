@@ -1,10 +1,5 @@
 {
-  "/[slug]/admin/page": "app/[slug]/admin/page.js",
   "/[slug]/agendar/page": "app/[slug]/agendar/page.js",
-  "/[slug]/galeria/page": "app/[slug]/galeria/page.js",
-  "/[slug]/login/page": "app/[slug]/login/page.js",
-  "/[slug]/minha-conta/page": "app/[slug]/minha-conta/page.js",
   "/[slug]/page": "app/[slug]/page.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/criar-conta/page": "app/criar-conta/page.js"
+  "/_not-found/page": "app/_not-found/page.js"
 }

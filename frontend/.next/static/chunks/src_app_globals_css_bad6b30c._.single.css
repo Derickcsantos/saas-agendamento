@@ -1885,6 +1885,10 @@
     border-color: var(--color-gray-500);
   }
 
+  .border-gray-600 {
+    border-color: var(--color-gray-600);
+  }
+
   .border-indigo-400 {
     border-color: var(--color-indigo-400);
   }
@@ -2900,6 +2904,12 @@
     .hover\:-translate-y-1:hover {
       --tw-translate-y: calc(var(--spacing) * -1);
       translate: var(--tw-translate-x) var(--tw-translate-y);
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:border-gray-400:hover {
+      border-color: var(--color-gray-400);
     }
   }
 

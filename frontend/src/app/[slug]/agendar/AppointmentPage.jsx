@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from 'react-toastify'
+import { DayPicker } from "react-day-picker";
+import "react-day-picker/dist/style.css";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
 
 export default function AppointmentPage({ slug }) {
   const router = useRouter();
@@ -494,8 +499,9 @@ export default function AppointmentPage({ slug }) {
                 
               </div>
               <p
+                style={{color: palette?.strong_color}}
                 className={`text-xs mt-2 ${
-                  i + 1 <= step ? "text-purple-600 font-semibold" : "text-gray-400"
+                  i + 1 <= step ? " font-semibold" : "text-gray-400"
                 }`}
               >
                 {s.title}
@@ -524,7 +530,7 @@ export default function AppointmentPage({ slug }) {
                       }}
                       className={`cursor-pointer p-4 rounded-xl border text-center transition-all ${
                         selected.category?.id === cat.id
-                          ? "border-purple-600 bg-purple-50"
+                          ? "border-gray-600 bg-purple-50"
                           : "border-gray-200 hover:border-purple-300"
                       }`}
                     >
@@ -557,7 +563,7 @@ export default function AppointmentPage({ slug }) {
                       }}
                       className={`cursor-pointer p-4 rounded-xl border transition-all ${
                         selected.service?.id === srv.id
-                          ? "border-purple-600 bg-purple-50"
+                          ? "border-gray-600 bg-purple-50"
                           : "border-gray-200 hover:border-purple-300"
                       }`}
                     >
@@ -595,7 +601,7 @@ export default function AppointmentPage({ slug }) {
                       }}
                       className={`cursor-pointer p-4 rounded-xl border text-center transition-all ${
                         selected.employee?.id === emp.id
-                          ? "border-purple-600 bg-purple-50"
+                          ? "border-gray-600 bg-purple-50"
                           : "border-gray-200 hover:border-purple-300"
                       }`}
                     >
@@ -616,25 +622,35 @@ export default function AppointmentPage({ slug }) {
                 <h2 className="text-xl text-gray-800 font-semibold mb-4">
                   Selecione a data
                 </h2>
-                <input
-                  type="date"
-                  min={minDate}
-                  max={maxDateStr}
-                  value={selected.date}
-                  className="border rounded-lg text-gray-700 p-3 w-full"
-                  onChange={(e) => {
-                    const selectedDate = e.target.value;
 
-                    if (selectedDate > maxDateStr) {
-                      toast.info(
-                        `Esta organização permite agendamentos até ${policies.max_schedule_days} dias`
-                      );
-                      return;
-                    }
+                <div className="flex justify-center">
+                  <DayPicker
+                    mode="single"
+                    locale={ptBR}
+                    selected={selected.date ? new Date(selected.date + "T00:00:00") : undefined}
+                    onSelect={(date) => {
+                      if (!date) return;
 
-                    handleSelect("date", selectedDate);
-                  }}
-                />
+                      // converte SEM UTC (evita bug de dia errado)
+                      const formatted = format(date, "yyyy-MM-dd");
+
+                      if (formatted > maxDateStr) {
+                        toast.info(
+                          `Esta organização permite agendamentos até ${policies.max_schedule_days} dias`
+                        );
+                        return;
+                      }
+
+                      handleSelect("date", formatted);
+                      next(); // já avança para horários (UX melhor)
+                    }}
+                    disabled={{
+                      before: new Date(minDate + "T00:00:00"),
+                      after: new Date(maxDateStr + "T23:59:59"),
+                    }}
+                    className="bg-white rounded-xl border p-4 shadow"
+                  />
+                </div>
               </motion.div>
             )}
 
@@ -669,7 +685,7 @@ export default function AppointmentPage({ slug }) {
                         className={`px-4 py-2 text-gray-800 rounded-lg border transition-all ${
                           selected.time?.start === slot.start
                             ? "bg-purple-600 text-white border-purple-600"
-                            : "border-gray-300 hover:border-purple-400"
+                            : "border-gray-300 hover:border-gray-400"
                         }`}
                       >
                         {slot.start} - {slot.end}
@@ -702,10 +718,11 @@ export default function AppointmentPage({ slug }) {
                   <button
                     onClick={() => validateCoupon()}
                     disabled={couponStatus.loading}
+                    style={{backgroundColor: palette?.strong_color}}
                     className={`px-4 rounded-lg text-white transition ${
                       couponStatus.loading
                         ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-purple-600 hover:bg-purple-700"
+                        : ""
                     }`}
                   >
                     {couponStatus.loading ? "Validando..." : "Aplicar"}
@@ -804,7 +821,8 @@ export default function AppointmentPage({ slug }) {
                     })
                   }
                   disabled={loading}
-                  className="mt-4 w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg transition-all font-semibold"
+                  style={{backgroundColor: palette?.strong_color}}
+                  className="mt-4 w-full text-white py-3 rounded-lg transition-all font-semibold"
                 >
                   {loading ? "Confirmando..." : "Confirmar Agendamento"}
                 </button>
@@ -821,7 +839,7 @@ export default function AppointmentPage({ slug }) {
             className={`px-6 py-2 rounded-lg border ${
               step === 1
                 ? "border-gray-300 text-gray-400 cursor-not-allowed"
-                : "border-purple-600 text-purple-600 hover:bg-purple-50"
+                : "border-gray-600 text-gray-600 hover:bg-purple-50"
             }`}
           >
             Voltar
