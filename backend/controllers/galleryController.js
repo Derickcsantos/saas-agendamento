@@ -3,7 +3,7 @@ import sharp from 'sharp';
 
 export const getImagesBySlug = async (req, res) => {
   const { slug } = req.params;
-  const { page = 1, limit = 12, termo } = req.query;
+  const { page = 1, limit = 12, search } = req.query;
 
   try {
     // 1️⃣ Busca a organização pelo slug
@@ -27,8 +27,8 @@ export const getImagesBySlug = async (req, res) => {
       .order('created_at', { ascending: false })
       .range(offset, offset + parseInt(limit) - 1);
 
-    if (termo && termo.trim() !== '') {
-      query = query.ilike('imagem_nome', `%${termo}%`);
+    if (search && search.trim() !== '') {
+      query = query.ilike('imagem_nome', `%${search}%`);
     }
 
     const { data: imagens, count, error } = await query;

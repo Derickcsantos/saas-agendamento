@@ -81,7 +81,7 @@ app.use('/api/admin/services', serviceRouter);
 app.use('/api/admin/appointments', adminAppointmentRouter); 
 app.use('/api/admin/employees', adminEmployeeRouter); 
 app.use('/api/employee-services/', employeeServicesRouter) ;
-app.use('/api/galeria', galleryRouter);
+app.use('/api/admin/galeria', galleryRouter);
 app.use("/api/schedules", employeeScheduleRouter)
 app.use('/api/admin/dashboard', dashboardDataRouter) 
 app.use('/api/coupons', couponRouter); 
