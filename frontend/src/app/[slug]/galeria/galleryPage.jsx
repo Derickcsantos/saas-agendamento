@@ -55,7 +55,7 @@ export default function GalleryPage({ slug }) {
     const fetchGallery = async () => {
       try {
         setLoading(true);
-        const url = `${process.env.NEXT_PUBLIC_API_URL}/api/galeria/${slug}?page=${page}&limit=${limit}${
+        const url = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/galeria/${slug}?page=${page}&limit=${limit}${
           search ? `&termo=${encodeURIComponent(search)}` : ""
         }`;
 
