@@ -623,7 +623,16 @@ export default function AppointmentPage({ slug }) {
                   Selecione a data
                 </h2>
 
-                <div className="flex justify-center">
+                <div 
+                className="flex justify-center" 
+                style={{
+                  ["--rdp-accent-color"]: palette?.strong_color || "#7e22ce",
+
+                  ["--rdp-background-color"]: palette?.strong_color || "#7e22ce",
+
+                  ["--rdp-accent-color-dark"]: palette?.strong_color || "#6b21a8",
+                }}
+                >
                   <DayPicker
                     mode="single"
                     locale={ptBR}
@@ -684,7 +693,7 @@ export default function AppointmentPage({ slug }) {
                         }}
                         className={`px-4 py-2 text-gray-800 rounded-lg border transition-all ${
                           selected.time?.start === slot.start
-                            ? "bg-purple-600 text-white border-purple-600"
+                            ? "bg-gray-400 text-white border-gray-100"
                             : "border-gray-300 hover:border-gray-400"
                         }`}
                       >
