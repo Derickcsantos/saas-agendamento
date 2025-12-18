@@ -13,10 +13,18 @@ export const appointmentsRouter = Router();
 
 /**
  * @swagger
- * /api/appointments:
+ * /api/appointments/{slug}:
  *   post:
- *     summary: Cria um novo agendamento
+ *     summary: Cria um novo agendamento para uma organização específica
  *     tags: [Agendamentos]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         description: Identificador único do salão/organização
+ *         schema:
+ *           type: string
+ *           example: "studio-do-andrade"
  *     requestBody:
  *       required: true
  *       content:
@@ -52,7 +60,7 @@ export const appointmentsRouter = Router();
  *               date:
  *                 type: string
  *                 format: date
- *                 example: "2023-12-25"
+ *                 example: "2025-01-15"
  *               start_time:
  *                 type: string
  *                 format: time
@@ -77,9 +85,39 @@ export const appointmentsRouter = Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Appointment'
+ *       400:
+ *         description: Erro de validação ou dados incorretos
  *       500:
  *         description: Erro interno do servidor
  */
 appointmentsRouter.post('/:slug', createAppointment);
 
+/**
+ * @swagger
+ * /api/appointments/by-employee/{userId}:
+ *   get:
+ *     summary: Retorna os agendamentos de um funcionário específico
+ *     tags: [Agendamentos]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID do funcionário
+ *         schema:
+ *           type: integer
+ *           example: 7
+ *     responses:
+ *       200:
+ *         description: Lista de agendamentos encontrados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Appointment'
+ *       404:
+ *         description: Funcionário não encontrado ou sem agendamentos
+ *       500:
+ *         description: Erro interno do servidor
+ */
 appointmentsRouter.get('/by-employee/:userId', getAppointmentsByEmployee)

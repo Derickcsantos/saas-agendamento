@@ -3,13 +3,23 @@ import { supabase } from '../lib/supabase.js';
 
 export const verifyUser = async (req, res) => {
   const { username } = req.body;
+  const { slug } = req.params;
 
   try {
+    const { org, orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+
+    if (orgError) {
+      console.error('Não foi possivel encontrar a organização: ', orgError)
+    }
+
     const { data: user, error } = await supabase
       .from('users')
       .select('id')
+      .eq('organization_id', org.id)
       .eq('username', username)
-      .eq('organization_id', req.organizationId)
       .single();
 
     if (error || !user) {

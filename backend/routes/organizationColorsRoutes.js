@@ -64,32 +64,45 @@ organizationColorsRouter.get('/', getColorsByOrgId);
  * @swagger
  * /api/organization-colors/{slug}:
  *   post:
- *     summary: Cria a paleta para a organização (falha se já existir)
+ *     summary: Cria ou atualiza a paleta de cores de uma organização
  *     tags: [Organization Colors]
  *     parameters:
  *       - in: path
  *         name: slug
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
+ *         description: Slug da organização
  *     requestBody:
- *       required: false
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
  *             properties:
- *               strong_color: { type: string, example: "#5E3BEE" }
- *               light_color:  { type: string, example: "#FFFFFF" }
- *               text_color:   { type: string, example: "#111" }
+ *               primary:
+ *                 type: string
+ *                 example: "#FF5733"
+ *               secondary:
+ *                 type: string
+ *                 example: "#C70039"
+ *               background:
+ *                 type: string
+ *                 example: "#FFFFFF"
+ *               text:
+ *                 type: string
+ *                 example: "#000000"
  *     responses:
+ *       200:
+ *         description: Paleta atualizada com sucesso
  *       201:
- *         description: Paleta criada
+ *         description: Paleta criada com sucesso
+ *       400:
+ *         description: Dados inválidos
  *       404:
  *         description: Organização não encontrada
- *       409:
- *         description: Paleta já existe
  *       500:
- *         description: Erro ao criar paleta
+ *         description: Erro ao salvar paleta
  */
 organizationColorsRouter.post('/:slug', createColorsBySlug);
 
@@ -97,13 +110,15 @@ organizationColorsRouter.post('/:slug', createColorsBySlug);
  * @swagger
  * /api/organization-colors/{slug}:
  *   put:
- *     summary: Cria ou atualiza (upsert) a paleta da organização
+ *     summary: Cria ou atualiza (upsert) a paleta de cores da organização
  *     tags: [Organization Colors]
  *     parameters:
  *       - in: path
  *         name: slug
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
+ *         description: Slug da organização
  *     requestBody:
  *       required: false
  *       content:
@@ -111,12 +126,21 @@ organizationColorsRouter.post('/:slug', createColorsBySlug);
  *           schema:
  *             type: object
  *             properties:
- *               strong_color: { type: string, example: "#5E3BEE" }
- *               light_color:  { type: string, example: "#FFFFFF" }
- *               text_color:   { type: string, example: "#111" }
+ *               strong_color:
+ *                 type: string
+ *                 example: "#5E3BEE"
+ *                 description: Cor forte/primária da organização
+ *               light_color:
+ *                 type: string
+ *                 example: "#FFFFFF"
+ *                 description: Cor clara/secundária da organização
+ *               text_color:
+ *                 type: string
+ *                 example: "#111"
+ *                 description: Cor do texto
  *     responses:
  *       200:
- *         description: Paleta salva
+ *         description: Paleta salva (criada ou atualizada)
  *       404:
  *         description: Organização não encontrada
  *       500:
@@ -128,16 +152,18 @@ organizationColorsRouter.put('/:slug', upsertColorsBySlug);
  * @swagger
  * /api/organization-colors/{slug}:
  *   delete:
- *     summary: Remove a paleta da organização
+ *     summary: Remove a paleta de cores da organização
  *     tags: [Organization Colors]
  *     parameters:
  *       - in: path
  *         name: slug
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
+ *         description: Slug da organização
  *     responses:
  *       200:
- *         description: Paleta removida
+ *         description: Paleta removida com sucesso
  *       404:
  *         description: Organização não encontrada
  *       500:

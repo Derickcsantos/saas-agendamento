@@ -7,7 +7,7 @@ import {
   updateCategory,
   deleteCategory,
 } from '../controllers/categoriesController.js';
-import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddleware.js';
+import { authenticateJWT } from '../middlewares/authMiddleware.js';
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
 
 export const categoryRouter = Router();
@@ -21,18 +21,21 @@ const upload = multer({ storage: multer.memoryStorage() });
  */
 
 /**
+/**
  * @swagger
- * /api/admin/categories:
+ * /api/admin/categories/{slug}:
  *   get:
  *     summary: Lista todas as categorias da organização autenticada
  *     tags: [Categorias]
+ *     description: |
+ *       Retorna todas as categorias pertencentes à organização identificada pelo slug.
  *     parameters:
- *       - in: query
- *         name: organization_id
+ *       - in: path
+ *         name: slug
  *         required: true
  *         schema:
  *           type: string
- *         description: ID da organização cujas categorias serão listadas
+ *         description: Slug único da organização
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -46,6 +49,8 @@ const upload = multer({ storage: multer.memoryStorage() });
  *                 $ref: '#/components/schemas/Category'
  *       401:
  *         description: Token ausente ou inválido
+ *       404:
+ *         description: Organização não encontrada
  *       500:
  *         description: Erro interno do servidor
  */
@@ -56,26 +61,27 @@ categoryRouter.get('/:slug', authenticateJWT, getAllCategories);
  * @swagger
  * /api/admin/categories/{id}:
  *   get:
- *     summary: Obtém detalhes de uma categoria específica da organização
+ *     summary: Obtém detalhes de uma categoria específica da organização autenticada
  *     tags: [Categorias]
+ *     description: |
+ *       Retorna os detalhes de uma categoria específica.  
+ *       A organização é identificada automaticamente pelo token JWT.
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: ID da categoria
- *       - in: query
- *         name: organization_id
- *         required: true
- *         schema:
- *           type: string
- *         description: ID da organização da categoria
+ *         description: ID da categoria que será consultada
  *     security:
  *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: Dados completos da categoria
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Category'
  *       401:
  *         description: Token ausente ou inválido
  *       404:
@@ -87,21 +93,24 @@ categoryRouter.get('/:id', authenticateJWT, requireAdminOfOrganization, getCateg
 
 /**
  * @swagger
- * /api/admin/categories:
+ * /api/admin/categories/{slug}:
  *   post:
  *     summary: Cria uma nova categoria para a organização autenticada
+ *     description: |
+ *       Cria uma categoria vinculada à organização identificada pelo token JWT.
+ *       O parâmetro `slug` representa a organização no contexto público.
  *     tags: [Categorias]
+ *     security:
+ *       - cookieAuth: []
  *     consumes:
  *       - multipart/form-data
  *     parameters:
- *       - in: query
- *         name: organization_id
+ *       - in: path
+ *         name: slug
  *         required: true
  *         schema:
  *           type: string
- *         description: ID da organização na qual a categoria será criada
- *     security:
- *       - cookieAuth: []
+ *         description: Slug público da organização
  *     requestBody:
  *       required: true
  *       content:
@@ -122,6 +131,10 @@ categoryRouter.get('/:id', authenticateJWT, requireAdminOfOrganization, getCateg
  *     responses:
  *       201:
  *         description: Categoria criada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Category'
  *       400:
  *         description: Dados inválidos
  *       401:
@@ -133,27 +146,30 @@ categoryRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, uploa
 
 /**
  * @swagger
- * /api/admin/categories/{id}:
+ * /api/admin/categories/{slug}/{id}:
  *   put:
- *     summary: Atualiza uma categoria existente da organização
+ *     summary: Atualiza uma categoria existente da organização autenticada
+ *     description: |
+ *       Atualiza os dados de uma categoria pertencente à organização identificada
+ *       pelo token JWT. O `slug` define qual organização está sendo acessada.
  *     tags: [Categorias]
+ *     security:
+ *       - cookieAuth: []
  *     consumes:
  *       - multipart/form-data
  *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Slug da organização
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: ID da categoria
- *       - in: query
- *         name: organization_id
- *         required: true
- *         schema:
- *           type: string
- *         description: ID da organização à qual a categoria pertence
- *     security:
- *       - cookieAuth: []
+ *         description: ID da categoria que será atualizada
  *     requestBody:
  *       required: true
  *       content:
@@ -172,6 +188,10 @@ categoryRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, uploa
  *     responses:
  *       200:
  *         description: Categoria atualizada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Category'
  *       401:
  *         description: Token ausente ou inválido
  *       404:
@@ -183,28 +203,31 @@ categoryRouter.put('/:slug/:id', authenticateJWT,  upload.single('image'), updat
 
 /**
  * @swagger
- * /api/admin/categories/{id}:
+ * /api/admin/categories/{slug}/{id}:
  *   delete:
- *     summary: Remove uma categoria de uma organização
+ *     summary: Remove uma categoria da organização autenticada
+ *     description: |
+ *       Exclui uma categoria pertencente à organização definida pelo slug,
+ *       validada pelo token JWT.
  *     tags: [Categorias]
+ *     security:
+ *       - cookieAuth: []
  *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Slug da organização
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: ID da categoria a ser removida
- *       - in: query
- *         name: organization_id
- *         required: true
- *         schema:
- *           type: string
- *         description: ID da organização à qual a categoria pertence
- *     security:
- *       - cookieAuth: []
+ *         description: ID da categoria que será removida
  *     responses:
  *       204:
- *         description: Categoria removida com sucesso
+ *         description: Categoria removida com sucesso (sem corpo de resposta)
  *       401:
  *         description: Token ausente ou inválido
  *       404:

@@ -2,26 +2,27 @@ import express from 'express';
 import updateUserPassword from '../utils/updateUserPassword.js';
 import generatePassword from '../utils/PasswordGenerator.js'
 import findUserByEmail from '../utils/findUserByEmail.js';
+import { supabase } from '../lib/supabase.js';
 
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+    const { slug } = req.params;
+
+    if (!slug) {
+      return res.status(404).json({ success: false, error: 'Slug da organização não informado.' });
+    }
     
-    // Aqui você deve verificar se o email existe no seu banco de dados
-    // Esta é uma implementação simulada - substitua pela sua lógica real
-    const user = await findUserByEmail(email); // Você precisa implementar esta função
+    const user = await findUserByEmail(email, slug); 
     
     if (!user) {
       return res.status(404).json({ success: false, error: 'Email não encontrado' });
     }
 
-    // Gera nova senha
     const newPassword = generatePassword();
     
-    // Atualiza a senha no banco de dados (implemente esta função)
     await updateUserPassword(user.id, newPassword);
     
-    // Envia email com a nova senha
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,

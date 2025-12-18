@@ -6,16 +6,26 @@ export const availableTimesRouter = Router()
 
 /**
  * @swagger
- * /api/available-times:
+ * /api/available-times/{slug}:
  *   get:
  *     summary: Consulta horários disponíveis para agendamento
+ *     tags: [Agendamento]
  *     description: |
  *       Retorna os horários disponíveis para agendamento considerando:
- *       - O horário de trabalho do funcionário
- *       - Os compromissos já marcados
+ *       - O funcionário selecionado
+ *       - A data informada
  *       - A duração do serviço selecionado
- *     tags: [Agendamento]
+ *       - Os horários de trabalho e horários indisponíveis
+ * 
  *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Identificador da organização
+ *         example: "meu-salao"
+ * 
  *       - in: query
  *         name: employeeId
  *         required: true
@@ -23,21 +33,24 @@ export const availableTimesRouter = Router()
  *           type: integer
  *         description: ID do funcionário
  *         example: 3
+ * 
  *       - in: query
  *         name: date
  *         required: true
  *         schema:
  *           type: string
  *           format: date
- *         description: Data para consulta (formato YYYY-MM-DD)
- *         example: "2023-12-25"
+ *         description: Data para consulta (YYYY-MM-DD)
+ *         example: "2025-03-10"
+ * 
  *       - in: query
  *         name: duration
  *         required: true
  *         schema:
  *           type: integer
  *         description: Duração do serviço em minutos
- *         example: 30
+ *         example: 45
+ * 
  *     responses:
  *       200:
  *         description: Lista de horários disponíveis
@@ -51,13 +64,12 @@ export const availableTimesRouter = Router()
  *                   start:
  *                     type: string
  *                     format: time
- *                     description: Hora de início (HH:MM)
- *                     example: "14:30"
+ *                     example: "14:00"
  *                   end:
  *                     type: string
  *                     format: time
- *                     description: Hora de término (HH:MM)
- *                     example: "15:00"
+ *                     example: "14:45"
+ * 
  *       400:
  *         description: Parâmetros inválidos ou faltando
  *       500:

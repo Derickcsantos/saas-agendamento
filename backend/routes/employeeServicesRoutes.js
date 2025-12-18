@@ -15,7 +15,7 @@ export const employeeServicesRouter = Router();
 
 /**
  * @swagger
- * /api/employee-services/{employeeId}:
+ * /api/employee-services/{slug}/{employeeId}:
  *   get:
  *     summary: Lista serviços associados a um funcionário
  *     description: Retorna todos os IDs de serviços que um funcionário pode realizar
@@ -56,7 +56,7 @@ employeeServicesRouter.get('/:slug/:employeeId', getEmployeeServicesByEmployeeId
 
 /**
  * @swagger
- * /api/employee-services/{employeeId}:
+ * /api/employee-services/{slug}/{employeeId}:
  *   put:
  *     summary: Atualiza serviços associados a um funcionário
  *     description: |

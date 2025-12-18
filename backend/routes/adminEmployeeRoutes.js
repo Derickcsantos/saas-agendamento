@@ -17,27 +17,35 @@ export const adminEmployeeRouter = Router();
 
 /**
  * @swagger
- * tags:
- *   - name: Funcionários
- *     description: Endpoints para gestão de funcionários/profissionais
- */
-
-/**
- * @swagger
- * /api/admin/employees:
+ * /api/admin/employees/{slug}:
  *   get:
  *     summary: Lista todos os funcionários com detalhes
- *     description: Retorna todos os funcionários cadastrados com seus serviços associados e horários de trabalho
+ *     description: Retorna todos os funcionários registrados na organização, incluindo serviços associados e horários de trabalho.
  *     tags: [Funcionários]
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Identificador único da organização
+ *
  *     responses:
  *       200:
- *         description: Lista completa de funcionários com detalhes
+ *         description: Lista completa de funcionários com seus dados e serviços
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/EmployeeWithDetails'
+ *
+ *       401:
+ *         description: Token inválido ou não fornecido
+ *
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -54,11 +62,13 @@ adminEmployeeRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, g
 
 /**
  * @swagger
- * /api/admin/employees/{id}:
+ * /api/admin/employees/{slug}/{id}:
  *   get:
  *     summary: Obtém detalhes de um funcionário específico
- *     description: Retorna os dados completos de um funcionário, convertendo a imagem para data URL se existir
+ *     description: Retorna os dados completos do funcionário, incluindo imagem convertida para Data URL se existir.
  *     tags: [Funcionários]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -68,11 +78,11 @@ adminEmployeeRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, g
  *         description: ID do funcionário
  *     responses:
  *       200:
- *         description: Dados do funcionário
+ *         description: Dados completos do funcionário
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Employee'
+ *               $ref: '#/components/schemas/EmployeeWithDetails'
  *       404:
  *         description: Funcionário não encontrado
  *       500:
@@ -82,12 +92,13 @@ adminEmployeeRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganizatio
 
 /**
  * @swagger
- * /api/admin/employees:
+ * /api/admin/employees/{slug}:
  *   post:
  *     summary: Cadastra um novo funcionário
+ *     description: Cria um funcionário vinculado à organização autenticada. Suporta upload de imagem via multipart/form-data.
  *     tags: [Funcionários]
- *     consumes:
- *       - multipart/form-data
+ *     security:
+ *       - bearerAuth: []    # Requer JWT
  *     requestBody:
  *       required: true
  *       content:
@@ -112,11 +123,11 @@ adminEmployeeRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganizatio
  *               comissao:
  *                 type: number
  *                 format: float
- *                 description: Percentual de comissão
+ *                 description: Percentual de comissão do funcionário
  *                 example: 10.5
  *               is_active:
  *                 type: boolean
- *                 description: Status do funcionário
+ *                 description: Define se o funcionário está ativo
  *                 example: true
  *               image:
  *                 type: string
@@ -130,7 +141,9 @@ adminEmployeeRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganizatio
  *             schema:
  *               $ref: '#/components/schemas/Employee'
  *       400:
- *         description: Dados inválidos ou faltando
+ *         description: Dados inválidos ou incompletos enviados ao servidor
+ *       401:
+ *         description: Token JWT ausente ou inválido
  *       500:
  *         description: Erro interno do servidor
  */
@@ -138,19 +151,20 @@ adminEmployeeRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, 
 
 /**
  * @swagger
- * /api/admin/employees/{id}:
+ * /api/admin/employees/{slug}/{id}:
  *   put:
- *     summary: Atualiza um funcionário existente
+ *     summary: Atualiza os dados de um funcionário existente
+ *     description: Atualiza os dados de um funcionário vinculado à organização autenticada. Suporta envio de nova imagem via multipart/form-data.
  *     tags: [Funcionários]
- *     consumes:
- *       - multipart/form-data
+ *     security:
+ *       - bearerAuth: []    # Requer autenticação JWT
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID do funcionário
+ *         description: ID do funcionário que será atualizado
  *     requestBody:
  *       required: true
  *       content:
@@ -160,20 +174,25 @@ adminEmployeeRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, 
  *             properties:
  *               name:
  *                 type: string
+ *                 example: "João Silva"
  *               email:
  *                 type: string
  *                 format: email
+ *                 example: "joao@exemplo.com"
  *               phone:
  *                 type: string
+ *                 example: "11999998888"
  *               comissao:
  *                 type: number
  *                 format: float
+ *                 example: 12.5
  *               is_active:
  *                 type: boolean
+ *                 example: true
  *               image:
  *                 type: string
  *                 format: binary
- *                 description: Nova foto do funcionário (opcional)
+ *                 description: Nova imagem do funcionário (opcional)
  *     responses:
  *       200:
  *         description: Funcionário atualizado com sucesso
@@ -181,6 +200,10 @@ adminEmployeeRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, 
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Employee'
+ *       400:
+ *         description: Dados inválidos enviados pelo cliente
+ *       401:
+ *         description: Token JWT ausente ou inválido
  *       404:
  *         description: Funcionário não encontrado
  *       500:
@@ -190,20 +213,25 @@ adminEmployeeRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganizatio
 
 /**
  * @swagger
- * /api/admin/employees/{id}:
+ * /api/admin/employees/{slug}/{id}:
  *   delete:
- *     summary: Remove um funcionário e seus horários associados
+ *     summary: Remove um funcionário e todos os seus horários associados
+ *     description: Exclui um funcionário pertencente à organização autenticada, removendo também seus horários de trabalho.
  *     tags: [Funcionários]
+ *     security:
+ *       - bearerAuth: []   # Requer autenticação JWT
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID do funcionário
+ *         description: ID do funcionário que será removido
  *     responses:
  *       204:
- *         description: Funcionário e horários removidos com sucesso
+ *         description: Funcionário removido com sucesso (sem corpo de resposta)
+ *       401:
+ *         description: Token JWT ausente ou inválido
  *       404:
  *         description: Funcionário não encontrado
  *       500:

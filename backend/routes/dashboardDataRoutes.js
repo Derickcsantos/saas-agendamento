@@ -14,13 +14,22 @@ export const dashboardDataRouter = Router()
 
 /**
  * @swagger
- * /api/admin/dashboard:
+ * /api/admin/dashboard/{slug}:
  *   get:
  *     summary: Obtém dados consolidados para o painel administrativo
  *     description: |
  *       Retorna métricas e dados estatísticos para exibição no dashboard administrativo,
  *       incluindo contagens totais, distribuições e dados para gráficos.
  *     tags: [Dashboard]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Slug da organização para carregar os dados do dashboard
+ *     security:
+ *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: Dados do dashboard retornados com sucesso
@@ -47,7 +56,7 @@ export const dashboardDataRouter = Router()
  *                   example: 120
  *                 monthlyAppointments:
  *                   type: array
- *                   description: Contagem de agendamentos por mês (índices 0-11 representando Janeiro-Dezembro)
+ *                   description: Contagem de agendamentos por mês (índices 0-11 correspondem a Jan–Dez)
  *                   items:
  *                     type: integer
  *                   example: [10, 12, 15, 8, 5, 12, 18, 20, 10, 5, 8, 7]
@@ -84,7 +93,7 @@ export const dashboardDataRouter = Router()
  *                 lastUpdated:
  *                   type: string
  *                   format: date-time
- *                   description: Timestamp da última atualização dos dados
+ *                   description: Timestamp da última atualização
  *                   example: "2023-08-15T14:30:00.000Z"
  *       500:
  *         description: Erro interno do servidor
