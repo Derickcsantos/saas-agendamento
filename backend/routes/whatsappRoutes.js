@@ -6,12 +6,23 @@ export const whatsappRouter = Router()
 
 /**
  * @swagger
- * /api/send-whatsapp-confirmation:
+ * /api/whatsapp/confirmation/{slug}:
  *   post:
- *     summary: Enviar mensagem de confirmação via WhatsApp
- *     description: Envia uma mensagem de confirmação de agendamento para o cliente via WhatsApp.
- *     tags:
- *       - Whatsapp
+ *     summary: Envia mensagem de confirmação de agendamento via WhatsApp
+ *     description: |
+ *       Envia uma mensagem de confirmação de agendamento para o cliente
+ *       utilizando o WhatsApp da organização informada.
+ *     tags: [Whatsapp]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Slug da organização
+ *         example: "barbearia-do-joao"
  *     requestBody:
  *       required: true
  *       content:
@@ -41,6 +52,7 @@ export const whatsappRouter = Router()
  *                     example: "Maria Silva"
  *                   date:
  *                     type: string
+ *                     format: date
  *                     example: "2025-06-10"
  *                   time:
  *                     type: string
@@ -48,8 +60,21 @@ export const whatsappRouter = Router()
  *     responses:
  *       200:
  *         description: Mensagem enviada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Mensagem enviada com sucesso"
  *       400:
- *         description: Dados incompletos
+ *         description: Dados inválidos ou incompletos
+ *       401:
+ *         description: Não autorizado
  *       500:
  *         description: Erro ao enviar mensagem via WhatsApp
  */

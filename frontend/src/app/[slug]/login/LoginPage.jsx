@@ -175,7 +175,8 @@ export default function LoginPage({ slug }) {
             {successMsg}
           </div>
         )}
-        <p className="flex justify-center mt-5 text-gray-800">Não tem conta? <a href={`/${slug}/cadastro`} className="px-1 " style={{color: palette?.strong_color}}>Clique aqui</a></p>
+        <p className="flex justify-center mt-5 text-gray-800">Não tem conta? <a href={`/${slug}/cadastro`} className="px-1 " style={{color: palette?.strong_color}}>Clique aqui</a>
+        </p>
       </div>
     </main>
   );

@@ -5,15 +5,15 @@ export const checkHealthRouter = Router()
 
 /**
  * @swagger
- * /health:
+ * /api/whatsapp-health:
  *   get:
- *     summary: Verifica o estado da aplicação
- *     description: Retorna o status da API e do cliente WhatsApp.
+ *     summary: Verifica o estado de conexão com o cliente WhatsApp
+ *     description: Retorna o status geral da API e a situação da conexão com o cliente WhatsApp.
  *     tags:
  *       - Sistema
  *     responses:
  *       200:
- *         description: Sistema está saudável
+ *         description: Cliente WhatsApp conectado e API funcionando normalmente
  *         content:
  *           application/json:
  *             schema:
@@ -21,11 +21,27 @@ export const checkHealthRouter = Router()
  *               properties:
  *                 status:
  *                   type: string
- *                   example: healthy
+ *                   example: "healthy"
+ *                 whatsapp:
+ *                   type: string
+ *                   example: "connected"
  *                 timestamp:
  *                   type: string
  *                   format: date-time
  *       503:
- *         description: Cliente WhatsApp não conectado
+ *         description: Cliente WhatsApp não está conectado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "unhealthy"
+ *                 whatsapp:
+ *                   type: string
+ *                   example: "disconnected"
+ *       500:
+ *         description: Erro interno ao verificar o estado do cliente WhatsApp
  */
 checkHealthRouter.get('/whatsapp-health', checkWhatsappHealth)

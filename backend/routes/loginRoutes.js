@@ -6,13 +6,19 @@ export const loginRouter = Router()
 
 /**
  * @swagger
- * /api/login:
+ * /api/login/{slug}:
  *   post:
- *     summary: Autentica um usuário no sistema (versão desenvolvimento)
- *     description: |
- *       Esta rota é uma versão SIMPLIFICADA para desenvolvimento que compara a senha em texto puro.
- *       EM PRODUÇÃO, substitua por um sistema seguro com hash de senha e JWT.
- *     tags: [Autenticação]
+ *     summary: Realiza login utilizando o slug da organização
+ *     tags:
+ *       - Login
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         description: Slug da organização que identifica qual ambiente de login deve ser utilizado
+ *         schema:
+ *           type: string
+ *           example: minha-barbearia
  *     requestBody:
  *       required: true
  *       content:
@@ -20,17 +26,15 @@ export const loginRouter = Router()
  *           schema:
  *             type: object
  *             required:
- *               - username
+ *               - login
  *               - password
  *             properties:
- *               username:
+ *               login:
  *                 type: string
- *                 description: Nome de usuário cadastrado
- *                 example: "derick_campos"
+ *                 example: usuario@email.com
  *               password:
  *                 type: string
- *                 description: Senha em texto puro (APENAS PARA DESENVOLVIMENTO)
- *                 example: "senhaSegura123"
+ *                 example: "123456"
  *     responses:
  *       200:
  *         description: Login realizado com sucesso
@@ -39,39 +43,19 @@ export const loginRouter = Router()
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 user:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                     username:
- *                       type: string
- *                     email:
- *                       type: string
- *                     tipo:
- *                       type: string
- *                       enum: [comum, admin]
- *         headers:
- *           Set-Cookie:
- *             schema:
- *               type: string
- *             description: Cookie HTTP-only contendo os dados do usuário autenticado
- *       401:
- *         description: Credenciais inválidas
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
+ *                 message:
  *                   type: string
- *                   example: "Credenciais inválidas"
+ *                   example: Login successful
+ *                 token:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR...
+ *       400:
+ *         description: Dados inválidos
+ *       401:
+ *         description: Credenciais incorretas
+ *       404:
+ *         description: Slug não encontrado
  *       500:
- *         description: Erro interno do servidor
+ *         description: Erro interno no servidor
  */
-loginRouter.post('/', authenticateJWT, extractOrganizationId, login)
-
 loginRouter.post('/:slug', loginBySlug)

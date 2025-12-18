@@ -1,4 +1,4 @@
-import { authenticateJWT, extractOrganizationId } from "../middlewares/authMiddleware.js";
+import { authenticateJWT } from "../middlewares/authMiddleware.js";
 import { Router } from "express";
 import { verifyUser } from "../controllers/verifyUserController.js";
 
@@ -6,29 +6,32 @@ export const verifyUserRouter = Router();
 
 /**
  * @swagger
- * /api/verifica-usuario:
+ * /api/verifica-usuario/{slug}:
  *   post:
  *     summary: Verifica se um nome de usuário já está cadastrado
  *     description: |
- *       Endpoint utilizado para verificar a disponibilidade de um username durante o cadastro,
- *       evitando duplicidades no sistema.
+ *       Verifica se o username já existe dentro da organização informada.
+ *       Usado durante o cadastro para evitar duplicidades.
  *     tags: [Autenticação]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Slug da organização
+ *         example: "barbearia-do-joao"
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - username
+	@@ -24,34 +32,19 @@ export const verifyUserRouter = Router();
  *             properties:
  *               username:
  *                 type: string
- *                 description: Nome de usuário a ser verificado
  *                 example: "derick_campos"
  *     responses:
  *       200:
- *         description: Resposta da verificação
+ *         description: Resultado da verificação
  *         content:
  *           application/json:
  *             schema:
@@ -36,22 +39,8 @@ export const verifyUserRouter = Router();
  *               properties:
  *                 exists:
  *                   type: boolean
- *                   description: Indica se o usuário já está cadastrado
  *                   example: true
  *       500:
  *         description: Erro interno do servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 exists:
- *                   type: boolean
- *                   description: Sempre retorna false em caso de erro
- *                   example: false
- *                 error:
- *                   type: string
- *                   description: Mensagem de erro (apenas em modo de desenvolvimento)
- *                   example: "Erro ao acessar o banco de dados"
  */
-verifyUserRouter.post("/", authenticateJWT, extractOrganizationId, verifyUser);
+verifyUserRouter.post("/:slug", authenticateJWT, verifyUser);

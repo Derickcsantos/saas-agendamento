@@ -127,27 +127,39 @@ adminAppointmentRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganiza
 
 /**
  * @swagger
- * /api/admin/appointments/{id}/complete:
+ * /api/admin/appointments/{slug}/{id}/complete:
  *   put:
- *     summary: Marca agendamento como concluído
+ *     summary: Marca agendamento como concluído (admin)
  *     tags: [Agendamentos]
+ *
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
+ *         description: ID do agendamento a ser marcado como concluído
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Slug da organização
+ *
  *     responses:
  *       200:
- *         description: Agendamento atualizado
+ *         description: Agendamento atualizado com sucesso
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Appointment'
+ *
  *       400:
- *         description: Agendamento já concluído ou cancelado
+ *         description: O agendamento já está concluído ou cancelado
+ *
  *       404:
  *         description: Agendamento não encontrado
+ *
  *       500:
  *         description: Erro interno do servidor
  */
@@ -185,4 +197,41 @@ adminAppointmentRouter.put('/complete-yesterday', updateAdminAppointmentToComple
  */
 adminAppointmentRouter.get('/by-employee', authenticateJWT, getAdminAppointmentsByEmployee);
 
+/**
+ * @swagger
+ * /api/admin/appointments/canceled_appointments:
+ *   get:
+ *     summary: Lista todos os agendamentos cancelados
+ *     tags: [Agendamentos]
+ *     responses:
+ *       200:
+ *         description: Lista de agendamentos cancelados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   client_name:
+ *                     type: string
+ *                   service:
+ *                     type: string
+ *                   professional:
+ *                     type: string
+ *                   date:
+ *                     type: string
+ *                     format: date
+ *                   start_time:
+ *                     type: string
+ *                   end_time:
+ *                     type: string
+ *                   status:
+ *                     type: string
+ *                     example: canceled
+ *       500:
+ *         description: Erro interno do servidor
+ */
 adminAppointmentRouter.get('/canceled_appointments', getCancelledAppointments)

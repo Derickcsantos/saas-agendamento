@@ -19,14 +19,21 @@ export const employeeScheduleRouter = Router()
 
 /**
  * @swagger
- * /schedules:
+ * /api/admin/schedules/{slug}:
  *   get:
- *     summary: Lista todas as escalas de trabalho
- *     description: Retorna todos os horários cadastrados com informações dos funcionários
+ *     summary: Lista todas as escalas de trabalho de uma organização
+ *     description: Retorna todos os horários cadastrados, incluindo informações dos funcionários vinculados.
  *     tags: [Escalas de Trabalho]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Slug da organização para filtragem das escalas
  *     responses:
  *       200:
- *         description: Lista de escalas com detalhes dos funcionários
+ *         description: Lista de escalas de trabalho retornada com sucesso
  *         content:
  *           application/json:
  *             schema:
@@ -40,21 +47,27 @@ employeeScheduleRouter.get('/:slug', getSchedules)
 
 /**
  * @swagger
- * /schedules/{employee_id}:
+ * /api/admin/schedules/{slug}/{employee_id}:
  *   get:
  *     summary: Obtém a escala de um funcionário específico
- *     description: Retorna todos os horários de um funcionário com os dias formatados
+ *     description: Retorna todos os horários cadastrados para um funcionário, com dias formatados.
  *     tags: [Escalas de Trabalho]
  *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Slug da organização
  *       - in: path
  *         name: employee_id
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID do funcionário
+ *         description: ID do funcionário cujo horário será retornado
  *     responses:
  *       200:
- *         description: Lista de horários formatados
+ *         description: Lista de horários do funcionário
  *         content:
  *           application/json:
  *             schema:
@@ -103,7 +116,7 @@ employeeScheduleRouter.get('/:slug/:employee_id', getScheduleByEmployeeId)
  *               is_available:
  *                 type: boolean
  *                 description: Se o horário está disponível
- *                 default: true
+ *                 example: true
  *     responses:
  *       201:
  *         description: Horário criado com sucesso

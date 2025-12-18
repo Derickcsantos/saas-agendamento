@@ -4,6 +4,7 @@
  *   schemas:
  *     Category:
  *       type: object
+ *       description: Categoria de serviços
  *       properties:
  *         id:
  *           type: integer
@@ -11,9 +12,10 @@
  *         name:
  *           type: string
  *           example: "Cabelo"
- *         imagem_category:
+ *         image:
  *           type: string
- *           description: Imagem em formato base64 (pode ser null)
+ *           nullable: true
+ *           description: Imagem da categoria em base64
  *           example: "iVBORw0KGgoAAAANSUhEUgAA..."
  *         created_at:
  *           type: string
@@ -23,4 +25,39 @@
  *           type: string
  *           format: date-time
  *           example: "2023-01-02T00:00:00Z"
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     CategoryInput:
+ *       type: object
+ *       required:
+ *         - name
+ *       properties:
+ *         name:
+ *           type: string
+ *           example: "Cabelo"
+ *         image:
+ *           type: string
+ *           nullable: true
+ *           description: Imagem da categoria em base64
+ *           example: "iVBORw0KGgoAAAANSUhEUgAA..."
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     CategoryUpdate:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           example: "Cabelo Masculino"
+ *         image:
+ *           type: string
+ *           nullable: true
+ *           description: Nova imagem da categoria em base64
  */

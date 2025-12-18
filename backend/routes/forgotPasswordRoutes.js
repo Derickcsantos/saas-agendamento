@@ -5,12 +5,19 @@ export const forgotPasswordRouter = Router()
 
 /**
  * @swagger
- * /api/forgot-password:
+ * /api/forgot-password/{slug}:
  *   post:
  *     summary: Recuperação de senha
  *     description: Envia uma nova senha para o e-mail do usuário caso ele tenha esquecido.
  *     tags:
  *       - Autenticação
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Slug da organização
  *     requestBody:
  *       required: true
  *       content:
@@ -39,4 +46,4 @@ export const forgotPasswordRouter = Router()
  *       500:
  *         description: Erro interno ao processar a solicitação
  */
-forgotPasswordRouter.post('/', forgotPassword) 
+forgotPasswordRouter.post('/:slug', forgotPassword) 
