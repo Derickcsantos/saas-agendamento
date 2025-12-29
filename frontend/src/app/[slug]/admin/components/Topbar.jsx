@@ -69,7 +69,7 @@ export default function Topbar({ org, slug, setActiveTab }) {
   };
 
   return (
-    <header className="shadow-sm px-6 py-3 flex justify-between items-center bg-white relative z-[60]">
+    <header className="shadow-sm px-6 py-3 flex justify-between items-center bg-white relative ">
       <h1 className="text-lg font-semibold hidden md:block" style={{color: palette?.strong_color || '#511456'}}>
         Painel Administrativo
       </h1>
