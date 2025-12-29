@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
+import { generateNormalizedText } from '../utils/normalizeText'
 
 const BRAND = "#5E3BEE";
 
@@ -27,9 +28,6 @@ export default function GlobalLogin() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  // ===========================
-  // 🔎 GET ORGANIZATIONS
-  // ===========================
   const loadOrganizations = async () => {
     try {
       setLoadingOrgs(true);
@@ -50,7 +48,10 @@ export default function GlobalLogin() {
     }
   };
 
-  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    loadOrganizations(); 
+  }, []);
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
@@ -62,24 +63,38 @@ export default function GlobalLogin() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Filtragem em tempo real
+
   useEffect(() => {
-    const q = query.toLowerCase();
+    const q = generateNormalizedText(query);
 
     if (q.trim() === "") {
       setFiltered([]);
       setPage(1);
+      setSelectedOrg(null)
       return;
     }
 
-    const results = organizations.filter((org) =>
-      (org.name || "").toLowerCase().includes(q) ||
-      (org.slug_organization || "").toLowerCase().includes(q) ||
-      (org.email || "").toLowerCase().includes(q)
-    );
+    const results = organizations.filter((org) => {
+    const name = generateNormalizedText(org.name || "");
+    const slug = generateNormalizedText(org.slug_organization || "");
+    const email = generateNormalizedText(org.email || "");
+    return name.includes(q) || slug.includes(q) || email.includes(q);
+  });
 
     setFiltered(results);
     setPage(1);
+
+  const exact = organizations.find((org) => {
+    const name = generateNormalizedText(org.name || "");
+    const slug = generateNormalizedText(org.slug_organization || "");
+    return name === q || slug === q;
+  });
+
+    if (exact) {
+    setSelectedOrg(exact);
+  } else {
+    setSelectedOrg(null);
+  }
   }, [query, organizations]);
 
   // Selecionar organização
@@ -89,24 +104,38 @@ export default function GlobalLogin() {
     setFiltered([]);
   };
 
-  // ===========================
-  // 🔐 LOGIN
-  // ===========================
+  const resolveOrgFromQuery = () => {
+  const q = generateNormalizedText(query);
+  if (!q) return null;
+
+  return (
+    organizations.find((org) => generateNormalizedText(org.slug_organization || "") === q) ||
+    organizations.find((org) => generateNormalizedText(org.name || "") === q) ||
+    null
+  );
+};
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoadingLogin(true);
     setErrorMsg("");
     setSuccessMsg("");
 
-    if (!selectedOrg?.slug_organization) {
-      setErrorMsg("Por favor, selecione uma organização.");
+    let orgToUse = selectedOrg;
+
+    if (!orgToUse) {
+      orgToUse = resolveOrgFromQuery();
+    }
+
+    if (!orgToUse?.slug_organization) {
+      setErrorMsg("Por favor, selecione uma organização (ou digite o nome/slug completo).");
       setLoadingLogin(false);
       return;
     }
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/login/${selectedOrg.slug_organization}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/login/${orgToUse.slug_organization}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -126,7 +155,7 @@ export default function GlobalLogin() {
       setTimeout(() => {
         const tipo = data.user?.tipo;
 
-        if (tipo === "admin") router.push(`/${selectedOrg.slug_organization}/admin`);
+        if (tipo === "admin") router.push(`/${orgToUse.slug_organization}/admin`);
         else if (tipo === "funcionario") router.push(`/${selectedOrg.slug_organization}/profissional`);
         else if (tipo === "master") router.push(`/admin-dashboard`);
         else router.push(`/${selectedOrg.slug_organization}/minha-conta`);
@@ -139,9 +168,6 @@ export default function GlobalLogin() {
     }
   };
 
-  // ===========================
-  // UI
-  // ===========================
   return (
     
     <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
