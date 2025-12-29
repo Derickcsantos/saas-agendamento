@@ -269,79 +269,81 @@ export default function CouponsTab({ org }) {
       <div className="bg-white p-4 rounded-lg shadow-sm border">
         <h4 className="font-semibold text-gray-700 mb-4">Cupons</h4>
 
-        <table className="w-full text-sm border-collapse">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-3 py-2 text-left">Código</th>
-              <th className="px-3 py-2 text-left">Nome</th>
-              <th className="px-3 py-2 text-left">Desconto</th>
-              <th className="px-3 py-2 text-left">Validade</th>
-              <th className="px-3 py-2 text-left">Usos</th>
-              <th className="px-3 py-2 text-left">Status</th>
-              <th className="px-3 py-2 text-left">Ações</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {coupons.map((c) => (
-              <tr key={c.id} className="border-b">
-                <td className="px-3 py-2 font-bold">{c.code}</td>
-                <td className="px-3 py-2">{c.name}</td>
-
-                <td className="px-3 py-2">
-                  {c.discount_type === "percentage"
-                    ? `${c.discount_value}%`
-                    : `R$ ${c.discount_value.toFixed(2)}`}
-                </td>
-
-                <td className="px-3 py-2">
-                  {c.valid_until
-                    ? new Date(c.valid_until).toLocaleDateString()
-                    : "Indeterminado"}
-                </td>
-
-                <td className="px-3 py-2">
-                  {c.current_uses}
-                  {c.max_uses ? `/${c.max_uses}` : ""}
-                </td>
-
-                <td className="px-3 py-2">
-                  <span
-                    className={`px-2 py-1 rounded-md text-white text-xs ${
-                      c.is_active ? "bg-green-500" : "bg-gray-500"
-                    }`}
-                  >
-                    {c.is_active ? "Ativo" : "Inativo"}
-                  </span>
-                </td>
-
-                <td className="px-3 py-2 flex gap-2">
-                  <button
-                    className="text-blue-500 hover:underline"
-                    onClick={() => handleEdit(c)}
-                  >
-                    Editar
-                  </button>
-
-                  <button
-                    className="text-red-500 hover:underline"
-                    onClick={() => handleDelete(c.id)}
-                  >
-                    Excluir
-                  </button>
-                </td>
-              </tr>
-            ))}
-
-            {!coupons.length && (
+        <div className="overflow-x-auto rounded-lg border dark:border-gray-700">
+          <table className="w-full text-sm border-collapse">
+            <thead className="bg-gray-50">
               <tr>
-                <td colSpan={7} className="text-center text-gray-400 py-4">
-                  Nenhum cupom cadastrado
-                </td>
+                <th className="px-3 py-2 text-left">Código</th>
+                <th className="px-3 py-2 text-left">Nome</th>
+                <th className="px-3 py-2 text-left">Desconto</th>
+                <th className="px-3 py-2 text-left">Validade</th>
+                <th className="px-3 py-2 text-left">Usos</th>
+                <th className="px-3 py-2 text-left">Status</th>
+                <th className="px-3 py-2 text-left">Ações</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+
+            <tbody>
+              {coupons.map((c) => (
+                <tr key={c.id} className="border-b">
+                  <td className="px-3 py-2 font-bold">{c.code}</td>
+                  <td className="px-3 py-2">{c.name}</td>
+
+                  <td className="px-3 py-2">
+                    {c.discount_type === "percentage"
+                      ? `${c.discount_value}%`
+                      : `R$ ${c.discount_value.toFixed(2)}`}
+                  </td>
+
+                  <td className="px-3 py-2">
+                    {c.valid_until
+                      ? new Date(c.valid_until).toLocaleDateString()
+                      : "Indeterminado"}
+                  </td>
+
+                  <td className="px-3 py-2">
+                    {c.current_uses}
+                    {c.max_uses ? `/${c.max_uses}` : ""}
+                  </td>
+
+                  <td className="px-3 py-2">
+                    <span
+                      className={`px-2 py-1 rounded-md text-white text-xs ${
+                        c.is_active ? "bg-green-500" : "bg-gray-500"
+                      }`}
+                    >
+                      {c.is_active ? "Ativo" : "Inativo"}
+                    </span>
+                  </td>
+
+                  <td className="px-3 py-2 flex gap-2">
+                    <button
+                      className="text-blue-500 hover:underline"
+                      onClick={() => handleEdit(c)}
+                    >
+                      Editar
+                    </button>
+
+                    <button
+                      className="text-red-500 hover:underline"
+                      onClick={() => handleDelete(c.id)}
+                    >
+                      Excluir
+                    </button>
+                  </td>
+                </tr>
+              ))}
+
+              {!coupons.length && (
+                <tr>
+                  <td colSpan={7} className="text-center text-gray-400 py-4">
+                    Nenhum cupom cadastrado
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
