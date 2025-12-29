@@ -128,19 +128,19 @@ export default function ServicesTab({ org }) {
           {form.id ? "Editar Serviço" : "Novo Serviço"}
         </h4>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex flex-col gap-4 md:flex-row md:flex-wrap">
 
           <input
             type="text"
             placeholder="Nome do serviço"
-            className="bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3"
+            className="w-full md:basis-[calc(50%-0.5rem)] border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 text-sm focus:ring focus:ring-purple-200 outline-none"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
           />
 
           <select
-            className="bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3"
+            className="w-full md:basis-[calc(50%-0.5rem)] bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3"
             value={form.category_id}
             onChange={(e) => setForm({ ...form, category_id: e.target.value })}
             required
@@ -154,7 +154,7 @@ export default function ServicesTab({ org }) {
           <input
             type="number"
             placeholder="Duração (min)"
-            className="bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3"
+            className="w-full md:basis-[calc(50%-0.5rem)] bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3"
             value={form.duration}
             onChange={(e) => setForm({ ...form, duration: e.target.value })}
             required
@@ -163,7 +163,7 @@ export default function ServicesTab({ org }) {
           <input
             type="number"
             placeholder="Preço (R$)"
-            className="bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3"
+            className="w-full md:basis-[calc(50%-0.5rem)] bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3"
             value={form.price}
             step="0.01"
             onChange={(e) => setForm({ ...form, price: e.target.value })}
@@ -171,27 +171,30 @@ export default function ServicesTab({ org }) {
 
           <textarea
             placeholder="Descrição do serviço"
-            className="bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3 md:col-span-2"
+            className="w-full bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3 md:col-span-2"
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
 
-          {/* Upload */}
-          <input
-            type="file"
-            accept="image/*"
-            className="p-2 bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg"
-            onChange={(e) => {
-              const file = e.target.files[0];
-              setImage(file);
-              setPreview(URL.createObjectURL(file));
-            }}
-          />
+          {/* Upload - sempre full width */}
+          <div className="md:col-span-2 w-full md:basis-[calc(50%-0.5rem)]">
+            <input
+              type="file"
+              accept="image/*"
+              className="w-full md:basis-[calc(50%-0.5rem)] overflow-hidden p-2 bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg text-sm"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setImage(file);
+                setPreview(URL.createObjectURL(file));
+              }}
+            />
+          </div>
 
           <input
             type="number"
             placeholder="Durabilidade do serviço (em dias)"
-            className="bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3"
+            className="w-full md:basis-[calc(50%-0.5rem)] bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3"
             value={form.durability_days}
             step="0.01"
             onChange={(e) => setForm({ ...form, durability_days: e.target.value })}
