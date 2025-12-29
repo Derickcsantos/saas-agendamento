@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import ImageDropzone from "./ImageDropzone"
 
 export default function CategoriesTab({ org }) {
   const [categories, setCategories] = useState([]);
@@ -101,7 +102,7 @@ export default function CategoriesTab({ org }) {
           {editing ? "Editar Categoria" : "Nova Categoria"}
         </h4>
 
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col gap-4">
           <input
             type="text"
             className="border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 flex-1 text-sm focus:ring focus:ring-purple-200 outline-none"
@@ -111,16 +112,17 @@ export default function CategoriesTab({ org }) {
             required
           />
 
-          <input
-            type="file"
-            accept="image/*"
-            className="border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 rounded-lg p-2 text-sm"
-            onChange={(e) => {
-              const file = e.target.files[0];
+          <div>
+            <ImageDropzone
+            valueFile={image}
+            previewUrl={preview}
+            paletteColor={palette?.strong_color}
+            onChangeFile={(file, url) => {
               setImage(file);
-              setPreview(URL.createObjectURL(file));
+              setPreview(url);
             }}
           />
+          </div>
         </div>
 
         {preview && (

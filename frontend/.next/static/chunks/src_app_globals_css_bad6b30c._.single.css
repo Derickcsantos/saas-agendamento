@@ -1223,6 +1223,10 @@
     max-height: 90%;
   }
 
+  .min-h-\[120px\] {
+    min-height: 120px;
+  }
+
   .min-h-\[300px\] {
     min-height: 300px;
   }
@@ -2430,6 +2434,10 @@
     font-size: 10px;
   }
 
+  .text-\[11px\] {
+    font-size: 11px;
+  }
+
   .text-\[15px\] {
     font-size: 15px;
   }
@@ -3283,6 +3291,12 @@
   @media (min-width: 40rem) {
     .sm\:gap-4 {
       gap: calc(var(--spacing) * 4);
+    }
+  }
+
+  @media (min-width: 40rem) {
+    .sm\:p-5 {
+      padding: calc(var(--spacing) * 5);
     }
   }
 
