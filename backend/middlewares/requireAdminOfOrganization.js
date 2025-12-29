@@ -3,7 +3,6 @@ import { supabase } from "../lib/supabase.js";
 
 export const requireAdminOfOrganization = async (req, res, next) => {
   try {
-    // Slug que identifica o tenant alvo da rota
     const slug = req.params.slug;
 
     if (!slug) {
@@ -12,9 +11,8 @@ export const requireAdminOfOrganization = async (req, res, next) => {
       });
     }
 
-    // Usuário já deve estar autenticado via cookie HttpOnly
-    const user = req.user; // populado pelo authenticateJWT
-    const userOrgId = req.organizationId;
+    const user = req.user;
+    const userOrgId =  user.organization_id;
 
     if (!user) {
       return res.status(401).json({
@@ -22,14 +20,12 @@ export const requireAdminOfOrganization = async (req, res, next) => {
       });
     }
 
-    // Política corporativa: apenas ADMIN ou MASTER passam
     if (user.tipo !== "admin" && user.tipo !== "master") {
       return res.status(403).json({
         error: "Acesso negado. Perfil sem privilégios administrativos."
       });
     }
 
-    // Carrega a organização real do Supabase (fonte de verdade)
     const { data: org, error: orgError } = await supabase
       .from("organizations")
       .select("id, slug_organization")
@@ -43,8 +39,6 @@ export const requireAdminOfOrganization = async (req, res, next) => {
       });
     }
 
-    // Aqui garantimos a isolação multi-tenant:
-    // O admin só acessa a organização à qual pertence
     if (userOrgId !== org.id) {
       console.warn(
         `ACESSO BLOQUEADO: user=${user.id}, tipo=${user.tipo}, pertenceOrg=${userOrgId}, tentouAcessarOrg=${org.id}`
@@ -55,7 +49,6 @@ export const requireAdminOfOrganization = async (req, res, next) => {
       });
     }
 
-    // Tudo certo → libera fluxo downstream
     req.organizationId = org.id;
     return next();
 

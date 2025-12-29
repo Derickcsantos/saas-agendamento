@@ -6,6 +6,7 @@ import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
+import { generateNormalizedText } from '../utils/normalizeText'
 
 export default function CreateOrganization() {
   const [step, setStep] = useState(1);
@@ -140,9 +141,9 @@ export default function CreateOrganization() {
   ];
 
   const checkSlugAvailability = async () => {
-    const slug = orgData.name.toLowerCase().replace(/\s+/g, "-");
+    const slug = generateNormalizedText(orgData.name)
 
-    if (!slug.trim()) return;
+    if (!slug) return;
 
     setCheckingSlug(true);
 
@@ -151,14 +152,12 @@ export default function CreateOrganization() {
         `${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${slug}`
       );
 
-      // SE RETORNAR UMA ORGANIZAÇÃO → slug já existe
       if (res.data?.id) {
         setSlugExists(true);
       } else {
         setSlugExists(false);
       }
     } catch (err) {
-      // 404 significa que NÃO existe → slug disponível
       if (err.response?.status === 404) {
         setSlugExists(false);
       } else {
@@ -236,7 +235,7 @@ export default function CreateOrganization() {
                   />
                   {orgData.name? (
                     <div className="flex justify-center mt-4">
-                      <p className="text-gray-500" style={{fontSize: '12px'}}>www.marcafy.com.br/{orgData.name.toLowerCase().replace(/\s+/g, "-")}
+                      <p className="text-gray-500" style={{fontSize: '12px'}}>www.marcafy.com.br/{generateNormalizedText(orgData.name)}
                       </p>
                     </div>
                     ) : (
@@ -270,13 +269,16 @@ export default function CreateOrganization() {
                     className="w-full mt-1 border border-black/10 rounded-lg p-3 text-gray-900 shadow-sm focus:ring-2 focus:ring-[#5E3BEE]/40 focus:outline-none"
                   >
                     <option value="">Selecione...</option>
-                    <option value="Beleza">Beleza</option>
+                    <option value="Salao">Salão</option>
                     <option value="Estética">Estética</option>
                     <option value="Barbearia">Barbearia</option>
                     <option value="Atendimento">Atendimento</option>
                     <option value="Consultoria">Consultoria</option>
+                    <option value="Direito">Direito</option>
+                    <option value="Prestador de servicos">Prestação de serviço</option>
                     <option value="Clinica">Clínica</option>
                     <option value="Educação">Educação</option>
+                    <option value="financas">Finanças</option>
                     <option value="Esportivo">Esportivo</option>
                     <option value="Outro">Outro</option>
                   </select>

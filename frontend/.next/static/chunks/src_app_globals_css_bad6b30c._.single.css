@@ -268,6 +268,7 @@
     --font-weight-extrabold: 800;
     --tracking-tight: -.025em;
     --tracking-wide: .025em;
+    --tracking-wider: .05em;
     --tracking-widest: .1em;
     --leading-tight: 1.25;
     --leading-relaxed: 1.625;
@@ -878,6 +879,10 @@
     z-index: calc(10 * -1);
   }
 
+  .z-5 {
+    z-index: 5;
+  }
+
   .z-10 {
     z-index: 10;
   }
@@ -900,6 +905,14 @@
 
   .z-\[55\] {
     z-index: 55;
+  }
+
+  .z-\[60\] {
+    z-index: 60;
+  }
+
+  .z-\[70\] {
+    z-index: 70;
   }
 
   .order-1 {
@@ -958,6 +971,10 @@
     .container {
       max-width: 96rem;
     }
+  }
+
+  .mx-4 {
+    margin-inline: calc(var(--spacing) * 4);
   }
 
   .mx-auto {
@@ -1820,6 +1837,11 @@
     border-style: dashed;
   }
 
+  .border-none {
+    --tw-border-style: none;
+    border-style: none;
+  }
+
   .border-\[\#5E3BEE\] {
     border-color: #5e3bee;
   }
@@ -1856,6 +1878,10 @@
 
   .border-blue-500 {
     border-color: var(--color-blue-500);
+  }
+
+  .border-gray-50 {
+    border-color: var(--color-gray-50);
   }
 
   .border-gray-100 {
@@ -2299,6 +2325,10 @@
     padding-right: calc(var(--spacing) * 1);
   }
 
+  .pr-4 {
+    padding-right: calc(var(--spacing) * 4);
+  }
+
   .pb-1 {
     padding-bottom: calc(var(--spacing) * 1);
   }
@@ -2321,6 +2351,14 @@
 
   .pb-24 {
     padding-bottom: calc(var(--spacing) * 24);
+  }
+
+  .pl-3 {
+    padding-left: calc(var(--spacing) * 3);
+  }
+
+  .pl-10 {
+    padding-left: calc(var(--spacing) * 10);
   }
 
   .text-center {
@@ -2449,6 +2487,11 @@
   .tracking-wide {
     --tw-tracking: var(--tracking-wide);
     letter-spacing: var(--tracking-wide);
+  }
+
+  .tracking-wider {
+    --tw-tracking: var(--tracking-wider);
+    letter-spacing: var(--tracking-wider);
   }
 
   .tracking-widest {
@@ -2880,6 +2923,11 @@
     border-bottom-width: 0;
   }
 
+  .last\:border-none:last-child {
+    --tw-border-style: none;
+    border-style: none;
+  }
+
   @media (hover: hover) {
     .hover\:-translate-y-0\.5:hover {
       --tw-translate-y: calc(var(--spacing) * -.5);
@@ -3078,6 +3126,12 @@
   @media (hover: hover) {
     .hover\:opacity-70:hover {
       opacity: .7;
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:opacity-80:hover {
+      opacity: .8;
     }
   }
 

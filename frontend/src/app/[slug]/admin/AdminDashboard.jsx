@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
+import { Briefcase, Users, Layers, CalendarCheck } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import Card from "./components/Card";
@@ -164,10 +164,10 @@ export default function AdminDashboard({ slug }) {
         return (
           <>
             <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card title="Serviços" value={stats?.totalServices} org={org} />
-              <Card title="Funcionários" value={stats?.totalEmployees} org={org} />
-              <Card title="Categorias" value={stats?.totalCategories} org={org} />
-              <Card title="Agendamentos" value={stats?.totalAppointments} org={org} />
+              <Card title="Serviços" value={stats?.totalServices} org={org} icon={<Briefcase size={18} />} />
+              <Card title="Funcionários" value={stats?.totalEmployees} org={org} icon={<Users size={18} />} />
+              <Card title="Categorias" value={stats?.totalCategories} org={org} icon={<Layers size={18} />}/>
+              <Card title="Agendamentos" value={stats?.totalAppointments} org={org} icon={<CalendarCheck size={18} />} />
             </section>
 
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 w-full overflow-x-hidden">
@@ -222,7 +222,12 @@ export default function AdminDashboard({ slug }) {
 
       {/* Conteúdo */}
       <div className="flex-1 flex flex-col max-w-full overflow-hidden">
-        <Topbar org={org} slug={slug} />
+        <Topbar
+          org={org}
+          slug={slug}
+          setActiveTab={setActiveTab}
+          activeTab={activeTab}
+        />
 
         <main className="flex-1 p-6 space-y-6 overflow-y-auto max-w-full overflow-x-hidden">
           {renderContent()}
