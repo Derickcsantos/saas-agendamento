@@ -216,6 +216,33 @@ export default function PersonalCalendarTab({ org }) {
     window.location.href = `${API_BASE_URL}/api/google-calendar/${slug}/connect?userId=${userId}`;
   }
 
+  async function handleDisconnect() {
+    try{
+      if (!userId) return toast.error("Usuário não identificado.");
+      const res = await fetch(
+        `${API_BASE_URL}/api/google-calendar/disconnect?userId=${userId}`, { 
+          method: 'POST',
+          credentials: "include", 
+          cache: "no-store" 
+        }
+      );
+
+      if (!res.ok ) {
+        throw new Error(data.error || "Falha ao desconectar");
+      }
+
+      toast.success('Desconectado com sucesso')
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+
   return (
     <div className="space-y-8 bg-white dark:bg-gray-900 p-6 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 min-h-[600px]">
       <style>{calendarStyles}</style>
@@ -225,8 +252,10 @@ export default function PersonalCalendarTab({ org }) {
           Agenda Pessoal
         </h1>
         {connectedEmail && (
-          <p className="opacity-70 mt-2" style={{fontSize:'12px'}}>Conectado como {connectedEmail}</p>
+          <p className="opacity-70 mt-2" style={{fontSize:'12px'}}>Conectado como {connectedEmail}
+          </p>
         )}
+
       </div>
 
       {loading && (
@@ -275,6 +304,19 @@ export default function PersonalCalendarTab({ org }) {
           }}
         />
       )}
+
+      <div className="text-center">
+        {connectedEmail ? (
+          <button 
+            onClick={handleDisconnect}
+            className="mt-4 rounded-xl s transition text-red-700"
+          >
+            Desconectar
+          </button>
+        ) : (
+          <></>
+        )}
+      </div>
     </div>
   );
 }

@@ -209,34 +209,36 @@ export default function EmployeesTab({ org }) {
           {editing ? "Editar Funcionário" : "Novo Funcionário"}
         </h4>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input type="text" required placeholder="Nome" className="border p-2 rounded-md"
+        <div className="flex flex-col gap-4 md:flex-row md:flex-wrap">
+          <input type="text" required placeholder="Nome" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
             value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
 
-          <input type="email" placeholder="Email" className="border p-2 rounded-md"
+          <input type="email" placeholder="Email" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
             value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
 
-          <input type="tel" placeholder="Telefone" className="border p-2 rounded-md"
+          <input type="tel" placeholder="Telefone" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
             value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
 
-          <input type="number" placeholder="Comissão (%)" className="border p-2 rounded-md"
+          <input type="number" placeholder="Comissão (%)" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
             value={form.comissao} onChange={(e) => setForm({ ...form, comissao: e.target.value })} />
 
-          <input type="number" placeholder="Salário" className="border p-2 rounded-md"
+          <input type="number" placeholder="Salário" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
             value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} />
 
-          <label className="flex items-center gap-2 col-span-2">
-            <input type="checkbox" checked={form.is_active}
-              onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
-            Ativo
-          </label>
-
-          <input type="file" accept="image/*"
+          <div className="md:col-span-2 w-full md:basis-[calc(50%-0.5rem)]">
+            <input type="file" accept="image/*"
             onChange={(e) => {
               const file = e.target.files[0];
               setImage(file);
               setPreview(URL.createObjectURL(file));
             }} />
+          </div>
+          
+          <label className="flex items-center gap-2 col-span-2">
+            <input type="checkbox" checked={form.is_active}
+              onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
+            Ativo
+          </label>
         </div>
 
         {preview && <img src={preview} className="w-32 h-32 object-cover rounded-md" />}
@@ -321,56 +323,58 @@ export default function EmployeesTab({ org }) {
         </div>
       </form>
 
-      <div className="bg-white p-4 rounded-lg shadow-sm border">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700">
         <h4 className="font-semibold text-gray-700 mb-4">Funcionários</h4>
-
-        <table className="w-full text-sm border-collapse">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-3 py-2 text-left">Nome</th>
-              <th className="px-3 py-2 text-left">Email</th>
-              <th className="px-3 py-2 text-left">Telefone</th>
-              <th className="px-3 py-2 text-left">Salário</th>
-              <th className="px-3 py-2 text-left">Comissão</th>
-              <th className="px-3 py-2 text-left">Status</th>
-              <th className="px-3 py-2 text-left">Ações</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {employees.map((e) => (
-              <tr key={e.id} className="border-b">
-                <td className="px-3 py-2">{e.name}</td>
-                <td className="px-3 py-2">{e.email}</td>
-                <td className="px-3 py-2">{e.phone}</td>
-                <td className="px-3 py-2">{e.salary}</td>
-                <td className="px-3 py-2">{e.comissao}%</td>
-                <td className="px-3 py-2">
-                  <span className={`px-2 py-1 text-xs rounded-full ${e.is_active ? "bg-green-100 text-green-700" : "bg-gray-200"}`}>
-                    {e.is_active ? "Ativo" : "Inativo"}
-                  </span>
-                </td>
-
-                <td className="px-3 py-2 flex gap-2">
-                  <button onClick={() => handleEdit(e)} className="text-blue-500 hover:underline">
-                    Editar
-                  </button>
-                  <button onClick={() => handleDelete(e.id)} className="text-red-500 hover:underline">
-                    Excluir
-                  </button>
-                </td>
-              </tr>
-            ))}
-
-            {!employees.length && (
+        <div className="overflow-x-auto rounded-lg border dark:border-gray-700">
+          <table className="w-full text-sm border-collapse">
+            <thead className="bg-gray-50">
               <tr>
-                <td colSpan={6} className="text-center text-gray-400 py-4">
-                  Nenhum funcionário cadastrado
-                </td>
+                <th className="px-3 py-2 text-left">Nome</th>
+                <th className="px-3 py-2 text-left">Email</th>
+                <th className="px-3 py-2 text-left">Telefone</th>
+                <th className="px-3 py-2 text-left">Salário</th>
+                <th className="px-3 py-2 text-left">Comissão</th>
+                <th className="px-3 py-2 text-left">Status</th>
+                <th className="px-3 py-2 text-left">Ações</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+
+            <tbody>
+              {employees.map((e) => (
+                <tr key={e.id} className="border-b">
+                  <td className="px-3 py-2">{e.name}</td>
+                  <td className="px-3 py-2">{e.email}</td>
+                  <td className="px-3 py-2">{e.phone}</td>
+                  <td className="px-3 py-2">{e.salary}</td>
+                  <td className="px-3 py-2">{e.comissao}%</td>
+                  <td className="px-3 py-2">
+                    <span className={`px-2 py-1 text-xs rounded-full ${e.is_active ? "bg-green-100 text-green-700" : "bg-gray-200"}`}>
+                      {e.is_active ? "Ativo" : "Inativo"}
+                    </span>
+                  </td>
+
+                  <td className="px-3 py-2 flex gap-2">
+                    <button onClick={() => handleEdit(e)} className="text-blue-500 hover:underline">
+                      Editar
+                    </button>
+                    <button onClick={() => handleDelete(e.id)} className="text-red-500 hover:underline">
+                      Excluir
+                    </button>
+                  </td>
+                </tr>
+              ))}
+
+              {!employees.length && (
+                <tr>
+                  <td colSpan={6} className="text-center text-gray-400 py-4">
+                    Nenhum funcionário cadastrado
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        
       </div>
 
       {showServicesModal && (
