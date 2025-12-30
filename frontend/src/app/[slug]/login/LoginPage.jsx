@@ -24,15 +24,30 @@ export default function LoginPage({ slug }) {
         const data = await res.json();
 
         if (res.ok && data.authenticated && data.user) {
-          const tipo = data.user.tipo;
-          if (tipo === "admin") router.push(`/${slug}/admin`);
+          
+          const tipo = data.user?.tipo;
 
-          else if (tipo === "master") router.push(`/admin-dashboard`);
+          switch (tipo) {
+            case "admin":
+              router.push(`/${slug}/admin`);
+              break;
 
-          else if (tipo === "funcionario") router.push(`/${slug}/profissional`);
+            case "funcionario":
+              router.push(`/${slug}/profissional`);
+              break;
 
-          else router.push(`/${slug}/minha-conta`);
-          return;
+            case "marketing":
+              router.push(`/marketing`);
+              break;
+
+            case "master":
+              router.push(`/admin-dashboard`);
+              break;
+
+            default:
+              router.push(`/${slug}/minha-conta`);
+              break;
+          }
         }
       console.log(data.user.tipo)
       } catch (err) {
