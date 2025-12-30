@@ -152,6 +152,15 @@ export default function AdminDashboard() {
             {!collapsed && <span>Painel admin</span>}
           </button>
 
+          <button
+            onClick={() => window.location.href = "/marketing"}
+            className="w-full flex items-center gap-3 px-4  rounded-lg text-sm mt-3 
+            text-gray-800 hover:bg-red-50 transition"
+          >
+            <img width="18" height="18" src="https://img.icons8.com/ios/50/combo-chart--v1.png" alt="combo-chart--v1"/>
+            {!collapsed && <span>Painel de marketing</span>}
+          </button>
+
           {/* LOGOUT */}
           <button
             onClick={logout}

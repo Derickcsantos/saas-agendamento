@@ -18,10 +18,12 @@
   },
   "dependencies": {
     "@getbrevo/brevo": "^3.0.1",
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.39.0",
     "@upstash/redis": "^1.35.6",
     "@wppconnect-team/wppconnect": "^1.37.1",
     "bcrypt": "^5.1.1",
+    "cheerio": "^1.1.2",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -40,8 +42,9 @@
     "nodemailer": "^6.10.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
+    "playwright": "^1.57.0",
     "puppeteer": "^24.8.2",
-    "sharp": "^0.34.3",
+    "sharp": "^0.34.5",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "xlsx": "^0.18.5"

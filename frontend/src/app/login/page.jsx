@@ -155,10 +155,28 @@ export default function GlobalLogin() {
       setTimeout(() => {
         const tipo = data.user?.tipo;
 
-        if (tipo === "admin") router.push(`/${orgToUse.slug_organization}/admin`);
-        else if (tipo === "funcionario") router.push(`/${selectedOrg.slug_organization}/profissional`);
-        else if (tipo === "master") router.push(`/admin-dashboard`);
-        else router.push(`/${selectedOrg.slug_organization}/minha-conta`);
+        switch (tipo) {
+          case "admin":
+            router.push(`/${orgToUse.slug_organization}/admin`);
+            break;
+
+          case "funcionario":
+            router.push(`/${selectedOrg.slug_organization}/profissional`);
+            break;
+
+          case "marketing":
+            router.push(`/marketing`);
+            break;
+
+          case "master":
+            router.push(`/admin-dashboard`);
+            break;
+
+          default:
+            router.push(`/${selectedOrg.slug_organization}/minha-conta`);
+            break;
+        }
+
       }, 700);
 
     } catch (err) {
