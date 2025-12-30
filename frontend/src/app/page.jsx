@@ -196,20 +196,20 @@ export default function MarcafyLanding() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <Chip>O sistema de agendamento que trabalha por você.</Chip>
+          <Chip>O sistema que trabalha por você.</Chip>
 
-          <h1 className="mt-5 text-5xl font-extrabold leading-[1.1] tracking-tight md:text-6xl">
+          <h1 className="mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight md:text-6xl">
             Otimize sua agenda e aumente seus {" "}
             <span style={{ color: BRAND }}>resultados.</span>
           </h1>
 
-          <p className="mt-6 max-w-xl text-lg leading-7 text-neutral-700">
-            Um sistema de agendamento online feito para simplificar sua rotina e aumentar seus resultados.
+          <p className="mt-6 max-w-xl text-sm leading-7 text-neutral-700">
+            Nosso sistema de agendamento online foi feito para simplificar sua rotina e aumentar seus resultados. Comece agora e assine depois, leva só 2 minutos
           </p>
 
           <div className="mt-8 flex items-center gap-3">
             <a
-              href="https://wa.me/5511999999999"
+              href="/criar-conta"
               className="rounded-full px-8 py-3 font-semibold text-white transition"
               style={{ background: BRAND, boxShadow: "0 14px 28px rgba(94,59,238,0.25)" }}
             >
@@ -220,20 +220,20 @@ export default function MarcafyLanding() {
               className="rounded-full px-8 py-3 font-semibold transition"
               style={{ border: `1px solid ${BRAND}40` }}
             >
-              Ver recursos
+              Ver diferenciais
             </a>
           </div>
 
           {/* mini métricas */}
           <div className="mt-10 grid grid-cols-2 gap-4 max-w-md">
             <SoftCard className="p-4 text-center">
-              <div className="text-3xl font-extrabold" style={{ color: BRAND }}>
+              <div className="text-2xl font-extrabold" style={{ color: BRAND }}>
                 Rápido
               </div>
               <div className="text-xs text-neutral-500">Velocidade para você e para seu cliente</div>
             </SoftCard>
             <SoftCard className="p-4 text-center">
-              <div className="text-3xl font-extrabold" style={{ color: BRAND }}>
+              <div className="text-2xl font-extrabold" style={{ color: BRAND }}>
                 Completo
               </div>
               <div className="text-xs text-neutral-500">Criado para o seu negócio</div>
@@ -496,21 +496,21 @@ export default function MarcafyLanding() {
         <SoftCard className="flex flex-col items-center justify-between gap-6 p-10 md:flex-row">
           <div>
             <h3 className="text-2xl font-bold">Ainda tem dúvidas sobre nossa plataforma?</h3>
-            <p className="mt-2 max-w-xl text-neutral-700">
+            <p className="mt-2 max-w-xl text-neutral-700 text-sm">
               Tudo bem, eu entendo. Estamos disponíveis 24h no whatsapp prontos para esclarecer suas dúvidas.
             </p>
           </div>
           <div className="flex gap-3">
             <a
               href="https://wa.me/5511953404003"
-              className="rounded-full px-7 py-3 font-semibold text-white transition"
+              className="rounded-full px-4 py-3 font-semibold text-white transition"
               style={{ background: BRAND, boxShadow: "0 14px 28px rgba(94,59,238,0.25)" }}
             >
               Conversar no whatsapp
             </a>
             <a
               href="#planos"
-              className="rounded-full px-7 py-3 font-semibold transition"
+              className="rounded-full px-4 py-3 font-semibold transition"
               style={{ border: `1px solid ${BRAND}40` }}
             >
               Ver planos
