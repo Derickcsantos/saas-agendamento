@@ -166,7 +166,7 @@ export default function UsersTab({ org }) {
           </select>
         </div>
 
-        {form.tipo === "funcionario" || "admin" (
+        {(form.tipo === "funcionario" || form.tipo === "admin") && (
           <div>
             <label className="text-gray-600 dark:text-gray-300 text-sm">Vincular funcionário:</label>
 
