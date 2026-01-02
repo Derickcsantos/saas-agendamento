@@ -180,9 +180,6 @@ export const getAvailableTimes = async (req, res) => {
       .eq("user_id", employeeUserId)
       .maybeSingle();
 
-    const hasGoogleCalendar = !!googleData;
-
-
     console.log('Parâmetros recebidos:', { employeeIdInt, date, duration, slug });
 
     if (!slug) {
@@ -200,6 +197,22 @@ export const getAvailableTimes = async (req, res) => {
     if (orgError || !orgData) {
       return res.status(404).json({ error: 'Organização não encontrada' });
     }
+
+    const { data: policy, error: policyError } = await supabase
+      .from("organization_policies")
+      .select("sync_google_calendar")
+      .eq("organization_id", orgData.id)
+      .maybeSingle();
+
+    if (policyError) {
+      throw policyError;
+    }
+
+    const shouldSyncGoogle = policy?.sync_google_calendar === true;
+
+    const hasGoogleCalendar = shouldSyncGoogle && !!googleData;
+
+
     
     // 🔒 Verificar períodos fechados do salão
     const { data: closedPeriods, error: closedError } = await supabase
@@ -260,18 +273,28 @@ export const getAvailableTimes = async (req, res) => {
 
     let googleEvents = [];
 
-    function parseGoogleDate(value, date) {
-      if (!value) return null;
+    function parseGoogleEvent(ev, date) {
+      if (!ev?.start || !ev?.end) return null;
 
-      // Evento com horário definido
-      if (value.includes("T")) {
-        return new Date(value);
-      }
+      const parse = (value) => {
+        if (!value) return null;
 
-      // Evento de dia inteiro → assumimos ocupação total do dia
-      return new Date(`${date}T00:00:00-03:00`);
+        // Evento com horário
+        if (value.includes("T")) {
+          return new Date(value);
+        }
+
+        // Evento all-day → bloqueia o dia inteiro
+        return new Date(`${date}T00:00:00-03:00`);
+      };
+
+      const start = parse(ev.start.dateTime || ev.start.date);
+      const end = parse(ev.end.dateTime || ev.end.date);
+
+      if (!start || !end) return null;
+
+      return { start, end };
     }
-
 
     if (hasGoogleCalendar) {
       try {
@@ -303,10 +326,11 @@ export const getAvailableTimes = async (req, res) => {
           orderBy: "startTime",
         });
 
-        googleEvents = googleRaw.items?.map((ev) => ({
-          start: parseGoogleDate(ev.start.dateTime || ev.start.date, date),
-          end: parseGoogleDate(ev.end.dateTime || ev.end.date, date),
-        })) || [];
+        googleEvents =
+          googleRaw.items
+            ?.map(ev => parseGoogleEvent(ev, date))
+            .filter(Boolean) || [];
+
 
       } catch (err) {
         console.error("Erro ao buscar Google Calendar do funcionário:", err);
