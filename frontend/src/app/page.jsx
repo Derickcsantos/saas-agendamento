@@ -18,10 +18,8 @@ import {
   CloudUpload,
 } from "lucide-react";
 
+const BRAND = "#5E3BEE"; 
 
-const BRAND = "#5E3BEE"; // cor principal
-
-// Badge minimalista de seção
 function Chip({ children }) {
   return (
     <span
