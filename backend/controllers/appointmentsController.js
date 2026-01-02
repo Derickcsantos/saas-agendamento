@@ -210,7 +210,6 @@ export const createAppointment = async (req, res) => {
 
     if (!serviceData?.is_online) {
       console.log("🔕 Serviço não é online. Nenhum link será criado.");
-      console.log("📌 Evento criado no Google Calendar sem link", result.data.id);
       return res.status(201).json(created);
     }
 

@@ -201,7 +201,28 @@ export const getAvailableTimes = async (req, res) => {
       return res.status(404).json({ error: 'Organização não encontrada' });
     }
     
-    
+    // 🔒 Verificar períodos fechados do salão
+    const { data: closedPeriods, error: closedError } = await supabase
+      .from('closed_periods')
+      .select('start_day, end_day')
+      .eq('organization_id', orgData.id);
+
+    if (closedError) {
+      throw closedError;
+    }
+
+    const selectedDate = new Date(`${date}T00:00:00`);
+
+    const isClosedDay = closedPeriods?.some(period => {
+      const start = new Date(period.start_day);
+      const end = new Date(period.end_day);
+      return selectedDate >= start && selectedDate <= end;
+    });
+
+    if (isClosedDay) {
+      return res.json([]);
+    }
+
     // interpreta a data como local, sem UTC implícito
     const [year, month, day] = date.split("-").map(Number);
     const dateObj = new Date(year, month - 1, day);
