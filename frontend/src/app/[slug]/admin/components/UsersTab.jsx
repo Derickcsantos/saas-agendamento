@@ -39,7 +39,7 @@ export default function UsersTab({ org }) {
   };
 
   const loadEmployees = async () => {
-    const res = await fetch(`${API}/api/employees/${orgSlug}`);
+    const res = await fetch(`${API}/api/admin/employees/${orgSlug}`);
     const data = await res.json();
     setEmployees(data);
   };
@@ -166,7 +166,7 @@ export default function UsersTab({ org }) {
           </select>
         </div>
 
-        {form.tipo === "funcionario" && (
+        {form.tipo === "funcionario" || "admin" (
           <div>
             <label className="text-gray-600 dark:text-gray-300 text-sm">Vincular funcionário:</label>
 

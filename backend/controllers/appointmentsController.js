@@ -244,6 +244,7 @@ export const createAppointment = async (req, res) => {
       ...created,
       meeting_url: meetingUrl
     });
+
   } catch (error) {
     console.error('Error creating appointment:', error);
     res.status(500).json({ error: 'Internal server error' });
