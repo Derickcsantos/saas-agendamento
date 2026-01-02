@@ -39,7 +39,9 @@ export default function UsersTab({ org }) {
   };
 
   const loadEmployees = async () => {
-    const res = await fetch(`${API}/api/admin/employees/${orgSlug}`);
+    const res = await fetch(`${API}/api/admin/employees/${orgSlug}`, {
+      credentials: "include"
+    });
     const data = await res.json();
     setEmployees(data);
   };
