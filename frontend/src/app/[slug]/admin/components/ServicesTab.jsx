@@ -54,7 +54,17 @@ export default function ServicesTab({ org }) {
 
     try {
       const formData = new FormData();
-      for (const [key, value] of Object.entries(form)) formData.append(key, value);
+
+    for (const [key, value] of Object.entries(form)) {
+      if (key === "is_online") {
+        formData.append("is_online", value ? "1" : "0");
+      } else {
+        formData.append(key, value);
+      }
+    }
+
+    if (image) formData.append("image", image);
+
       if (image) formData.append("image", image);
 
       const method = form.id ? "PUT" : "POST";
