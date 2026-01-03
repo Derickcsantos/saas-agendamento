@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import ImageDropzone from "./ImageDropzone"
@@ -13,6 +13,7 @@ export default function CategoriesTab({ org }) {
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(false);
+  const formRef = useRef(null);
   const { palette } = useOrganizationColors(org.slug_organization);
 
   const loadCategories = async () => {
@@ -77,6 +78,13 @@ export default function CategoriesTab({ org }) {
     setCategoryId(cat.id);
     setName(cat.name);
     setPreview(cat.imagem_category);
+
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
   };
 
 
@@ -95,6 +103,7 @@ export default function CategoriesTab({ org }) {
     <div className="space-y-8">
 
       <form
+        ref={formRef}
         onSubmit={handleSubmit}
         className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 space-y-6"
       >
