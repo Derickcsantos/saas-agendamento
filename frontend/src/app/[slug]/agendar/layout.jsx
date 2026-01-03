@@ -1,3 +1,20 @@
+/**
+ * Normaliza imagem para Open Graph
+ * WhatsApp / Facebook NÃO são confiáveis com .webp
+ */
+function normalizeOgImage(imageUrl) {
+  if (!imageUrl) {
+    return "https://www.marcafy.com.br/og-default.png";
+  }
+
+  // Evita webp (preview falha em vários crawlers)
+  if (imageUrl.endsWith(".webp")) {
+    return "https://www.marcafy.com.br/og-default.png";
+  }
+
+  return imageUrl;
+}
+
 export async function generateMetadata({ params }) {
   const { slug } = params;
 
@@ -6,23 +23,40 @@ export async function generateMetadata({ params }) {
     { cache: "no-store" }
   );
 
+  // Fallback defensivo (SEO-safe)
   if (!res.ok) {
     return {
       title: "Agende agora | Marcafy",
       description: "Agendamento online rápido e fácil.",
+      openGraph: {
+        title: "Agende agora | Marcafy",
+        description: "Agendamento online rápido e fácil.",
+        images: [
+          {
+            url: "https://www.marcafy.com.br/og-default.png",
+            width: 1200,
+            height: 630,
+            type: "image/png",
+          },
+        ],
+      },
     };
   }
 
   const data = await res.json();
   const org = data.organizations;
 
-  const title = `Agende agora em ${org?.name}`;
-  const description = `Escolha o melhor horário e agende online em ${org?.name}.`;
+  const title = `Agende agora em ${org?.name || "Marcafy"}`;
+  const description = `Escolha o melhor horário e agende online em ${
+    org?.name || "nossa empresa"
+  }.`;
 
-  const image =
+  const rawImage =
     data.open_graph_image ||
-    org?.logo_organization ||
-    "https://www.marcafy.com.br/og-default.png";
+    data.hero_image_url ||
+    org?.logo_organization;
+
+  const image = normalizeOgImage(rawImage);
 
   const url = `https://www.marcafy.com.br/${slug}/agendar`;
 
@@ -30,11 +64,13 @@ export async function generateMetadata({ params }) {
     title,
     description,
 
-    alternates: { canonical: url },
+    alternates: {
+      canonical: url,
+    },
 
     icons: {
-      icon: org?.logo_organization,
-      apple: org?.logo_organization,
+      icon: org?.logo_organization || "/marcafy-logo.jpg",
+      apple: org?.logo_organization || "/marcafy-logo.jpg",
     },
 
     openGraph: {
@@ -43,7 +79,16 @@ export async function generateMetadata({ params }) {
       url,
       type: "website",
       locale: "pt_BR",
-      images: [{ url: image, width: 1200, height: 630 }],
+      siteName: org?.name || "Marcafy",
+      images: [
+        {
+          url: image,
+          width: 1200,
+          height: 630,
+          type: "image/png",
+          alt: title,
+        },
+      ],
     },
 
     twitter: {
