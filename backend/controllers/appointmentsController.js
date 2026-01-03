@@ -154,6 +154,17 @@ export const createAppointment = async (req, res) => {
       return res.status(201).json(created);
     }
 
+    const { data: serviceInfo, error: serviceInfoError } = await supabase
+      .from("services")
+      .select("id, name, price")
+      .eq("id", service_id)
+      .single();
+
+    if (serviceInfoError || !serviceInfo) {
+      console.error("❌ Serviço não encontrado para Google Calendar");
+      return res.status(201).json(created);
+    }
+
     const { data: googleData } = await supabase
       .from("organization_google_calendar")
       .select("*")
