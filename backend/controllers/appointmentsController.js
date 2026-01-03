@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase.js';
 import { google } from "googleapis";
+import { sendWhatsAppMessage } from "../lib/whatsapp.js";
 
 export const getAppointmentsByEmployee = async (req, res) => {
   try {
@@ -91,7 +92,7 @@ export const createAppointment = async (req, res) => {
 
     const { data: orgData, error: orgError } = await supabase
       .from('organizations')
-      .select('id')
+      .select('id, name')
       .eq('slug_organization', slug)
       .single();
 
@@ -246,6 +247,77 @@ export const createAppointment = async (req, res) => {
     } catch (googleErr) {
       console.error("❌ Erro ao criar evento no Google Calendar:", googleErr);
     }
+
+    // ===============================
+    // 🔔 NOTIFICAR REPRESENTANTE DA ORGANIZAÇÃO
+    // ===============================
+    try {
+      // Buscar representante da organização
+      const { data: representative } = await supabase
+        .from("organization_representative")
+        .select("user_id")
+        .eq("organization_id", orgData.id)
+        .maybeSingle();
+
+      if (!representative?.user_id) {
+        console.log("🔕 Organização sem representante cadastrado.");
+      } else {
+        // Buscar dados do usuário representante
+        const { data: user } = await supabase
+          .from("users")
+          .select("username, phone")
+          .eq("id", representative.user_id)
+          .single();
+
+        if (!user?.phone) {
+          console.log("🔕 Representante sem telefone cadastrado.");
+        } else {
+          // Buscar dados auxiliares
+          const { data: service } = await supabase
+            .from("services")
+            .select("name")
+            .eq("id", service_id)
+            .single();
+
+          const { data: employeeInfo } = await supabase
+            .from("employees")
+            .select("name")
+            .eq("id", employee_id)
+            .single();
+
+          // Formatar data dd/mm/yyyy
+          const formattedDate = date.split("-").reverse().join("/");
+
+          const message = `
+    📢 *Novo agendamento recebido*
+
+    Olá, *${user.username}* 👋  
+    Um novo agendamento foi realizado para ${orgData?.name}.
+
+    👤 Cliente: ${client_name}
+    📞 Telefone: ${client_phone || "-"}
+    💇 Serviço: ${service?.name || "-"}
+    🧑‍💼 Profissional: ${employeeInfo?.name || "-"}
+    📅 Data: ${formattedDate}
+    ⏰ Horário: ${start_time} - ${end_time}
+
+    💰 Valor final: ${final_price
+      ? final_price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+      : "-"}
+
+    🔐 Faça login e verifique todas as informações no seu painel administrativo:
+    👉 https://marcafy.com.br/${slug}/login
+          `.trim();
+
+          await sendWhatsAppMessage(user.phone, message);
+
+          console.log("📲 WhatsApp enviado ao representante:", user.username);
+        }
+      }
+    } catch (notifyErr) {
+      console.error("❌ Erro ao notificar representante:", notifyErr);
+    }
+
 
 
     return res.status(201).json({
