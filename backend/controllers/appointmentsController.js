@@ -201,17 +201,51 @@ export const createAppointment = async (req, res) => {
 
     console.log("📌 Enviando evento ao Google:", eventBody);
 
-    // Buscar serviço para verificar se é online
+    // Buscar serviço
     const { data: serviceData } = await supabase
       .from("services")
       .select("is_online, name")
       .eq("id", service_id)
       .single();
 
+    // Só adiciona conferenceData se for online
     if (!serviceData?.is_online) {
-      console.log("🔕 Serviço não é online. Nenhum link será criado.");
-      return res.status(201).json(created);
+      delete eventBody.conferenceData;
     }
+
+    let meetingUrl = null;
+
+    try {
+      const result = await calendar.events.insert({
+        calendarId: "primary",
+        requestBody: eventBody,
+        conferenceDataVersion: serviceData?.is_online ? 1 : 0,
+      });
+
+      const googleEvent = result.data;
+
+      if (serviceData?.is_online) {
+        meetingUrl =
+          googleEvent?.conferenceData?.entryPoints?.find(
+            (e) => e.entryPointType === "video"
+          )?.uri || null;
+      }
+
+      await supabase
+        .from("appointments")
+        .update({
+          meeting_url: meetingUrl,
+          meeting_provider: meetingUrl ? "google_meet" : null,
+          google_event_id: googleEvent.id,
+        })
+        .eq("id", created.id);
+
+      console.log("📌 Evento criado no Google Calendar:", googleEvent.id);
+
+    } catch (googleErr) {
+      console.error("❌ Erro ao criar evento no Google Calendar:", googleErr);
+    }
+
 
     let meetingUrl = null;
 
