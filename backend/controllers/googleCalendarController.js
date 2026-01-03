@@ -210,20 +210,38 @@ export async function getCalendarEvents(req, res) {
       req.query.timeMax ||
       new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString();
 
-    const { data } = await calendar.events.list({
-      calendarId: "primary",
-      timeMin,
-      timeMax,
-      singleEvents: true,
-      orderBy: "startTime",
-    });
+    const calendars = await calendar.calendarList.list();
 
-    const events = data.items?.map((ev) => ({
-      id: ev.id,
-      summary: ev.summary || "Evento",
-      start: ev.start?.dateTime || ev.start?.date,
-      end: ev.end?.dateTime || ev.end?.date,
-    })) ?? [];
+    let allEvents = [];
+
+    const validCalendars = calendars.data.items.filter((cal) =>
+      cal.primary === true ||
+      cal.accessRole === "owner" ||
+      cal.accessRole === "writer"
+    );
+
+    for (const cal of validCalendars) {
+      const { data } = await calendar.events.list({
+        calendarId: cal.id,
+        timeMin,
+        timeMax,
+        singleEvents: true,
+        orderBy: "startTime",
+        maxResults: 2500,
+      });
+
+      const events = data.items?.map((ev) => ({
+        id: ev.id,
+        summary: ev.summary || "Evento",
+        start: ev.start?.dateTime || ev.start?.date,
+        end: ev.end?.dateTime || ev.end?.date,
+        calendarId: cal.id,
+      })) ?? [];
+
+      allEvents.push(...events);
+    }
+
+
 
     // Atualiza token se Google renovou
     const newCreds = oauth2Client.credentials;
@@ -238,7 +256,7 @@ export async function getCalendarEvents(req, res) {
         .eq("user_id", userId);
     }
 
-    return res.json(events);
+    return res.json(allEvents);
 
   } catch (err) {
     console.error("getCalendarEvents error:", err);
