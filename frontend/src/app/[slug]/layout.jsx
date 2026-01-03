@@ -1,3 +1,5 @@
+import "../globals.css";
+
 export async function generateMetadata({ params }) {
   const { slug } = params;
 
@@ -44,49 +46,22 @@ export async function generateMetadata({ params }) {
   return {
     title,
     description,
-    applicationName: "Marcafy",
-    category: "Agendamento Online",
-    keywords: data.meta_keywords || "",
-    authors: [{ name: org?.name || "Marcafy" }],
+
     alternates: {
       canonical: url,
     },
 
     icons: {
-      icon: [{ url: icon }],
-      shortcut: [{ url: icon }],
-      apple: [{ url: icon }],
-    },
-
-    themeColor: "#ffffff",
-
-    appleWebApp: {
-      capable: true,
-      title,
-      statusBarStyle: "default",
-    },
-
-    formatDetection: {
-      telephone: false,
-    },
-
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: {
-        index: true,
-        follow: true,
-        "max-image-preview": "large",
-      },
+      icon: icon,
+      apple: icon,
     },
 
     openGraph: {
       title,
       description,
       url,
-      siteName: org?.name || "Marcafy",
-      locale: "pt_BR",
       type: "website",
+      locale: "pt_BR",
       images: [
         {
           url: ogImage,
@@ -103,12 +78,13 @@ export async function generateMetadata({ params }) {
       description,
       images: [ogImage],
     },
-
-    other: {
-      "og:locale:alternate": "pt_PT",
-      "business:contact_data:street_address": data.endereco || "",
-      "business:contact_data:phone_number": data.telefone || "",
-      "business:contact_data:email": data.email || "",
-    },
   };
+}
+
+/**
+ * ✅ OBRIGATÓRIO
+ * Layout SEMPRE precisa de default export
+ */
+export default function AgendarLayout({ children }) {
+  return <>{children}</>;
 }
