@@ -10,9 +10,8 @@ export async function generateMetadata({ params }) {
 
   if (!res.ok) {
     return {
-      title: "Marcafy — Agendamento Online",
-      description: "Plataforma de agendamento online profissional.",
-      robots: { index: false, follow: false },
+      title: "Marcafy",
+      description: "Agendamento online profissional",
     };
   }
 
@@ -23,51 +22,38 @@ export async function generateMetadata({ params }) {
     data.open_graph_title ||
     data.meta_title ||
     org?.name ||
-    "Agendamento Online";
+    "Marcafy";
 
   const description =
     data.open_graph_description ||
     data.meta_description ||
-    `Agende seu horário em ${org?.name || "nossa empresa"} de forma rápida e online.`;
+    `Agende online em ${org?.name}.`;
 
   const ogImage =
     data.open_graph_image ||
-    data.hero_image_url ||
     org?.logo_organization ||
     "https://www.marcafy.com.br/og-default.png";
-
-  const icon =
-    data.favicon_url ||
-    org?.logo_organization ||
-    "/marcafy-logo.jpg";
-
-  const url = `https://www.marcafy.com.br/${slug}/agendar`;
 
   return {
     title,
     description,
 
-    alternates: {
-      canonical: url,
-    },
-
     icons: {
-      icon: icon,
-      apple: icon,
+      icon: org?.logo_organization || "/marcafy-logo.jpg",
+      apple: org?.logo_organization || "/marcafy-logo.jpg",
     },
 
     openGraph: {
       title,
       description,
-      url,
       type: "website",
       locale: "pt_BR",
+      siteName: org?.name || "Marcafy",
       images: [
         {
           url: ogImage,
           width: 1200,
           height: 630,
-          alt: title,
         },
       ],
     },
@@ -81,10 +67,6 @@ export async function generateMetadata({ params }) {
   };
 }
 
-/**
- * ✅ OBRIGATÓRIO
- * Layout SEMPRE precisa de default export
- */
-export default function AgendarLayout({ children }) {
+export default function SlugLayout({ children }) {
   return <>{children}</>;
 }
