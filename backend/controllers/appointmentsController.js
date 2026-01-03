@@ -215,6 +215,7 @@ export const createAppointment = async (req, res) => {
 
     let meetingUrl = null;
 
+
     try {
       const result = await calendar.events.insert({
         calendarId: "primary",
@@ -246,33 +247,6 @@ export const createAppointment = async (req, res) => {
       console.error("❌ Erro ao criar evento no Google Calendar:", googleErr);
     }
 
-
-    let meetingUrl = null;
-
-    try {
-      const result = await calendar.events.insert({
-        calendarId: "primary",
-        requestBody: eventBody,
-        conferenceDataVersion: 1,
-      });
-
-      const googleEvent = result.data;
-      meetingUrl =
-        googleEvent?.conferenceData?.entryPoints?.find((e) => e.entryPointType === "video")?.uri || null;
-
-      await supabase
-        .from("appointments")
-        .update({
-          meeting_url: meetingUrl,
-          meeting_provider: "google_meet",
-          google_event_id: googleEvent.id,
-        })
-        .eq("id", created.id);
-
-      console.log("📌 Evento criado no Google Calendar com link:", result.data.id);
-    } catch (googleErr) {
-      console.error("❌ Erro ao criar evento no Google Calendar com link:", googleErr);
-    }
 
     return res.status(201).json({
       ...created,
