@@ -1,14 +1,13 @@
-import "../globals.css";
-
 /**
  * Normaliza imagem para Open Graph
- * Evita webp (WhatsApp/Facebook falham)
+ * WhatsApp / Facebook NÃO são confiáveis com .webp
  */
 function normalizeOgImage(imageUrl) {
   if (!imageUrl) {
     return "https://www.marcafy.com.br/og-default.png";
   }
 
+  // Evita webp (preview falha em vários crawlers)
   if (imageUrl.endsWith(".webp")) {
     return "https://www.marcafy.com.br/og-default.png";
   }
@@ -24,7 +23,7 @@ export async function generateMetadata({ params }) {
     { cache: "no-store" }
   );
 
-  // Fallback defensivo
+  // Fallback defensivo (SEO-safe)
   if (!res.ok) {
     return {
       title: "Agende agora | Marcafy",
