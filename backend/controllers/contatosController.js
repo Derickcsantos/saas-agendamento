@@ -50,27 +50,47 @@ export const confirmedAppointmentWhatsApp = async (req, res) => {
       date,
       time,
       prices,
+      slug
     } = req.body;
 
     if (!client?.phone || !service || !employee || !date || !time) {
       return res.status(400).json({ error: "Dados obrigatórios ausentes" });
     }
 
+     const { data: org, orgError } = await supabase
+        .from("organizations")
+        .select("id, name, phone, address")
+        .eq("slug_organization", slug)
+        .single();
+  
+      if (orgError || !org) {
+        return res.status(404).json({ error: "Organização não encontrada" });
+      }
+
+    const formattedDate = date.split("-").reverse().join("/");
+
     const message = `
 🎉 *Agendamento Confirmado com Sucesso!*
+
+🏢 *${org?.name || "Nossa equipe"}*
 
 👤 Cliente: ${client.name}
 💇 Serviço: ${service.name}
 📂 Categoria: ${category?.name || "-"}
 🧑‍💼 Profissional: ${employee.name}
 
-📅 Data: ${date}
+📅 Data: ${formattedDate}
 ⏰ Horário: ${time.start} - ${time.end}
+📞 Telefone p/ contato: ${org?.phone}
+📍 Endereço: ${org?.address}
 
 💰 Valor final: ${prices?.final?.toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",
     })}
+
+🔐 Link para agendar novamente:
+👉 https://marcafy.com.br/${slug}/agendar
 
 Qualquer dúvida, estamos à disposição 💬
     `.trim();

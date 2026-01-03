@@ -274,6 +274,7 @@ const sendWhatsappConfirmation = async () => {
           prices: {
             final: appointmentData.prices.final,
           },
+          slug: slug
         }),
       }
     );
