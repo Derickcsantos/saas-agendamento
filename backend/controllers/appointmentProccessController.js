@@ -160,19 +160,18 @@ export const getAvailableTimes = async (req, res) => {
     const { slug } = req.params;
     const employeeIdInt = parseInt(employeeId, 10);
 
-
-    const { data: employeeData, error: employeeError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("id_employee", employeeIdInt)
+    const { data: employee, error: employeeError } = await supabase
+      .from("employees")
+      .select("id, user_id, is_active")
+      .eq("id", employeeIdInt)
       .single();
 
-    if (employeeError || !employeeData) {
-      console.error("Erro ao buscar employee.user_id", employeeError);
-      return res.status(404).json({ error: "Funcionário não encontrado" });
+    if (employeeError || !employee || !employee.is_active) {
+      return res.json([]); // funcionário inativo não gera horários
     }
 
-    const employeeUserId = employeeData.id;
+    const employeeUserId = employee.user_id; // única referência
+
 
     const { data: googleData, error: googleError } = await supabase
       .from("organization_google_calendar")

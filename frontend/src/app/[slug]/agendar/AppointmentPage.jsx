@@ -254,6 +254,7 @@ export default function AppointmentPage({ slug }) {
       });
     }
   };
+
 const sendWhatsappConfirmation = async () => {
   if (!appointmentData) return;
 
@@ -276,6 +277,8 @@ const sendWhatsappConfirmation = async () => {
         }),
       }
     );
+
+    toast.success('Mensagem enviada com sucesso')
   } catch (err) {
     console.error("Erro ao enviar WhatsApp:", err);
   }
@@ -447,7 +450,7 @@ const sendWhatsappConfirmation = async () => {
               Enviar via WhatsApp
             </button>
 
-            <button
+            {/* <button
               onClick={() => window.location.href = `mailto:${a.client?.email}?subject=Confirmação de Agendamento&body=${whatsappMessage}`}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg shadow-md transition"
             >
@@ -459,7 +462,7 @@ const sendWhatsappConfirmation = async () => {
               className="w-full bg-gray-800 hover:bg-black text-white py-3 rounded-lg shadow-md transition"
             >
               Baixar Comprovante
-            </button>
+            </button> */}
           </div>
 
           <button
