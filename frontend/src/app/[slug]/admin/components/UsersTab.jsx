@@ -175,7 +175,9 @@ export default function UsersTab({ org }) {
             <select
               className="mt-1 bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3 w-full"
               value={form.id_employee}
-              onChange={(e) => setForm({ ...form, id_employee: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, id_employee: e.target.value ? Number(e.target.value) : null })
+              }
             >
               <option value="">Selecione...</option>
               {employees.map((emp) => (

@@ -69,7 +69,7 @@ export const getUserById = async (req, res) => {
 
 export const createUser = async (req, res) => {
   try {
-    const { username, email, password, phone, tipo = 'comum' } = req.body;
+    const { username, email, password, phone, tipo = 'comum', id_employee } = req.body;
     const { slug } = req.params;
 
     console.log("Slug recebido no users:", slug);
@@ -140,7 +140,7 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id, slug } = req.params;
-    const { username, email, password_plaintext, phone, aniversario, id_employee, tipo} = req.body;
+    const { username, email, password, phone, aniversario, id_employee, tipo} = req.body;
 
     const { data: org, orgError } = await supabase
       .from("organizations")
@@ -176,8 +176,8 @@ export const updateUser = async (req, res) => {
     console.log(updateData.password)
 
     // Se veio senha nova, gera o hash
-    if (password_plaintext) {
-      updateData.password = await hashPassword(password_plaintext);
+    if (password) {
+      updateData.password = await hashPassword(password);
     }
 
     const { data, error } = await supabase
