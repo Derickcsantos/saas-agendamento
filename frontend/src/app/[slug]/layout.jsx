@@ -18,51 +18,44 @@ export async function generateMetadata({ params }) {
   const data = await res.json();
   const org = data.organizations;
 
-  const title =
-    data.open_graph_title ||
-    data.meta_title ||
-    org?.name ||
-    "Marcafy";
-
+  const title = data.meta_title || org?.name || "Marcafy";
   const description =
-    data.open_graph_description ||
     data.meta_description ||
-    `Agende online em ${org?.name}.`;
+    `Conheça ${org?.name} e agende online com facilidade.`;
 
-  const ogImage =
+  const image =
     data.open_graph_image ||
     org?.logo_organization ||
     "https://www.marcafy.com.br/og-default.png";
+
+  const url = `https://www.marcafy.com.br/${slug}`;
 
   return {
     title,
     description,
 
+    alternates: { canonical: url },
+
     icons: {
-      icon: org?.logo_organization || "/marcafy-logo.jpg",
-      apple: org?.logo_organization || "/marcafy-logo.jpg",
+      icon: org?.logo_organization,
+      apple: org?.logo_organization,
     },
 
     openGraph: {
       title,
       description,
+      url,
       type: "website",
+      siteName: org?.name,
       locale: "pt_BR",
-      siteName: org?.name || "Marcafy",
-      images: [
-        {
-          url: ogImage,
-          width: 1200,
-          height: 630,
-        },
-      ],
+      images: [{ url: image, width: 1200, height: 630 }],
     },
 
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [ogImage],
+      images: [image],
     },
   };
 }
