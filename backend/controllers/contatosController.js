@@ -1,6 +1,7 @@
 // import express from 'express';
 // import { transporter } from '../lib/nodemailer.js';
 import { sendWhatsAppMessage } from "../lib/whatsapp.js";
+import { supabase } from '../lib/supabase.js';
 
 // export const emailContact = async (req, res) => {
 //   const { name, email, phone, message } = req.body;
