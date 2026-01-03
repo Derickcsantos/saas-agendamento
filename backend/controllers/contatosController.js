@@ -1,5 +1,6 @@
 import express from 'express';
 import { transporter } from '../lib/nodemailer.js';
+import { sendWhatsAppMessage } from "../lib/whatsapp.js";
 
 export const emailContact = async (req, res) => {
   const { name, email, phone, message } = req.body;
@@ -36,5 +37,49 @@ export const emailContact = async (req, res) => {
   } catch (error) {
     console.error('Erro ao enviar email:', error);
     res.status(500).json({ error: 'Ocorreu um erro ao enviar a mensagem. Por favor, tente novamente mais tarde.' });
+  }
+};
+
+export const confirmedAppointmentWhatsApp = async (req, res) => {
+  try {
+    const {
+      client,
+      service,
+      category,
+      employee,
+      date,
+      time,
+      prices,
+    } = req.body;
+
+    if (!client?.phone || !service || !employee || !date || !time) {
+      return res.status(400).json({ error: "Dados obrigatórios ausentes" });
+    }
+
+    const message = `
+🎉 *Agendamento Confirmado com Sucesso!*
+
+👤 Cliente: ${client.name}
+💇 Serviço: ${service.name}
+📂 Categoria: ${category?.name || "-"}
+🧑‍💼 Profissional: ${employee.name}
+
+📅 Data: ${date}
+⏰ Horário: ${time.start} - ${time.end}
+
+💰 Valor final: ${prices?.final?.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    })}
+
+Qualquer dúvida, estamos à disposição 💬
+    `.trim();
+
+    await sendWhatsAppMessage(client.phone, message);
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("WhatsApp confirmedAppointment error:", err);
+    return res.status(500).json({ error: "Erro ao enviar WhatsApp" });
   }
 };
