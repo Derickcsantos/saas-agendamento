@@ -21,6 +21,7 @@ import SiteTab from "./components/SiteTab";
 import SettingsTab from "./components/SettingsTab";
 import PersonalCalendarTab from "./components/PersonalCalendarTab";
 import GalleryTab from "./components/GalleryTab";
+import ClosedPeriodsTab from './components/ClosedPeriods';
 
 export default function AdminDashboard({ slug }) {
   const router = useRouter();
@@ -136,6 +137,8 @@ export default function AdminDashboard({ slug }) {
         return <EmployeesTab org={org} />;
       case "appointments":
         return <AppointmentsTab org={org} />;
+      case "closed-periods":
+        return <ClosedPeriodsTab org={org} />;
       case "clients":
         return <ClientsTab org={org} />;
       case "revenues":
