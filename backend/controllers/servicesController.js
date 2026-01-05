@@ -156,7 +156,7 @@ export const createService = async (req, res) => {
         organization_id: orgData.id,
         price,
         imagem_service: imageUrl, 
-        is_online: !!is_online,
+        is_online: is_online === "1",
         durability_days
       }])
       .select();
@@ -192,7 +192,7 @@ export const updateService = async (req, res) => {
       description,
       duration,
       price,
-      is_online: !!is_online,
+      is_online: is_online === "1",
       durability_days,
       ...(imageData && { imagem_service: imageData })
     };

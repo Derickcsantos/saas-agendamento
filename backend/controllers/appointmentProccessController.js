@@ -160,28 +160,24 @@ export const getAvailableTimes = async (req, res) => {
     const { slug } = req.params;
     const employeeIdInt = parseInt(employeeId, 10);
 
-
-    const { data: employeeData, error: employeeError } = await supabase
+    const { data: employee, error: employeeError } = await supabase
       .from("employees")
-      .select("user_id")
+      .select("id, user_id, is_active")
       .eq("id", employeeIdInt)
       .single();
 
-    if (employeeError || !employeeData) {
-      console.error("Erro ao buscar employee.user_id", employeeError);
-      return res.status(404).json({ error: "Funcionário não encontrado" });
+    if (employeeError || !employee || !employee.is_active) {
+      return res.json([]); // funcionário inativo não gera horários
     }
 
-    const employeeUserId = employeeData.user_id;
+    const employeeUserId = employee.user_id; // única referência
+
 
     const { data: googleData, error: googleError } = await supabase
       .from("organization_google_calendar")
       .select("access_token, refresh_token, token_type, scope, expiry_date")
       .eq("user_id", employeeUserId)
       .maybeSingle();
-
-    const hasGoogleCalendar = !!googleData;
-
 
     console.log('Parâmetros recebidos:', { employeeIdInt, date, duration, slug });
 
@@ -200,8 +196,45 @@ export const getAvailableTimes = async (req, res) => {
     if (orgError || !orgData) {
       return res.status(404).json({ error: 'Organização não encontrada' });
     }
+
+    const { data: policy, error: policyError } = await supabase
+      .from("organization_policies")
+      .select("sync_google_calendar")
+      .eq("organization_id", orgData.id)
+      .maybeSingle();
+
+    if (policyError) {
+      throw policyError;
+    }
+
+    const shouldSyncGoogle = policy?.sync_google_calendar === true;
+
+    const hasGoogleCalendar = shouldSyncGoogle && !!googleData;
+
+
     
-    
+    // 🔒 Verificar períodos fechados do salão
+    const { data: closedPeriods, error: closedError } = await supabase
+      .from('closed_periods')
+      .select('start_day, end_day')
+      .eq('organization_id', orgData.id);
+
+    if (closedError) {
+      throw closedError;
+    }
+
+    const selectedDate = new Date(`${date}T00:00:00`);
+
+    const isClosedDay = closedPeriods?.some(period => {
+      const start = new Date(period.start_day);
+      const end = new Date(period.end_day);
+      return selectedDate >= start && selectedDate <= end;
+    });
+
+    if (isClosedDay) {
+      return res.json([]);
+    }
+
     // interpreta a data como local, sem UTC implícito
     const [year, month, day] = date.split("-").map(Number);
     const dateObj = new Date(year, month - 1, day);
@@ -237,61 +270,77 @@ export const getAvailableTimes = async (req, res) => {
 
     if (appointmentsError) throw appointmentsError;
 
-    let googleEvents = [];
+    function parseGoogleApiEvent(ev, selectedDate) {
+      if (!ev.start || !ev.end) return null;
 
-    function parseGoogleDate(value, date) {
-      if (!value) return null;
-
-      // Evento com horário definido
-      if (value.includes("T")) {
-        return new Date(value);
+      // Evento com horário
+      if (ev.start.includes("T") && ev.end.includes("T")) {
+        return {
+          start: new Date(ev.start),
+          end: new Date(ev.end),
+        };
       }
 
-      // Evento de dia inteiro → assumimos ocupação total do dia
-      return new Date(`${date}T00:00:00-03:00`);
+      // Evento ALL-DAY (Google retorna end no dia seguinte)
+      const eventStart = new Date(`${ev.start}T00:00:00`);
+      const eventEnd = new Date(`${ev.end}T00:00:00`); // NÃO 23:59:59
+
+      // Normalizar para o dia selecionado
+      const dayStart = new Date(selectedDate);
+      dayStart.setHours(0, 0, 0, 0);
+
+      const dayEnd = new Date(selectedDate);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const overlapsDay =
+        eventStart < dayEnd && eventEnd > dayStart;
+
+      if (!overlapsDay) return null;
+
+      return {
+        start: dayStart,
+        end: dayEnd,
+      };
+
     }
 
+
+    let googleEvents = [];
 
     if (hasGoogleCalendar) {
       try {
-        const oauth2Client = new google.auth.OAuth2(
-          process.env.GOOGLE_CLIENT_ID,
-          process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_SECRET_KEY,
-          process.env.GOOGLE_REDIRECT_URI
+        const response = await fetch(
+          `${process.env.BACKEND_URL}/api/google-calendar/events?userId=${employeeUserId}`, {
+            credentials: "include"
+          }
         );
 
-        oauth2Client.setCredentials({
-          access_token: googleData.access_token,
-          refresh_token: googleData.refresh_token,
-          token_type: googleData.token_type,
-          scope: googleData.scope,
-          expiry_date: googleData.expiry_date,
+        const events = await response.json();
+        const selectedDateObj = new Date(`${date}T00:00:00`);
+
+        console.log("Google raw events:", events);
+        console.log("Google parsed events:", googleEvents);
+
+        googleEvents =
+          events
+            .map(ev => parseGoogleApiEvent(ev, selectedDateObj))
+            .filter(Boolean);
+
+        const hasAllDayBlock = googleEvents.some(ev => {
+          const dayStart = new Date(`${date}T00:00:00`);
+          const dayEnd = new Date(`${date}T23:59:59`);
+          return ev.start <= dayStart && ev.end >= dayEnd;
         });
 
-        const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+        if (hasAllDayBlock) {
+          return res.json([]);
+        }
 
-        const timeMin = new Date(`${date}T00:00:00-03:00`).toISOString();
-        const timeMax = new Date(`${date}T23:59:59-03:00`).toISOString();
-
-
-        const { data: googleRaw } = await calendar.events.list({
-          calendarId: "primary",
-          timeMin,
-          timeMax,
-          singleEvents: true,
-          orderBy: "startTime",
-        });
-
-        googleEvents = googleRaw.items?.map((ev) => ({
-          start: parseGoogleDate(ev.start.dateTime || ev.start.date, date),
-          end: parseGoogleDate(ev.end.dateTime || ev.end.date, date),
-        })) || [];
 
       } catch (err) {
-        console.error("Erro ao buscar Google Calendar do funcionário:", err);
+        console.error("Erro ao buscar eventos via API interna:", err);
       }
     }
-
 
     const workStart = new Date(`${date}T${schedule.start_time}`);
     const workEnd = new Date(`${date}T${schedule.end_time}`);

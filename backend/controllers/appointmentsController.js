@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase.js';
 import { google } from "googleapis";
+import { sendWhatsAppMessage } from "../lib/whatsapp.js";
 
 export const getAppointmentsByEmployee = async (req, res) => {
   try {
@@ -91,7 +92,7 @@ export const createAppointment = async (req, res) => {
 
     const { data: orgData, error: orgError } = await supabase
       .from('organizations')
-      .select('id')
+      .select('id, name')
       .eq('slug_organization', slug)
       .single();
 
@@ -153,6 +154,17 @@ export const createAppointment = async (req, res) => {
       return res.status(201).json(created);
     }
 
+    const { data: serviceInfo, error: serviceInfoError } = await supabase
+      .from("services")
+      .select("id, name, price")
+      .eq("id", service_id)
+      .single();
+
+    if (serviceInfoError || !serviceInfo) {
+      console.error("❌ Serviço não encontrado para Google Calendar");
+      return res.status(201).json(created);
+    }
+
     const { data: googleData } = await supabase
       .from("organization_google_calendar")
       .select("*")
@@ -187,7 +199,7 @@ export const createAppointment = async (req, res) => {
 
     const eventBody = {
       summary: `Agendamento: ${client_name}`,
-      description: `Serviço ID: ${service_id}\nCliente: ${client_name}\nTelefone: ${client_phone}`,
+      description: `Serviço: ${serviceInfo?.name}\nProfissional: ${employee?.name}\nPreço original: ${original_price}\nPreço final: ${final_price}\nCliente: ${client_name}\nTelefone: ${client_phone}`,
       start: { dateTime: eventStart, timeZone: "America/Sao_Paulo" },
       end: { dateTime: eventEnd, timeZone: "America/Sao_Paulo" },
 
@@ -201,50 +213,129 @@ export const createAppointment = async (req, res) => {
 
     console.log("📌 Enviando evento ao Google:", eventBody);
 
-    // Buscar serviço para verificar se é online
+    // Buscar serviço
     const { data: serviceData } = await supabase
       .from("services")
       .select("is_online, name")
       .eq("id", service_id)
       .single();
 
+    // Só adiciona conferenceData se for online
     if (!serviceData?.is_online) {
-      console.log("🔕 Serviço não é online. Nenhum link será criado.");
-      console.log("📌 Evento criado no Google Calendar sem link", result.data.id);
-      return res.status(201).json(created);
+      delete eventBody.conferenceData;
     }
 
     let meetingUrl = null;
+
 
     try {
       const result = await calendar.events.insert({
         calendarId: "primary",
         requestBody: eventBody,
-        conferenceDataVersion: 1,
+        conferenceDataVersion: serviceData?.is_online ? 1 : 0,
       });
 
       const googleEvent = result.data;
-      meetingUrl =
-        googleEvent?.conferenceData?.entryPoints?.find((e) => e.entryPointType === "video")?.uri || null;
+
+      if (serviceData?.is_online) {
+        meetingUrl =
+          googleEvent?.conferenceData?.entryPoints?.find(
+            (e) => e.entryPointType === "video"
+          )?.uri || null;
+      }
 
       await supabase
         .from("appointments")
         .update({
           meeting_url: meetingUrl,
-          meeting_provider: "google_meet",
+          meeting_provider: meetingUrl ? "google_meet" : null,
           google_event_id: googleEvent.id,
         })
         .eq("id", created.id);
 
-      console.log("📌 Evento criado no Google Calendar com link:", result.data.id);
+      console.log("📌 Evento criado no Google Calendar:", googleEvent.id);
+
     } catch (googleErr) {
-      console.error("❌ Erro ao criar evento no Google Calendar com link:", googleErr);
+      console.error("❌ Erro ao criar evento no Google Calendar:", googleErr);
     }
+
+    // ===============================
+    // 🔔 NOTIFICAR REPRESENTANTE DA ORGANIZAÇÃO
+    // ===============================
+    try {
+      // Buscar representante da organização
+      const { data: representative } = await supabase
+        .from("organization_representative")
+        .select("user_id")
+        .eq("organization_id", orgData.id)
+        .maybeSingle();
+
+      if (!representative?.user_id) {
+        console.log("🔕 Organização sem representante cadastrado.");
+      } else {
+        // Buscar dados do usuário representante
+        const { data: user } = await supabase
+          .from("users")
+          .select("username, phone")
+          .eq("id", representative.user_id)
+          .single();
+
+        if (!user?.phone) {
+          console.log("🔕 Representante sem telefone cadastrado.");
+        } else {
+          // Buscar dados auxiliares
+          const { data: service } = await supabase
+            .from("services")
+            .select("name")
+            .eq("id", service_id)
+            .single();
+
+          const { data: employeeInfo } = await supabase
+            .from("employees")
+            .select("name")
+            .eq("id", employee_id)
+            .single();
+
+          // Formatar data dd/mm/yyyy
+          const formattedDate = date.split("-").reverse().join("/");
+
+          const message = `
+    📢 *Novo agendamento recebido*
+
+    Olá, *${user.username}* 👋  
+    Um novo agendamento foi realizado para ${orgData?.name}.
+
+    👤 Cliente: ${client_name}
+    📞 Telefone: ${client_phone || "-"}
+    💇 Serviço: ${service?.name || "-"}
+    🧑‍💼 Profissional: ${employeeInfo?.name || "-"}
+    📅 Data: ${formattedDate}
+    ⏰ Horário: ${start_time} - ${end_time}
+
+    💰 Valor final: ${final_price
+      ? final_price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+      : "-"}
+
+    🔐 Faça login e verifique todas as informações no seu painel administrativo:
+    👉 https://marcafy.com.br/${slug}/login
+          `.trim();
+
+          await sendWhatsAppMessage(user.phone, message);
+
+          console.log("📲 WhatsApp enviado ao representante:", user.username);
+        }
+      }
+    } catch (notifyErr) {
+      console.error("❌ Erro ao notificar representante:", notifyErr);
+    }
+
+
 
     return res.status(201).json({
       ...created,
       meeting_url: meetingUrl
     });
+
   } catch (error) {
     console.error('Error creating appointment:', error);
     res.status(500).json({ error: 'Internal server error' });

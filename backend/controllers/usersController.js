@@ -18,7 +18,15 @@ export const getUsers = async (req, res) => {
 
     const { data, error } = await supabase
       .from('users')
-      .select('id, username, email, tipo, created_at')
+      .select(`
+        id, 
+        username, 
+        email, 
+        tipo, 
+        id_employee,
+        created_at,
+        updated_at
+        `)
       .eq('organization_id', org.id)
       .order('created_at', { ascending: false });
 
@@ -36,7 +44,15 @@ export const getUserById = async (req, res) => {
 
     const { data, error } = await supabase
       .from('users')
-      .select('*')
+      .select(`
+        id, 
+        username, 
+        email, 
+        tipo, 
+        id_employee,
+        created_at,
+        updated_at
+        `)
       .eq('id', id)
       .eq('organization_id', org.id)  
       // .single();
@@ -53,7 +69,7 @@ export const getUserById = async (req, res) => {
 
 export const createUser = async (req, res) => {
   try {
-    const { username, email, password, phone, tipo = 'comum' } = req.body;
+    const { username, email, password, phone, tipo = 'comum', id_employee } = req.body;
     const { slug } = req.params;
 
     console.log("Slug recebido no users:", slug);
@@ -103,6 +119,7 @@ export const createUser = async (req, res) => {
           phone,
           password: password_hash, // salva apenas o hash
           tipo,
+          id_employee,
           created_at: new Date().toISOString(),
         },
       ])
@@ -123,7 +140,7 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id, slug } = req.params;
-    const { username, email, password_plaintext, phone, aniversario, tipo} = req.body;
+    const { username, email, password, phone, aniversario, id_employee, tipo} = req.body;
 
     const { data: org, orgError } = await supabase
       .from("organizations")
@@ -151,6 +168,7 @@ export const updateUser = async (req, res) => {
       email,
       phone,
       aniversario,
+      id_employee,
       updated_at: new Date().toISOString(),
       ...(tipo && { tipo }),
     };
@@ -158,8 +176,8 @@ export const updateUser = async (req, res) => {
     console.log(updateData.password)
 
     // Se veio senha nova, gera o hash
-    if (password_plaintext) {
-      updateData.password = await hashPassword(password_plaintext);
+    if (password) {
+      updateData.password = await hashPassword(password);
     }
 
     const { data, error } = await supabase

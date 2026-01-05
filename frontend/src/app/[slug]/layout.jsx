@@ -1,45 +1,81 @@
+import "../globals.css";
 
-import "./../globals.css";
+function normalizeOgImage(imageUrl) {
+  if (!imageUrl) return "https://www.marcafy.com.br/og-default.png";
+  if (imageUrl.endsWith(".webp")) {
+    return "https://www.marcafy.com.br/og-default.png";
+  }
+  return imageUrl;
+}
 
 export async function generateMetadata({ params }) {
-  const { slug } = await params;
+  const { slug } = params;
 
-  // Chama sua API interna
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/landing-page/${slug}`, {
-    cache: "no-store",
-  });
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/landing-page/${slug}`,
+    { cache: "no-store" }
+  );
 
   if (!res.ok) {
     return {
-      title: "Página não encontrada - Marcafy",
-      description: "Organização não encontrada",
-      icons: {
-        icon: "/marcafy-logo.jpg",
-      },
+      title: "Marcafy",
+      description: "Agendamento online profissional",
     };
   }
 
   const data = await res.json();
   const org = data.organizations;
 
+  const title = data.meta_title || org?.name || "Marcafy";
+  const description =
+    data.meta_description ||
+    `Conheça ${org?.name} e agende online com facilidade.`;
+
+  const rawImage =
+    data.open_graph_image ||
+    org?.logo_organization;
+
+  const image = normalizeOgImage(rawImage);
+
+  const url = `https://www.marcafy.com.br/${slug}`;
+
   return {
-    title: data.meta_title || org?.name || "Marcafy",
-    description: data.meta_description || "Página personalizada de agendamentos.",
-    keywords: data.meta_keywords || "",
+    title,
+    description,
+
+    alternates: { canonical: url },
+
     icons: {
-      icon: org?.logo_organization || "/marcafy-logo.jpg",
-      apple: org?.logo_organization || "/marcafy-logo.jpg",
+      icon: org?.logo_organization,
+      apple: org?.logo_organization,
+    },
+
+    openGraph: {
+      title,
+      description,
+      url,
+      type: "website",
+      locale: "pt_BR",
+      siteName: org?.name,
+      images: [
+        {
+          url: image,
+          width: 1200,
+          height: 630,
+          type: "image/png",
+        },
+      ],
+    },
+
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
     },
   };
 }
 
-// Corrige o warning do themeColor
-export const viewport = {
-  themeColor: "#ffffff",
-};
-
 export default function SlugLayout({ children }) {
-  return (
-      <div>{children}</div>
-  );
+  return <>{children}</>;
 }

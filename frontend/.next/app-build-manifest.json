@@ -1,6 +1,6 @@
 {
   "pages": {
-    "/[slug]/admin/page": [
+    "/[slug]/agendar/page": [
       "static/chunks/[root-of-the-server]__ddac3b83._.css",
       "static/chunks/node_modules_7a88b279._.js",
       "static/chunks/src_app_components_541c4631._.js",

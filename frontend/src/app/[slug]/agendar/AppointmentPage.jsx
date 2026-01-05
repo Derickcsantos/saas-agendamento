@@ -255,6 +255,37 @@ export default function AppointmentPage({ slug }) {
     }
   };
 
+const sendWhatsappConfirmation = async () => {
+  if (!appointmentData) return;
+
+  try {
+    await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/contact/whatsapp/confirmedAppointment`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client: appointmentData.client,
+          service: appointmentData.service,
+          category: appointmentData.category,
+          employee: appointmentData.employee,
+          date: appointmentData.date,
+          time: appointmentData.time,
+          prices: {
+            final: appointmentData.prices.final,
+          },
+          slug: slug
+        }),
+      }
+    );
+
+    toast.success('Mensagem enviada com sucesso')
+  } catch (err) {
+    console.error("Erro ao enviar WhatsApp:", err);
+  }
+};
+
+
   const handleConfirmAppointment = async (clientData) => {
     if (!selected.service || !selected.employee || !selected.time || !selected.date) {
       toast.info("Preencha todos os dados do agendamento antes de confirmar.");
@@ -413,15 +444,14 @@ export default function AppointmentPage({ slug }) {
 
           {/* Botões */}
           <div className="mt-6 space-y-3">
-            <a
-              href={`https://wa.me/55${a.client?.phone}?text=${whatsappMessage}`}
-              target="_blank"
+            <button
+              onClick={sendWhatsappConfirmation}
               className="block w-full text-center bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg shadow-md transition"
             >
               Enviar via WhatsApp
-            </a>
+            </button>
 
-            <button
+            {/* <button
               onClick={() => window.location.href = `mailto:${a.client?.email}?subject=Confirmação de Agendamento&body=${whatsappMessage}`}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg shadow-md transition"
             >
@@ -433,7 +463,7 @@ export default function AppointmentPage({ slug }) {
               className="w-full bg-gray-800 hover:bg-black text-white py-3 rounded-lg shadow-md transition"
             >
               Baixar Comprovante
-            </button>
+            </button> */}
           </div>
 
           <button

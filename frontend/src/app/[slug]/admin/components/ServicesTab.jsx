@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 export default function ServicesTab({ org }) {
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
+  const formRef = useRef(null); 
   const [form, setForm] = useState({
     id: null,
     name: "",
@@ -53,7 +54,17 @@ export default function ServicesTab({ org }) {
 
     try {
       const formData = new FormData();
-      for (const [key, value] of Object.entries(form)) formData.append(key, value);
+
+    for (const [key, value] of Object.entries(form)) {
+      if (key === "is_online") {
+        formData.append("is_online", value ? "1" : "0");
+      } else {
+        formData.append(key, value);
+      }
+    }
+
+    if (image) formData.append("image", image);
+
       if (image) formData.append("image", image);
 
       const method = form.id ? "PUT" : "POST";
@@ -104,6 +115,13 @@ export default function ServicesTab({ org }) {
       durability_days: service.durability_days || 0,
     });
     setPreview(service.imagem_service || "");
+
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
   };
 
   const handleDelete = async (id) => {
@@ -121,6 +139,7 @@ export default function ServicesTab({ org }) {
     <div className="space-y-8">
 
       <form
+        ref={formRef}
         onSubmit={handleSubmit}
         className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 space-y-6"
       >
