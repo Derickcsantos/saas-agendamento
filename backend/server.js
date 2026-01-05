@@ -41,7 +41,6 @@ import { googleCalendarRouter } from './routes/googleCalendarRoutes.js';
 import { marcafyMarketingRouter } from './routes/geminiMarcafyMarketingRoutes.js';
 import { marcafyInstagramStatsRouter } from './routes/marcafyInstagramStatsRoutes.js';
 import { closedPeriodsRouter } from './routes/closedPeriodsRoutes.js';
-import { contactRouter } from './routes/contactRoutes.js'
 // import { sendWhatsappRouter } from "./routes/sendWhatsappRoutes.js";
 
 const app = express();
@@ -102,8 +101,7 @@ app.use("/api/subscriptions", subscriptionsRouter);
 app.use('/api/google-calendar', googleCalendarRouter)
 app.use('/api/marketing/instagram/marcafy', marcafyMarketingRouter)
 app.use('/api/marcafy-instagram', marcafyInstagramStatsRouter)
-app.use('/api/closed-periods', closedPeriodsRouter)
-app.use('/api/contact', contactRouter)
+app.use('/api/closed-periods', closedPeriodsRouter);
 // app.use("/api/whatsapp-send", sendWhatsappRouter);
 
 app.listen(port, () => {

@@ -1,6 +1,12 @@
 import Router from 'express';
-import { getClosedPeriods, getClosedPeriodById, createClosedPeriod, updateClosedPeriod, deleteClosedPeriod } from '../controllers/closedPeriodsController.js'
-import { authenticateJWT} from '../middlewares/authMiddleware.js';
+import {
+  getAllClosedPeriods,
+  getClosedPeriodById,
+  createClosedPeriod,
+  updateClosedPeriod,
+  deleteClosedPeriod,
+} from '../controllers/closedPeriodsController.js';
+import { authenticateJWT } from '../middlewares/authMiddleware.js';
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
 
 export const closedPeriodsRouter = Router();
@@ -8,54 +14,43 @@ export const closedPeriodsRouter = Router();
 /**
  * @swagger
  * tags:
- *   - name: Períodos fechados
- *     description: Gerenciamento de períodos fechados
+ *   - name: Períodos Fechados
+ *     description: Endpoints para gestão de períodos de fechamento (feriados, férias, etc.)
  */
 
 /**
  * @swagger
  * /api/closed-periods/{slug}:
  *   get:
- *     summary: Retorna todos os usuários de uma organização
- *     description: Retorna todos os usuários vinculados à organização identificada pelo slug.
- *     tags: [Períodos fechados]
- *     security:
- *       - bearerAuth: []
+ *     summary: Lista todos os períodos fechados da organização
+ *     tags: [Períodos Fechados]
  *     parameters:
  *       - in: path
  *         name: slug
  *         required: true
  *         schema:
  *           type: string
- *         description: Slug da organização
- *         example: "barbearia-do-joao"
+ *         description: Slug único da organização
+ *     security:
+ *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: Lista de usuários da organização
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/User'
+ *         description: Lista de períodos fechados da organização
  *       401:
- *         description: Não autorizado
+ *         description: Token ausente ou inválido
  *       404:
  *         description: Organização não encontrada
  *       500:
  *         description: Erro interno do servidor
  */
-closedPeriodsRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, getClosedPeriods)
+closedPeriodsRouter.get('/:slug', authenticateJWT, getAllClosedPeriods);
 
 /**
  * @swagger
- * /api/closed-periods/{id}:
+ * /api/closed-periods/{slug}/{id}:
  *   get:
- *     summary: Retorna um usuário específico de uma organização
- *     description: Busca um usuário pelo ID dentro da organização identificada pelo slug.
- *     tags: [Períodos fechados]
- *     security:
- *       - bearerAuth: []
+ *     summary: Obtém detalhes de um período fechado específico
+ *     tags: [Períodos Fechados]
  *     parameters:
  *       - in: path
  *         name: slug
@@ -63,40 +58,32 @@ closedPeriodsRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, g
  *         schema:
  *           type: string
  *         description: Slug da organização
- *         example: "barbearia-do-joao"
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: ID do usuário
- *         example: "uuid-do-usuario"
+ *         description: ID do período fechado
+ *     security:
+ *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: Usuário encontrado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
+ *         description: Dados do período fechado
  *       401:
- *         description: Não autorizado
+ *         description: Token ausente ou inválido
  *       404:
- *         description: Usuário ou organização não encontrada
+ *         description: Período fechado não encontrado
  *       500:
  *         description: Erro interno do servidor
  */
-closedPeriodsRouter.get('/:id', authenticateJWT, requireAdminOfOrganization, getClosedPeriodById)
-
+closedPeriodsRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganization, getClosedPeriodById);
 
 /**
  * @swagger
  * /api/closed-periods/{slug}:
  *   post:
- *     summary: Cria um novo usuário dentro de uma organização
- *     description: Cria um usuário vinculado à organização identificada pelo slug.
- *     tags: [Períodos fechados]
- *     security:
- *       - bearerAuth: []
+ *     summary: Cria um novo período fechado
+ *     tags: [Períodos Fechados]
  *     parameters:
  *       - in: path
  *         name: slug
@@ -104,37 +91,44 @@ closedPeriodsRouter.get('/:id', authenticateJWT, requireAdminOfOrganization, get
  *         schema:
  *           type: string
  *         description: Slug da organização
- *         example: "barbearia-do-joao"
+ *     security:
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UserInput'
+ *             type: object
+ *             required:
+ *               - start_day
+ *               - end_day
+ *             properties:
+ *               start_day:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Data/hora de início do período fechado
+ *               end_day:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Data/hora de término do período fechado
  *     responses:
  *       201:
- *         description: Usuário criado com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
+ *         description: Período fechado criado com sucesso
  *       400:
- *         description: Campos obrigatórios ausentes ou usuário já existente
+ *         description: Dados inválidos
  *       401:
- *         description: Não autorizado
+ *         description: Token ausente ou inválido
  *       500:
  *         description: Erro interno do servidor
  */
-closedPeriodsRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, createClosedPeriod)
+closedPeriodsRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, createClosedPeriod);
 
 /**
  * @swagger
  * /api/closed-periods/{slug}/{id}:
  *   put:
- *     summary: Atualiza um usuário existente dentro da organização
- *     tags: [Períodos fechados]
- *     security:
- *       - bearerAuth: []
+ *     summary: Atualiza um período fechado existente
+ *     tags: [Períodos Fechados]
  *     parameters:
  *       - in: path
  *         name: slug
@@ -142,45 +136,47 @@ closedPeriodsRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, 
  *         schema:
  *           type: string
  *         description: Slug da organização
- *         example: "barbearia-do-joao"
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: ID do usuário a ser atualizado
+ *         description: ID do período fechado
+ *     security:
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UserUpdate'
+ *             type: object
+ *             properties:
+ *               start_day:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Nova data/hora de início
+ *               end_day:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Nova data/hora de término
  *     responses:
  *       200:
- *         description: Usuário atualizado com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- *       400:
- *         description: Dados inválidos ou ausentes
+ *         description: Período fechado atualizado com sucesso
  *       401:
- *         description: Não autorizado
+ *         description: Token ausente ou inválido
  *       404:
- *         description: Usuário não encontrado na organização
+ *         description: Período fechado não encontrado
  *       500:
  *         description: Erro interno do servidor
  */
-closedPeriodsRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, updateClosedPeriod)
+closedPeriodsRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, updateClosedPeriod);
 
 /**
  * @swagger
  * /api/closed-periods/{slug}/{id}:
  *   delete:
- *     summary: Remove um usuário da organização
- *     tags: [Períodos fechados]
- *     security:
- *       - bearerAuth: []
+ *     summary: Remove um período fechado
+ *     tags: [Períodos Fechados]
  *     parameters:
  *       - in: path
  *         name: slug
@@ -188,29 +184,22 @@ closedPeriodsRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganizatio
  *         schema:
  *           type: string
  *         description: Slug da organização
- *         example: "barbearia-do-joao"
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: ID do usuário a ser removido
+ *         description: ID do período fechado
+ *     security:
+ *       - cookieAuth: []
  *     responses:
- *       200:
- *         description: Usuário removido com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *       204:
+ *         description: Período fechado removido com sucesso
  *       401:
- *         description: Não autorizado
+ *         description: Token ausente ou inválido
  *       404:
- *         description: Usuário não encontrado na organização
+ *         description: Período fechado não encontrado
  *       500:
  *         description: Erro interno do servidor
  */
-closedPeriodsRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, deleteClosedPeriod)
+closedPeriodsRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, deleteClosedPeriod);
