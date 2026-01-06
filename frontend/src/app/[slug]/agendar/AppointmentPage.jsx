@@ -20,6 +20,7 @@ export default function AppointmentPage({ slug }) {
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [policies, setPolicies] = useState(null);
+  const [unavailableDays, setUnavailableDays] = useState([]); // ["2026-01-06", ...]
 
   // Steps
   const [step, setStep] = useState(1);
@@ -171,6 +172,29 @@ export default function AppointmentPage({ slug }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const loadUnavailableDays = async () => {
+      if (!selected.employee || !selected.service) return;
+
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/closed-periods/${slug}/all?employeeId=${selected.employee.id}&duration=${selected.service.duration}`, {
+            credentials: 'include'
+          }
+        );
+
+        const data = await res.json();
+        setUnavailableDays(Array.isArray(data?.unavailable_days) ? data.unavailable_days : []);
+      } catch (e) {
+        console.error("Erro ao carregar dias indisponíveis:", e);
+        setUnavailableDays([]);
+      }
+    };
+
+    loadUnavailableDays();
+  }, [selected.employee, selected.service, slug]);
+
 
   // ================================
   // 6️⃣ LOAD TIME SLOTS
@@ -589,6 +613,7 @@ const sendWhatsappConfirmation = async () => {
                       onClick={() => {
                         handleSelect("service", srv);
                         loadEmployees(srv.id);
+                        setUnavailableDays([]);
                         next();
                       }}
                       className={`cursor-pointer p-4 rounded-xl border transition-all ${
@@ -683,9 +708,13 @@ const sendWhatsappConfirmation = async () => {
                       handleSelect("date", formatted);
                       next(); // já avança para horários (UX melhor)
                     }}
-                    disabled={{
-                      before: new Date(minDate + "T00:00:00"),
-                      after: new Date(maxDateStr + "T23:59:59"),
+                    disabled={(date) => {
+                      const iso = format(date, "yyyy-MM-dd");
+                      return (
+                        iso < minDate ||
+                        iso > maxDateStr ||
+                        unavailableDays.includes(iso)
+                      );
                     }}
                     className="bg-white rounded-xl border p-4 shadow"
                   />
