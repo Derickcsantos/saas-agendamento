@@ -199,7 +199,7 @@ export const getAvailableTimes = async (req, res) => {
 
     const { data: policy, error: policyError } = await supabase
       .from("organization_policies")
-      .select("sync_google_calendar")
+      .select("sync_google_calendar, max_schedule_days")
       .eq("organization_id", orgData.id)
       .maybeSingle();
 
@@ -208,6 +208,26 @@ export const getAvailableTimes = async (req, res) => {
     }
 
     const shouldSyncGoogle = policy?.sync_google_calendar === true;
+
+    const maxScheduleDays = Number(policy?.max_schedule_days ?? 30);
+
+    // date: "YYYY-MM-DD" -> data local (sem UTC)
+    const [y, m, d] = date.split("-").map(Number);
+    const selectedDay = new Date(y, m - 1, d);
+    selectedDay.setHours(0, 0, 0, 0);
+
+    // hoje local 00:00
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // limite (hoje + maxScheduleDays)
+    const maxDay = new Date(today);
+    maxDay.setDate(maxDay.getDate() + maxScheduleDays);
+
+    if (selectedDay < today || selectedDay > maxDay) {
+      return res.json([]); // fora do range permitido
+    }
+
 
     const hasGoogleCalendar = shouldSyncGoogle && !!googleData;
 
@@ -309,11 +329,18 @@ export const getAvailableTimes = async (req, res) => {
 
     if (hasGoogleCalendar) {
       try {
-        const response = await fetch(
-          `${process.env.BACKEND_URL}/api/google-calendar/events?userId=${employeeUserId}`, {
-            credentials: "include"
-          }
-        );
+        const dayStartISO = new Date(`${date}T00:00:00`).toISOString();
+        const dayEndISO = new Date(`${date}T23:59:59`).toISOString();
+
+        const url =
+          `${process.env.BACKEND_URL}/api/google-calendar/events` +
+          `?userId=${encodeURIComponent(employeeUserId)}` +
+          `&timeMin=${encodeURIComponent(dayStartISO)}` +
+          `&timeMax=${encodeURIComponent(dayEndISO)}` +
+          `&excludeHolidays=true`;
+
+        const response = await fetch(url, { credentials: "include" });
+
 
         const events = await response.json();
         const selectedDateObj = new Date(`${date}T00:00:00`);
