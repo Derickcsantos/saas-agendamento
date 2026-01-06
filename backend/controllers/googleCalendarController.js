@@ -169,14 +169,48 @@ export async function googleCalendarCallback(req, res) {
 }
 
 // =====================================================
-// 4) EVENTS – pega TODOS os eventos pessoais do usuário
+// EVENTS – busca eventos dentro de um range (timeMin/timeMax)
+// Inclui eventos do usuário + compartilhados + de terceiros.
+// Ignora calendários de feriados.
 // =====================================================
 export async function getCalendarEvents(req, res) {
   try {
     const userId = Number(req.query.userId);
+    if (!userId) return res.status(400).json({ error: "userId é obrigatório" });
 
-    if (!userId) {
-      return res.status(400).json({ error: "userId é obrigatório" });
+    // ✅ Se NÃO passar range: mantém -1 ano até +1 ano (como era antes)
+    // ✅ Se passar range: usa o range informado (e completa o que faltar)
+    const hasTimeMin = typeof req.query.timeMin === "string" && req.query.timeMin.trim() !== "";
+    const hasTimeMax = typeof req.query.timeMax === "string" && req.query.timeMax.trim() !== "";
+
+    let timeMin;
+    let timeMax;
+
+    if (!hasTimeMin && !hasTimeMax) {
+      // comportamento antigo
+      timeMin = new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString();
+      timeMax = new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString();
+    } else {
+      // comportamento novo (range)
+      // se vier só um, completa com algo razoável (ex: 1 dia)
+      if (hasTimeMin) {
+        timeMin = new Date(req.query.timeMin).toISOString();
+      }
+
+      if (hasTimeMax) {
+        timeMax = new Date(req.query.timeMax).toISOString();
+      }
+
+      // completa se faltar
+      if (!hasTimeMin && hasTimeMax) {
+        // se só veio o max, assume 1 dia antes
+        timeMin = new Date(new Date(timeMax).getTime() - 24 * 60 * 60 * 1000).toISOString();
+      }
+
+      if (hasTimeMin && !hasTimeMax) {
+        // se só veio o min, assume 1 dia depois
+        timeMax = new Date(new Date(timeMin).getTime() + 24 * 60 * 60 * 1000).toISOString();
+      }
     }
 
     const { data: integration, error } = await supabase
@@ -186,10 +220,7 @@ export async function getCalendarEvents(req, res) {
       .maybeSingle();
 
     if (error) throw error;
-
-    if (!integration) {
-      return res.status(401).json({ error: "Google Calendar não está conectado" });
-    }
+    if (!integration) return res.status(401).json({ error: "Google Calendar não está conectado" });
 
     const oauth2Client = createOAuthClient();
     oauth2Client.setCredentials({
@@ -202,23 +233,28 @@ export async function getCalendarEvents(req, res) {
 
     const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
-    const timeMin =
-      req.query.timeMin ||
-      new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString();
-
-    const timeMax =
-      req.query.timeMax ||
-      new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString();
-
     const calendars = await calendar.calendarList.list();
 
-    let allEvents = [];
+    // ✅ pega tudo que o usuário consegue ver (inclui compartilhados/terceiros)
+    // e ignora "Feriados/Holidays"
+    const allowedAccess = new Set(["owner", "writer", "reader"]);
+    const isHolidayCalendar = (cal) => {
+      const text = `${cal.summary || ""} ${cal.description || ""}`.toLowerCase();
+      const id = String(cal.id || "").toLowerCase();
+      // heurísticas comuns de calendários de feriados
+      if (text.includes("feriad") || text.includes("holiday")) return true;
+      if (id.includes("holiday@") || id.includes("group.v.calendar.google.com")) return true;
+      return false;
+    };
 
-    const validCalendars = calendars.data.items.filter((cal) =>
-      cal.primary === true ||
-      cal.accessRole === "owner" ||
-      cal.accessRole === "writer"
-    );
+    const validCalendars =
+      (calendars.data.items || []).filter((cal) => {
+        if (!allowedAccess.has(cal.accessRole)) return false;
+        if (isHolidayCalendar(cal)) return false;
+        return true;
+      });
+
+    let allEvents = [];
 
     for (const cal of validCalendars) {
       const { data } = await calendar.events.list({
@@ -227,23 +263,25 @@ export async function getCalendarEvents(req, res) {
         timeMax,
         singleEvents: true,
         orderBy: "startTime",
+        showDeleted: false,
         maxResults: 2500,
       });
 
-      const events = data.items?.map((ev) => ({
-        id: ev.id,
-        summary: ev.summary || "Evento",
-        start: ev.start?.dateTime || ev.start?.date,
-        end: ev.end?.dateTime || ev.end?.date,
-        calendarId: cal.id,
-      })) ?? [];
+      const events =
+        data.items?.map((ev) => ({
+          id: ev.id,
+          summary: ev.summary || "Evento",
+          start: ev.start?.dateTime || ev.start?.date,
+          end: ev.end?.dateTime || ev.end?.date,
+          calendarId: cal.id,
+          // opcional p/ debug:
+          // organizer: ev.organizer?.email,
+        })) ?? [];
 
       allEvents.push(...events);
     }
 
-
-
-    // Atualiza token se Google renovou
+    // ✅ Atualiza token se Google renovou
     const newCreds = oauth2Client.credentials;
     if (newCreds.access_token && newCreds.access_token !== integration.access_token) {
       await supabase
@@ -257,7 +295,6 @@ export async function getCalendarEvents(req, res) {
     }
 
     return res.json(allEvents);
-
   } catch (err) {
     console.error("getCalendarEvents error:", err);
     return res.status(500).json({ error: "Erro ao buscar eventos" });
