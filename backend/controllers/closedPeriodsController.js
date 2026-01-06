@@ -61,6 +61,7 @@ export async function getAllClosedPeriods(req, res) {
 
     const CACHE_TTL_SECONDS = 100; 
 
+
     let cached = null;
       if (redis) {
         try {
