@@ -1,7 +1,45 @@
-import express from 'express';
-import { supabase } from '../lib/supabase.js';
-import sharp from 'sharp';
+import { v4 as uuidv4 } from "uuid";
+import sharp from "sharp";
+import { supabase } from "../lib/supabase.js";
 
+function toNumberOrNull(v) {
+  if (v === undefined || v === null) return null;
+  if (v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function toBoolean(v) {
+  // FormData manda string
+  if (v === true || v === 1) return true;
+  if (v === false || v === 0) return false;
+  if (typeof v === "string") return v === "true" || v === "1" || v === "on";
+  return false;
+}
+
+async function uploadServiceImage(file) {
+  const buffer = await sharp(file.buffer)
+    .resize({ width: 600 })
+    .webp({ quality: 80 })
+    .toBuffer();
+
+  const fileName = `${uuidv4()}.webp`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("services-images")
+    .upload(fileName, buffer, {
+      contentType: "image/webp",
+      upsert: false,
+    });
+
+  if (uploadError) throw uploadError;
+
+  const { data: publicUrl } = supabase.storage
+    .from("services-images")
+    .getPublicUrl(fileName);
+
+  return publicUrl.publicUrl;
+}
 
 export const getServices = async (req, res) => {
   try {
@@ -20,7 +58,7 @@ export const getServices = async (req, res) => {
 
     let query = supabase
       .from('services')
-      .select('id, name, category_id, duration, price, categories(name), is_online, durability_days')
+      .select('id, name, category_id, duration, price, categories(name), is_online, durability_days, imagem_service')
       .eq('organization_id', org.id)
       .order('name', { ascending: true });
 
@@ -84,7 +122,7 @@ export const getServicesBySlug = async (req, res) => {
 
     const { data, error } = await supabase
       .from('services')
-      .select('id, name, category_id, duration, price, categories(name), is_online, durability_days')
+      .select('id, name, category_id, duration, price, categories(name), is_online, durability_days, imagem_service')
       .eq('organization_id', orgData.id)
 
 
@@ -100,114 +138,92 @@ export const getServicesBySlug = async (req, res) => {
 
 export const createService = async (req, res) => {
   try {
-    const { category_id, name, description, duration, price, is_online, durability_days } = req.body;
     const { slug } = req.params;
-    let imageUrl = null;
+    const { category_id, name, description, duration, price, is_online, durability_days } = req.body;
 
-    if (!slug) {
-      return res.status(400).json({ error: 'Slug não fornecido' });
-    }
-
-    // Busca o organization_id correspondente ao slug
     const { data: orgData, error: orgError } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('slug_organization', slug)
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
       .single();
 
     if (orgError || !orgData) {
-      return res.status(404).json({ error: 'Organização não encontrada' });
+      return res.status(404).json({ error: "Organização não encontrada" });
     }
 
+    let imageUrl = null;
     if (req.file) {
-      const buffer = await sharp(req.file.buffer)
-        .resize({ width: 600 })
-        .webp({ quality: 80 })
-        .toBuffer();
-
-      // nome único do arquivo
-      const fileName = `service-${Date.now()}.webp`;
-
-      // upload para o bucket "services-image"
-      const { error: uploadError } = await supabase.storage
-        .from('services-images')
-        .upload(fileName, buffer, {
-          contentType: 'image/webp',
-          upsert: false, // evita sobrescrever
-        });
-
-      if (uploadError) throw uploadError;
-
-      // gera a URL pública
-      const { data: publicUrl } = supabase.storage
-        .from('services-images')
-        .getPublicUrl(fileName);
-
-      imageUrl = publicUrl.publicUrl;
+      imageUrl = await uploadServiceImage(req.file);
     }
 
-    const { data, error } = await supabase
-      .from('services')
-      .insert([{ 
-        category_id, 
-        name, 
-        description, 
-        duration, 
-        organization_id: orgData.id,
-        price,
-        imagem_service: imageUrl, 
-        is_online: is_online === "1",
-        durability_days
-      }])
-      .select();
+    const payload = {
+      organization_id: orgData.id,
+      category_id: category_id || null,
+      name,
+      description: description || null,
+      duration: toNumberOrNull(duration),          // ✅ numeric
+      price: toNumberOrNull(price),                // ✅ numeric (null se "")
+      durability_days: toNumberOrNull(durability_days) ?? 0, // ✅ numeric
+      is_online: toBoolean(is_online),             // ✅ boolean real
+      imagem_service: imageUrl,
+    };
+
+    const { data, error } = await supabase.from("services").insert([payload]).select();
 
     if (error) throw error;
-    res.status(201).json(data[0]);
+    return res.status(201).json(data[0]);
   } catch (error) {
-    console.error('Error creating service:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+    console.error("Error creating service:", error);
+    return res.status(500).json({ error: error.message || "Internal server error" });
   }
 };
 
 export const updateService = async (req, res) => {
   try {
-    console.log('api funcionando')
     const { slug, id } = req.params;
     const { category_id, name, description, duration, price, is_online, durability_days } = req.body;
-    let imageData = null;
 
-    // Se enviou nova imagem, converte para base64
-    if (req.file) {
-    const buffer = await sharp(req.file.buffer)
-      .resize({ width: 600 }) // opcional: redimensiona para largura máxima de 600px
-      .webp({ quality: 80 }) // converte para webp com qualidade razoável
-      .toBuffer();
+    // (Opcional, mas recomendo) garantir que o serviço pertence à org do slug
+    const { data: orgData, error: orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
 
-      imageData = buffer.toString('base64'); // se ainda quiser salvar como base64
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: "Organização não encontrada" });
     }
 
-    const updateData = { 
-      category_id,
+    let imageUrl = null;
+    if (req.file) {
+      imageUrl = await uploadServiceImage(req.file); // ✅ agora faz upload igual categorias
+    }
+
+    const updateData = {
+      category_id: category_id || null,
       name,
-      description,
-      duration,
-      price,
-      is_online: is_online === "1",
-      durability_days,
-      ...(imageData && { imagem_service: imageData })
+      description: description || null,
+      duration: toNumberOrNull(duration),
+      price: toNumberOrNull(price),
+      durability_days: toNumberOrNull(durability_days) ?? 0,
+      is_online: toBoolean(is_online),
+      ...(imageUrl ? { imagem_service: imageUrl } : {}),
     };
 
     const { data, error } = await supabase
-      .from('services')
+      .from("services")
       .update(updateData)
-      .eq('id', id)
+      .eq("id", id)
+      .eq("organization_id", orgData.id) // ✅ evita editar serviço de outra org
       .select();
 
     if (error) throw error;
-    res.json(data[0]);
+    if (!data || data.length === 0) return res.status(404).json({ error: "Serviço não encontrado" });
+
+    return res.json(data[0]);
   } catch (error) {
-    console.error('Error updating service:', error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+    console.error("Error updating service:", error);
+    return res.status(500).json({ error: error.message || "Internal server error" });
   }
 };
 

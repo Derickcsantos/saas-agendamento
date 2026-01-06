@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import ImageDropzone from "./ImageDropzone"
 
 export default function ServicesTab({ org }) {
   const [services, setServices] = useState([]);
@@ -109,12 +110,13 @@ export default function ServicesTab({ org }) {
       name: service.name,
       description: service.description || "",
       category_id: service.category_id || "",
-      duration: service.duration || "",
-      price: service.price || "",
-      is_online: service.is_online || false,
-      durability_days: service.durability_days || 0,
+      duration: service.duration ?? "",
+      price: service.price ?? "",
+      is_online: !!service.is_online,
+      durability_days: service.durability_days ?? 0,
     });
     setPreview(service.imagem_service || "");
+    setImage(null)
 
     setTimeout(() => {
       formRef.current?.scrollIntoView({
@@ -195,20 +197,18 @@ export default function ServicesTab({ org }) {
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
 
-          {/* Upload - sempre full width */}
-          <div className="md:col-span-2 w-full md:basis-[calc(50%-0.5rem)]">
-            <input
-              type="file"
-              accept="image/*"
-              className="w-full md:basis-[calc(50%-0.5rem)] overflow-hidden p-2 bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg text-sm"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                setImage(file);
-                setPreview(URL.createObjectURL(file));
-              }}
-            />
-          </div>
+          <div>
+              <ImageDropzone
+                key={form.id || "new"}
+                valueFile={image}
+                previewUrl={preview}
+                paletteColor={palette?.strong_color}
+                onChangeFile={(file, url) => {
+                  setImage(file);
+                  setPreview(url);
+                }}
+              />
+            </div>
 
           <input
             type="number"
