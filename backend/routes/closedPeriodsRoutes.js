@@ -1,6 +1,7 @@
 import Router from 'express';
 import {
   getAllClosedPeriods,
+  getClosedPeriodsBySlug,
   getClosedPeriodById,
   createClosedPeriod,
   updateClosedPeriod,
@@ -43,7 +44,9 @@ export const closedPeriodsRouter = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-closedPeriodsRouter.get('/:slug', authenticateJWT, getAllClosedPeriods);
+closedPeriodsRouter.get('/:slug', authenticateJWT, getClosedPeriodsBySlug);
+
+closedPeriodsRouter.get('/:slug/all', getAllClosedPeriods);
 
 /**
  * @swagger
