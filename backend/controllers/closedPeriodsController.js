@@ -55,18 +55,11 @@ export async function getAllClosedPeriods(req, res) {
     const employeeId = employeeIdRaw ? Number(employeeIdRaw) : null;
     const duration = durationRaw ? Number(durationRaw) : null;
 
-    // base da sua API (backend)
-    const baseUrl =
-      process.env.NEXT_PUBLIC_API_URL ||
-      process.env.API_URL ||
-      process.env.BACKEND_URL ||
-      "http://localhost:3000";
+    const baseUrl = process.env.BACKEND_URL || "http://localhost:3000";
 
-    // Cache key: muda se employeeId/duration mudarem
     const cacheKey = `unavailable-days:${slug}:${employeeId ?? "all"}:${duration ?? "nodur"}`;
 
-    // TTL curto: como horários mudam por agendamentos, não cacheie por horas
-    const CACHE_TTL_SECONDS = 60; // 1 min (ajuste para 30-120 conforme carga)
+    const CACHE_TTL_SECONDS = 100; 
 
     let cached = null;
       if (redis) {
@@ -79,7 +72,6 @@ export async function getAllClosedPeriods(req, res) {
 
       if (cached) return res.json(JSON.parse(cached));
 
-    // 1) Org
     const { data: org, error: orgError } = await supabase
       .from("organizations")
       .select("id")
@@ -90,29 +82,25 @@ export async function getAllClosedPeriods(req, res) {
       return res.status(404).json({ error: "Organização não encontrada" });
     }
 
-    // 2) Policies (max_schedule_days)
     const { data: policy, error: policyError } = await supabase
       .from("organization_policies")
       .select("max_schedule_days")
       .eq("organization_id", org.id)
       .single();
 
-    // fallback seguro
     const maxScheduleDays = policyError || !policy?.max_schedule_days ? 30 : Number(policy.max_schedule_days);
 
-    // range de datas (hoje -> hoje+maxScheduleDays)
     const today = new Date();
-    const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate()); // 00:00
+    const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const endDate = addDays(startDate, maxScheduleDays);
 
-    // gera lista de datas no range
     const dates = [];
     for (let d = new Date(startDate); d <= endDate; d = addDays(d, 1)) {
       dates.push(new Date(d));
     }
 
-    const unavailableSet = new Set(); // datas yyyy-mm-dd indisponíveis
-    const reasons = {}; // opcional: { "yyyy-mm-dd": ["closed_period", "no_work", "no_times"] }
+    const unavailableSet = new Set();
+    const reasons = {}; 
 
     const addUnavailable = (iso, reason) => {
       unavailableSet.add(iso);
@@ -120,7 +108,6 @@ export async function getAllClosedPeriods(req, res) {
       if (!reasons[iso].includes(reason)) reasons[iso].push(reason);
     };
 
-    // 3) Closed periods
     const { data: closedPeriods, error: closedError } = await supabase
       .from("closed_periods")
       .select("*")
@@ -129,15 +116,12 @@ export async function getAllClosedPeriods(req, res) {
 
     if (closedError) throw closedError;
 
-    // Expande períodos em dias (dentro do range)
-    // Assumindo start_day/end_day como date/timestamp no formato ISO.
     for (const p of closedPeriods || []) {
       if (!p.start_day) continue;
 
       const pStart = new Date(p.start_day);
       const pEnd = p.end_day ? new Date(p.end_day) : new Date(p.start_day);
 
-      // normaliza para 00:00
       const ps = new Date(pStart.getFullYear(), pStart.getMonth(), pStart.getDate());
       const pe = new Date(pEnd.getFullYear(), pEnd.getMonth(), pEnd.getDate());
 
@@ -211,6 +195,8 @@ export async function getAllClosedPeriods(req, res) {
           `?employeeId=${encodeURIComponent(employeeId)}` +
           `&date=${encodeURIComponent(iso)}` +
           `&duration=${encodeURIComponent(duration)}`;
+
+          console.log("available-times URL =>", url);
 
         const data = await fetchJson(url, { credentials: "include" });
 

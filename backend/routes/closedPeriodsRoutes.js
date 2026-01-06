@@ -46,7 +46,7 @@ export const closedPeriodsRouter = Router();
  */
 closedPeriodsRouter.get('/:slug', authenticateJWT, getClosedPeriodsBySlug);
 
-closedPeriodsRouter.get('/:slug/all', authenticateJWT,getAllClosedPeriods);
+closedPeriodsRouter.get('/:slug/all', getAllClosedPeriods);
 
 /**
  * @swagger
