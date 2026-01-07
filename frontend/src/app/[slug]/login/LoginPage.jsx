@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 export default function LoginPage({ slug }) {
@@ -12,6 +13,7 @@ export default function LoginPage({ slug }) {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const { palette } = useOrganizationColors(slug);
 
   useEffect(() => {
@@ -147,17 +149,30 @@ export default function LoginPage({ slug }) {
           </div>
 
           <div>
-            <label className="block text-sm  text-gray-900  font-medium mb-1">Senha</label>
-            <input
-              type="password"
-              value={formData.password}
-              onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
-              }
-              className="w-full border  text-gray-900  border-gray-300 rounded-md p-2 focus:ring-purple-500 focus:border-purple-500"
-              required
-              placeholder="Digite sua senha"
-            />
+            <label className="block text-sm text-gray-900 font-medium mb-1">
+              Senha
+            </label>
+
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+                className="w-full border text-gray-900 border-gray-300 rounded-md p-2 pr-10 focus:ring-purple-500 focus:border-purple-500"
+                required
+                placeholder="Digite sua senha"
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <button
