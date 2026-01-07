@@ -22,6 +22,7 @@ import SettingsTab from "./components/SettingsTab";
 import PersonalCalendarTab from "./components/PersonalCalendarTab";
 import GalleryTab from "./components/GalleryTab";
 import ClosedPeriodsTab from './components/ClosedPeriods';
+import RevenueAreaChartCard from "./components/RevenueAreaChartCard";
 
 export default function AdminDashboard({ slug }) {
   const router = useRouter();
@@ -172,6 +173,10 @@ export default function AdminDashboard({ slug }) {
               <Card title="Categorias" value={stats?.totalCategories} org={org} icon={<Layers size={18} />}/>
               <Card title="Agendamentos" value={stats?.totalAppointments} org={org} icon={<CalendarCheck size={18} />} />
             </section>
+
+              <section className="mt-6">
+                <RevenueAreaChartCard org={org} />
+              </section>
 
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 w-full overflow-x-hidden">
               <ChartCard
