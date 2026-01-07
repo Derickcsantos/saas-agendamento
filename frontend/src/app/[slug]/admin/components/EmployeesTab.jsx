@@ -222,8 +222,10 @@ export default function EmployeesTab({ org }) {
           <input type="number" placeholder="Comissão (%)" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
             value={form.comissao} onChange={(e) => setForm({ ...form, comissao: e.target.value })} />
 
-          <input type="number" placeholder="Salário" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
+          <div className="w-full md:basis-[calc(50%-0.5rem)]">
+            <input type="number" placeholder="Salário" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
             value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} />
+          </div>
 
           <div className="md:col-span-2 w-full md:basis-[calc(50%-0.5rem)]">
             <input type="file" accept="image/*"

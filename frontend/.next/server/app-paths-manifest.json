@@ -4,5 +4,7 @@
   "/[slug]/minha-conta/page": "app/[slug]/minha-conta/page.js",
   "/[slug]/page": "app/[slug]/page.js",
   "/admin-dashboard/page": "app/admin-dashboard/page.js",
-  "/login/page": "app/login/page.js"
+  "/login/page": "app/login/page.js",
+  "/politicas/page": "app/politicas/page.js",
+  "/termos/page": "app/termos/page.js"
 }
