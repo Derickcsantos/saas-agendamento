@@ -541,6 +541,9 @@ export default function MarcafyLanding() {
             <a href="/termos" className="text-neutral-700 hover:opacity-70">
               Termos e condições
             </a>
+            <a href="/politicas" className="text-neutral-700 hover:opacity-70">
+              Politica de privacidade
+            </a>
             <a href="#planos" className="text-neutral-700 hover:opacity-70">
               Planos
             </a>
