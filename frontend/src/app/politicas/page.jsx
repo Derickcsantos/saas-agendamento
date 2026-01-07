@@ -1,11 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  CheckCircle2,
-  Sparkles,
-} from "lucide-react";
-
+import { CheckCircle2, Sparkles } from "lucide-react";
 
 const BRAND = "#5E3BEE"; // cor principal
 
@@ -76,14 +72,10 @@ function Li({ children }) {
   );
 }
 
-// Card de plano com bullets de acordo com sua descrição
+// Card de plano (mantido do seu código — não está sendo usado nessa página, mas preservei)
 function PricingCard({ destaque = false, nome, preco, descricao, bullets, cta }) {
   return (
-    <SoftCard
-      className={`p-8 md:p-10 relative ${
-        destaque ? "scale-[1.02]" : ""
-      }`}
-    >
+    <SoftCard className={`p-8 md:p-10 relative ${destaque ? "scale-[1.02]" : ""}`}>
       {destaque && (
         <span
           className="absolute right-6 top-6 rounded-full px-3 py-1 text-xs font-semibold"
@@ -133,22 +125,24 @@ export default function TermsAndPolicies() {
       {/* HEADER */}
       <header className="sticky top-0 z-30 w-full bg-white/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 md:px-8">
-          <div className="flex items-center gap-3">
+          <a href="/" className="flex items-center gap-3">
             <img
               src="/marcafy-logo.jpg"
               alt="Marcafy"
               className="h-9 w-9 rounded-xl"
               style={{ border: `1px solid ${BRAND}26` }}
-              href="/"
             />
-            <a href="/"><span className="text-xl font-extrabold tracking-tight">Marcafy</span></a>
-          </div>
+            <span className="text-xl font-extrabold tracking-tight">Marcafy</span>
+          </a>
 
           <nav className="hidden items-center gap-6 md:flex">
             <a href="/" className="text-sm text-neutral-700 hover:opacity-70">
               Home
             </a>
-            <a href="#como-funciona" className="text-sm text-neutral-700 hover:opacity-70">
+            <a
+              href="#como-funciona"
+              className="text-sm text-neutral-700 hover:opacity-70"
+            >
               Como funciona
             </a>
             <a href="#planos" className="text-sm text-neutral-700 hover:opacity-70">
@@ -162,8 +156,11 @@ export default function TermsAndPolicies() {
             </a>
             <a
               href="/criar-conta"
-              className="rounded-full px-5 py-5 ml-2.5 text-sm font-semibold text-white transition"
-              style={{ background: BRAND, boxShadow: "0 10px 22px rgba(94,59,238,0.25)" }}
+              className="rounded-full px-5 py-3 ml-2.5 text-sm font-semibold text-white transition"
+              style={{
+                background: BRAND,
+                boxShadow: "0 10px 22px rgba(94,59,238,0.25)",
+              }}
             >
               Cadastre-se
             </a>
@@ -173,63 +170,79 @@ export default function TermsAndPolicies() {
 
       {/* HERO */}
       <section className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-6 pb-24 pt-16 md:grid-cols-2 md:px-8">
-        {/* texto */}
         <motion.div
           initial={{ opacity: 0, y: 26 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
+          <Chip>Privacidade e Proteção de Dados</Chip>
 
           <h1 className="mt-5 text-5xl font-extrabold leading-[1.1] tracking-tight md:text-6xl">
             Política de privacidade
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-7 text-neutral-700">
-            Leia nossa política de privacidade de dados, seguindo o padrão vigente, incluindo a LGPD (Lei nº 13.709/2018).
+            Leia nossa política de privacidade de dados, seguindo o padrão vigente,
+            incluindo a LGPD (Lei nº 13.709/2018).
           </p>
-
         </motion.div>
 
         <motion.div
-                  initial={{ opacity: 0, y: 26 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.7, delay: 0.1 }}
-                  className="relative flex items-center justify-center"
-                >
-                  <motion.img
-                    src="/logoM.jpg" 
-                    alt="Logo da marcafy"
-                    className="w-[290px] md:w-[360px] rounded-[36px] border"
-                    style={{
-                      borderColor: "#ffffff",
-                      boxShadow:
-                        "0 8px 18px rgba(0,0,0,0.05), 0 30px 60px rgba(0,0,0,0.06)",
-                    }}
-                    animate={{ y: [0, -14, 0] }}
-                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                  <div
-                    className="absolute -z-10 h-72 w-72 rounded-full blur-3xl"
-                    style={{ background: `${BRAND}15` }}
-                  />
-                </motion.div>
+          initial={{ opacity: 0, y: 26 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.1 }}
+          className="relative flex items-center justify-center"
+        >
+          <motion.img
+            src="/logoM.jpg"
+            alt="Logo da marcafy"
+            className="w-[290px] md:w-[360px] rounded-[36px] border"
+            style={{
+              borderColor: "#ffffff",
+              boxShadow:
+                "0 8px 18px rgba(0,0,0,0.05), 0 30px 60px rgba(0,0,0,0.06)",
+            }}
+            animate={{ y: [0, -14, 0] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <div
+            className="absolute -z-10 h-72 w-72 rounded-full blur-3xl"
+            style={{ background: `${BRAND}15` }}
+          />
+        </motion.div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 pb-24 md:px-8">
+      {/* INTRO EMPRESA */}
+      <section className="mx-auto max-w-6xl px-6 pb-10 md:px-8">
         <div style={{ color: "rgb(68, 68, 68)" }}>
-          A Marcafy é uma plataforma digital operada por DERICK CAMPOS SANTOS DESENVOLVIMENTO DE SOFTWARE LTDA, CNPJ nº 63.675.731/0001-57, que fornece soluções para otimização do processo de agendamento online, oferecendo também controle empresarial, site e galeria customizáveis, gerenciamento de colaboradores, gerenciamento de clientes e muito mais, com foco em barbeiro(a)s, cabelereiro(a)s, clinicas, consultórios, mentores, manicure e negócios que trabalham com serviços. Nosso objetivo é oferecer uma solução rápida e completa para gerenciamento total da sua empresa, respeitando a legislação vigente, incluindo a LGPD (Lei nº 13.709/2018).
+          A Marcafy é uma plataforma digital operada por DERICK CAMPOS SANTOS
+          DESENVOLVIMENTO DE SOFTWARE LTDA, CNPJ nº 63.675.731/0001-57, que fornece
+          soluções para otimização do processo de agendamento online, oferecendo também
+          controle empresarial, site e galeria customizáveis, gerenciamento de
+          colaboradores, gerenciamento de clientes e muito mais, com foco em barbeiro(a)s,
+          cabelereiro(a)s, clinicas, consultórios, mentores, manicure e negócios que
+          trabalham com serviços. Nosso objetivo é oferecer uma solução rápida e completa
+          para gerenciamento total da sua empresa, respeitando a legislação vigente,
+          incluindo a LGPD (Lei nº 13.709/2018).
         </div>
       </section>
 
-
+      {/* POLÍTICA */}
       <section className="mx-auto max-w-6xl px-6 pb-24 md:px-8">
         <div className="flex justify-center mb-5">
           <h2>
-            <span className="font-extrabold" style={{fontSize: '25px', color: "rgba(27, 26, 26, 1)" }}>Política de Privacidade</span>
+            <span
+              className="font-extrabold"
+              style={{ fontSize: "25px", color: "rgba(27, 26, 26, 1)" }}
+            >
+              Política de Privacidade
+            </span>
           </h2>
         </div>
-        <SoftCard className="flex flex-col items-center justify-between gap-6 p-10 md:flex-row">
-          <div>
+
+        <SoftCard className="flex flex-col items-center justify-between gap-6 p-8 md:p-10">
+          <div className="w-full">
+            {/* TEXTO ORIGINAL (mantido) */}
             <p>
               <span style={{ color: "rgb(68, 68, 68)" }}>
                 A sua privacidade é importante para nós. É política do Marcafy respeitar a
@@ -291,10 +304,114 @@ export default function TermsAndPolicies() {
                 pessoais, entre em contacto connosco.
               </span>
             </p>
-            <p>
-              <span style={{ color: "rgb(68, 68, 68)" }} />
-            </p>
-            <ul>
+
+            {/* ✅ NOVA SEÇÃO: GOOGLE LOGIN */}
+            <div className="mt-10">
+              <h3 className="text-lg font-bold" style={{ color: "rgb(68, 68, 68)" }}>
+                Login com Google (OAuth)
+              </h3>
+
+              <p>
+                <span style={{ color: "rgb(68, 68, 68)" }}>
+                  O Marcafy pode oferecer a opção de autenticação por meio do Google
+                  (&ldquo;Login com Google&rdquo;). Quando você escolhe essa opção, nós
+                  acessamos apenas as informações necessárias para autenticação e criação
+                  de sessão na plataforma, conforme autorizado por você na tela de
+                  consentimento do Google.
+                </span>
+              </p>
+
+              <p>
+                <span style={{ color: "rgb(68, 68, 68)" }}>
+                  Em geral, podemos receber do Google dados básicos como nome, e-mail,
+                  foto de perfil (se existir) e um identificador único da conta (Google ID),
+                  com a finalidade exclusiva de: (i) autenticar você com segurança,
+                  (ii) criar/vincular sua conta no Marcafy e (iii) permitir acesso às
+                  funcionalidades do sistema.
+                </span>
+              </p>
+
+              <p>
+                <span style={{ color: "rgb(68, 68, 68)" }}>
+                  Você pode revogar o acesso do Marcafy à sua Conta Google a qualquer
+                  momento nas configurações da sua conta Google (Apps com acesso à sua
+                  conta). Após a revogação, o login social pode deixar de funcionar e você
+                  poderá precisar usar outro método de login disponível na plataforma.
+                </span>
+              </p>
+            </div>
+
+            {/* ✅ NOVA SEÇÃO: GOOGLE CALENDAR */}
+            <div className="mt-10">
+              <h3 className="text-lg font-bold" style={{ color: "rgb(68, 68, 68)" }}>
+                Integração com Google Calendar (Agenda)
+              </h3>
+
+              <p>
+                <span style={{ color: "rgb(68, 68, 68)" }}>
+                  O Marcafy oferece integração com o Google Calendar para melhorar a
+                  organização da agenda do usuário e evitar conflitos de horários.
+                  Essa integração só ocorre após seu consentimento explícito (OAuth).
+                </span>
+              </p>
+
+              <ul className="mt-3 space-y-3">
+                <Li>
+                  <span style={{ color: "rgb(68, 68, 68)" }}>
+                    <strong>Leitura de eventos:</strong> ao conectar o Google Calendar,
+                    o Marcafy pode ler os eventos existentes do seu calendário para
+                    identificar períodos ocupados e impedir que clientes finais agendem
+                    horários que conflitem com compromissos já existentes.
+                  </span>
+                </Li>
+
+                <Li>
+                  <span style={{ color: "rgb(68, 68, 68)" }}>
+                    <strong>Criação de eventos:</strong> quando um agendamento é confirmado
+                    no Marcafy, um evento pode ser criado automaticamente no seu Google
+                    Calendar para registrar o compromisso e facilitar sua organização.
+                  </span>
+                </Li>
+
+                <Li>
+                  <span style={{ color: "rgb(68, 68, 68)" }}>
+                    <strong>Cancelamentos (quando aplicável):</strong> caso você utilize a
+                    função de cancelamento com sincronização, o Marcafy poderá remover do
+                    Google Calendar o evento que foi previamente criado pelo próprio
+                    Marcafy, para manter sua agenda coerente com o status do agendamento.
+                  </span>
+                </Li>
+              </ul>
+
+              <p className="mt-4">
+                <span style={{ color: "rgb(68, 68, 68)" }}>
+                  O Marcafy não utiliza dados do seu Google Calendar para publicidade,
+                  não vende informações de calendário e não compartilha dados de eventos
+                  com terceiros. O uso dessas informações é restrito à funcionalidade de
+                  verificação de disponibilidade e sincronização do evento do agendamento.
+                </span>
+              </p>
+
+              <p>
+                <span style={{ color: "rgb(68, 68, 68)" }}>
+                  Para viabilizar a sincronização, o sistema pode armazenar apenas dados
+                  técnicos mínimos, como identificador do evento criado (eventId) e, quando
+                  necessário, o identificador do calendário (calendarId), exclusivamente
+                  para permitir atualização/remoção do evento relacionado ao agendamento.
+                </span>
+              </p>
+
+              <p>
+                <span style={{ color: "rgb(68, 68, 68)" }}>
+                  Você pode revogar o acesso do Marcafy ao Google Calendar a qualquer
+                  momento na sua Conta Google. Após a revogação, o Marcafy deixa de ler
+                  sua disponibilidade e de criar/remover eventos no seu calendário.
+                </span>
+              </p>
+            </div>
+
+            {/* TEXTO ORIGINAL (mantido) */}
+            <ul className="mt-10">
               <li>
                 <span style={{ color: "rgb(68, 68, 68)" }}>
                   O serviço Google AdSense que usamos para veicular publicidade usa um
@@ -330,10 +447,11 @@ export default function TermsAndPolicies() {
                 </span>
               </li>
             </ul>
+
             <p>
               <br />
             </p>
-            <p />
+
             <h3>
               <span style={{ color: "rgb(68, 68, 68)" }}>Compromisso do Usuário</span>
             </h3>
@@ -368,6 +486,7 @@ export default function TermsAndPolicies() {
                 </span>
               </li>
             </ul>
+
             <h3>
               <span style={{ color: "rgb(68, 68, 68)" }}>Mais informações</span>
             </h3>
@@ -385,10 +504,8 @@ export default function TermsAndPolicies() {
               </span>
             </p>
           </div>
-         
         </SoftCard>
       </section>
-
 
       <footer className="border-t py-10" style={{ borderColor: `${BRAND}12` }}>
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-6 md:flex-row md:px-8">
@@ -404,18 +521,15 @@ export default function TermsAndPolicies() {
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-sm">
-            <a href="#recursos" className="text-neutral-700 hover:opacity-70">
-              Recursos
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            <a href="/" className="text-neutral-700 hover:opacity-70">
+              Home
             </a>
             <a href="/termos" className="text-neutral-700 hover:opacity-70">
               Termos e condições
             </a>
             <a href="/politicas" className="text-neutral-700 hover:opacity-70">
               Politica de privacidade
-            </a>
-            <a href="#como-funciona" className="text-neutral-700 hover:opacity-70">
-              Termos e condições
             </a>
             <a href="#planos" className="text-neutral-700 hover:opacity-70">
               Planos
