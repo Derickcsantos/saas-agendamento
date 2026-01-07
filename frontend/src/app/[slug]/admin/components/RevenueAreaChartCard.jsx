@@ -59,7 +59,7 @@ export default function RevenueAreaChartCard({ org }) {
         setError("");
 
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/admin/revenue/marcafy/latest`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/admin/revenue/${org.slug_organization}/latest`,
           { credentials: "include" }
         );
 
