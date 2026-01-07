@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddleware.js'
-import { getRevenues, exportRevenue } from '../controllers/revenueController.js'
+import { getRevenues, exportRevenue, getRevenuesLast12Months } from '../controllers/revenueController.js'
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js'
 
 export const revenueRouter = Router()
@@ -74,6 +74,8 @@ export const revenueRouter = Router()
  *         description: Erro interno do servidor
  */
 revenueRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, getRevenues)
+
+revenueRouter.get('/:slug/latest', authenticateJWT, requireAdminOfOrganization, getRevenuesLast12Months)
 
 /**
  * @swagger
