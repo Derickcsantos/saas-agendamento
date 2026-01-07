@@ -52,6 +52,9 @@ export default function AppointmentPage({ slug }) {
   const [showModal, setShowModal] = useState(false);
   const [appointmentData, setAppointmentData] = useState(null);
 
+  const servicePrice = Number(selected?.service?.price ?? 0);
+  const hasService = Number.isFinite(servicePrice) && selected?.service;
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -71,6 +74,14 @@ export default function AppointmentPage({ slug }) {
     };
     checkAuth();
   }, []);
+
+  const formatDateBR = (iso) => {
+    if (!iso) return "";
+    const [y, m, d] = String(iso).split("-");
+    if (!y || !m || !d) return String(iso);
+    return `${d}/${m}/${y}`;
+  };
+
 
   useEffect(() => {
     async function fetchData() {
@@ -457,7 +468,7 @@ const sendWhatsappConfirmation = async () => {
             <p><strong>Cliente:</strong> {a.client?.name}</p>
             <p><strong>Serviço:</strong> {a.service?.name}</p>
             <p><strong>Profissional:</strong> {a.employee?.name}</p>
-            <p><strong>Data:</strong> {a.date}</p>
+            <p><strong>Data:</strong> {formatDateBR(a.date)}</p>
             <p><strong>Horário:</strong> {a.time?.start} - {a.time?.end}</p>
             <p><strong>Valor:</strong> {formattedPrice(a.prices.final)}</p>
 
@@ -851,28 +862,38 @@ const sendWhatsappConfirmation = async () => {
 
                   <p>
                     <strong>Valor:</strong>{" "}
-                    {selected.service && (
+                    {!selected?.service ? (
+                      <span className="text-gray-400">—</span>
+                    ) : (
                       <>
-                        <span className="line-through text-gray-400 mr-1">
-                          R$ {selected.service.price.toFixed(2)}
-                        </span>
-                        {selected.coupon ? (
-                          <span className="text-green-600 font-semibold">
-                            R${" "}
-                            {(
-                              selected.service.price *
-                              (1 -
-                                (selected.coupon.discountType === "percentage"
-                                  ? selected.coupon.discount / 100
-                                  : selected.coupon.discount / selected.service.price))
-                            ).toFixed(2)}{" "}
-                            ({selected.coupon.discount}
-                            {selected.coupon.discountType === "percentage" ? "%" : "R$"} de
-                            desconto)
-                          </span>
+                        {selected?.coupon ? (
+                          <>
+                            <span className="line-through text-gray-400 mr-1">
+                              R$ {servicePrice.toFixed(2)}
+                            </span>
+
+                            {(() => {
+                              const coupon = selected.coupon;
+                              const original = servicePrice;
+
+                              const final =
+                                coupon.discountType === "percentage"
+                                  ? original * (1 - coupon.discount / 100)
+                                  : original - coupon.discount;
+
+                              const safeFinal = Math.max(final, 0);
+
+                              return (
+                                <span className="text-green-600 font-semibold">
+                                  R$ {safeFinal.toFixed(2)} ({coupon.discount}
+                                  {coupon.discountType === "percentage" ? "%" : "R$"} de desconto)
+                                </span>
+                              );
+                            })()}
+                          </>
                         ) : (
                           <span className="font-semibold text-gray-700">
-                            R$ {selected.service.price.toFixed(2)}
+                            R$ {servicePrice.toFixed(2)}
                           </span>
                         )}
                       </>
