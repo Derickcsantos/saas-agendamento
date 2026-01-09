@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -109,6 +109,8 @@ export default function AppointmentsTab({ org }) {
   const [editingAppointment, setEditingAppointment] = useState(null);
   const [editTimeSlots, setEditTimeSlots] = useState([]);
   const { palette } = useOrganizationColors(org.slug_organization);
+  const [isMobile, setIsMobile] = useState(false);
+  const calendarRef = useRef(null);
   const [editData, setEditData] = useState({
     employee: null,
     date: "",
@@ -118,7 +120,27 @@ export default function AppointmentsTab({ org }) {
     search: "",
     employee: "",
     date: "",
+    statuses: ["confirmed", "completed"],
   });
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  useEffect(() => {
+    const api = calendarRef.current?.getApi?.();
+    if (!api) return;
+
+    const nextView = isMobile ? "timeGridDay" : "timeGridWeek";
+    if (api.view?.type !== nextView) {
+      api.changeView(nextView);
+      api.today(); // garante que no mobile abre no "hoje"
+    }
+  }, [isMobile]);
+
 
   const debounce = (fn, delay) => {
     let timer;
@@ -140,7 +162,11 @@ export default function AppointmentsTab({ org }) {
   async function loadAppointments(customFilters = filters) {
     setLoading(true);
     try {
-      const params = new URLSearchParams(customFilters);
+      const params = new URLSearchParams({
+      search: customFilters.search || "",
+      employee: customFilters.employee || "",
+      date: customFilters.date || "",
+    });
 
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}?${params}`,
@@ -148,10 +174,17 @@ export default function AppointmentsTab({ org }) {
       );
 
       const data = await res.json();
-      setAppointments(data);
+      const raw = Array.isArray(data) ? data : [];
+
+      const filteredByStatus =
+        customFilters.statuses?.length
+          ? raw.filter((a) => customFilters.statuses.includes(a.status))
+          : raw;
+
+      setAppointments(filteredByStatus);
 
       setCalendarEvents(
-        data.map((a) => ({
+        filteredByStatus.map((a) => ({
           id: a.id,
           title: `${a.client_name} — ${a.services.name}`,
           start: `${a.appointment_date}T${a.start_time}`,
@@ -164,6 +197,8 @@ export default function AppointmentsTab({ org }) {
               : "#2563eb",
         }))
       );
+
+
     } catch (e) {
       console.error("Erro ao carregar:", e);
     } finally {
@@ -230,7 +265,7 @@ export default function AppointmentsTab({ org }) {
       setEditData({
         employee: data.employees,
         date: data.appointment_date,
-        time: data.start_time,
+        time: { start: data.start_time.slice(0,5), end: data.end_time.slice(0,5) },
       });
 
       // Carregar horários disponíveis
@@ -432,17 +467,52 @@ export default function AppointmentsTab({ org }) {
           onChange={(e) => updateFilter("employee", e.target.value)}
         />
 
+        <div className="md:col-span-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 mr-1">
+            Status:
+          </span>
+
+          {[
+            { key: "confirmed", label: "Confirmados", pill: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-800" },
+            { key: "completed", label: "Completos", pill: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-800" },
+            { key: "canceled", label: "Cancelados", pill: "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-800" },
+          ].map((s) => {
+            const active = filters.statuses.includes(s.key);
+            return (
+              <button
+                key={s.key}
+                onClick={() => {
+                  const next = active
+                    ? filters.statuses.filter((x) => x !== s.key)
+                    : [...filters.statuses, s.key];
+
+                  const newFilters = { ...filters, statuses: next };
+                  setFilters(newFilters);
+                  applyFilters(newFilters);
+                }}
+                className={[
+                  "px-3 py-2 rounded-full border text-xs font-semibold transition shadow-sm",
+                  active ? s.pill : "bg-white dark:bg-gray-900 text-gray-500 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800",
+                ].join(" ")}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+
         <button
-          className="rounded-lg px-3 py-2 text-sm bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700 shadow hover:bg-red-100 dark:hover:bg-red-900/50 transition"
+          className="rounded-lg md:col-span-4 px-3 py-2 text-sm bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700 shadow hover:bg-red-100 dark:hover:bg-red-900/50 transition"
           onClick={() => {
-            updateFilter("search", "");
-            updateFilter("date", "");
-            updateFilter("employee", "");
-            loadAppointments({});
+            const newFilters = { search: "", date: "", employee: "", statuses: ["confirmed", "completed"] };
+            setFilters(newFilters);
+            loadAppointments(newFilters);
           }}
         >
           Limpar Filtros
         </button>
+
+
       </div>
 
       {view === "table" && (
@@ -509,13 +579,14 @@ export default function AppointmentsTab({ org }) {
       {view === "calendar" && (
         <div className="p-4 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-[0_8px_30px_rgba(0,0,0,0.06)] bg-white dark:bg-gray-800 overflow-hidden">
           <FullCalendar
+            ref={calendarRef}
             plugins={[timeGridPlugin, interactionPlugin]}
-            initialView="timeGridWeek"
+            initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
             locale={ptLocale}
             events={calendarEvents}
             height="auto"
             slotMinTime="07:00:00"
-            slotMaxTime="22:00:00"
+            slotMaxTime="23:00:00"
             allDaySlot={false}
             nowIndicator={true}
             expandRows={true}
