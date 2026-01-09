@@ -58,15 +58,31 @@ setupSwagger(app)
 
 app.use(passport.initialize());
 
-cron.schedule('0 3 * * *', async () => {
-  console.log('Executando atualização diária de agendamentos...');
-  const result = await updateYesterdayAppointmentsToCompleted();
-  if (result.success) {
-    console.log(result.message);
-  } else {
-    console.error('Erro na tarefa agendada:', result.error);
-  }
-});
+const TZ = "America/Sao_Paulo";
+
+function scheduleJob(cronExpr, label) {
+  cron.schedule(
+    cronExpr,
+    async () => {
+      console.log(`[CRON ${label}] Executando atualização diária de agendamentos...`);
+
+      // Se você atualizou sua função para aceitar lookbackDays:
+      const result = await updateYesterdayAppointmentsToCompleted({ lookbackDays: 2 });
+
+      // Se sua função AINDA não aceita params, use:
+      // const result = await updateYesterdayAppointmentsToCompleted();
+
+      if (result.success) console.log(`[CRON ${label}] ${result.message}`);
+      else console.error(`[CRON ${label}] Erro na tarefa agendada:`, result.error);
+    },
+    { timezone: TZ }
+  );
+}
+
+scheduleJob("0 0 * * *", "00:00");
+scheduleJob("0 3 * * *", "03:00");
+scheduleJob("0 8 * * *", "08:00");
+
 
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
 app.use('/api/appointments', appointmentProcessRouter);
