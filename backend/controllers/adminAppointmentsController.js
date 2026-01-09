@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabase.js';
-import express from 'express';
+import findCalendarIdByEventId from '../utils/findCalendarByEventId.js';
+import createOAuthClient from '../utils/createOAuthClient.js';
 import updateYesterdayAppointmentsToCompleted from '../utils/confirmAppointments.js';
+import { google } from "googleapis";
 
 export const getAdminAppointments = async (req, res) => {
   try {
@@ -286,7 +288,7 @@ export const updateAdminAppointment = async (req, res) => {
     const { slug, id } = req.params;
     const updates = req.body || {};
 
-    // 1. Buscar organização
+    // 1) Buscar organização
     const { data: org, error: orgErr } = await supabase
       .from("organizations")
       .select("id")
@@ -297,7 +299,7 @@ export const updateAdminAppointment = async (req, res) => {
       return res.status(404).json({ error: "Organização não encontrada" });
     }
 
-    // 2. Buscar agendamento existente
+    // 2) Buscar agendamento existente
     const { data: appointment, error: fetchErr } = await supabase
       .from("appointments")
       .select("*")
@@ -309,7 +311,7 @@ export const updateAdminAppointment = async (req, res) => {
       return res.status(404).json({ error: "Agendamento não encontrado" });
     }
 
-    // 3. Atualização normal (inclui: confirmed, completed, canceled)
+    // 3) Atualizar no banco
     const { data: updated, error: updateErr } = await supabase
       .from("appointments")
       .update(updates)
@@ -320,11 +322,95 @@ export const updateAdminAppointment = async (req, res) => {
 
     if (updateErr) throw updateErr;
 
+    // =========================
+    // ✅ 4) Se virou canceled -> atualizar Google Calendar
+    // =========================
+    const becameCanceled =
+      updates.status === "canceled" && appointment.status !== "canceled";
+
+    if (becameCanceled) {
+      // 4.1) Política da organização
+      const { data: policy, error: policyErr } = await supabase
+        .from("organization_policies")
+        .select("sync_google_calendar")
+        .eq("organization_id", org.id)
+        .maybeSingle();
+
+      if (policyErr) throw policyErr;
+
+      const shouldSyncGoogle = policy?.sync_google_calendar === true;
+
+      if (shouldSyncGoogle && updated.google_event_id) {
+        // 4.2) Pegar user_id do profissional
+        const { data: employee, error: empErr } = await supabase
+          .from("employees")
+          .select("user_id")
+          .eq("id", updated.employee_id)
+          .single();
+
+        if (!empErr && employee?.user_id) {
+          // 4.3) Buscar tokens
+          const { data: integration, error: intErr } = await supabase
+            .from("organization_google_calendar")
+            .select("access_token, refresh_token, token_type, scope, expiry_date")
+            .eq("user_id", employee.user_id)
+            .maybeSingle();
+
+          if (!intErr && integration?.refresh_token) {
+            try {
+              const oauth2Client = createOAuthClient();
+              oauth2Client.setCredentials({
+                access_token: integration.access_token,
+                refresh_token: integration.refresh_token,
+                token_type: integration.token_type,
+                scope: integration.scope,
+                expiry_date: integration.expiry_date,
+              });
+
+              const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+              // 4.4) Descobrir calendarId (se não tiver salvo)
+              const calendarId =
+                (await findCalendarIdByEventId(calendar, updated.google_event_id)) || "primary";
+
+              const clientName = updated.client_name || "Cliente";
+              const canceledSummary = `Agendamento cancelado: ${clientName}`;
+
+              // 4.5) PATCH no evento (summary + vermelho)
+              await calendar.events.patch({
+                calendarId,
+                eventId: updated.google_event_id,
+                requestBody: {
+                  summary: canceledSummary,
+                  colorId: "11", // vermelho (geralmente)
+                },
+              });
+
+              // 4.6) Se Google renovou token, salva no Supabase (igual seu controller faz)
+              const newCreds = oauth2Client.credentials;
+              if (newCreds.access_token && newCreds.access_token !== integration.access_token) {
+                await supabase
+                  .from("organization_google_calendar")
+                  .update({
+                    access_token: newCreds.access_token,
+                    expiry_date: newCreds.expiry_date,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("user_id", employee.user_id);
+              }
+            } catch (e) {
+              console.error("Falha ao atualizar evento no Google Calendar:", e);
+              // não falha a requisição principal
+            }
+          }
+        }
+      }
+    }
+
     return res.json({
       message: "Agendamento atualizado com sucesso",
       updated,
     });
-
   } catch (error) {
     console.error("Error updating appointment:", error);
     return res.status(500).json({
@@ -333,7 +419,6 @@ export const updateAdminAppointment = async (req, res) => {
     });
   }
 };
-
 
 
 export const getAdminAppointmentsByEmployee = async (req, res) => {
