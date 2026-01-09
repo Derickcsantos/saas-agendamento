@@ -209,7 +209,7 @@ export const getAvailableTimes = async (req, res) => {
 
     const shouldSyncGoogle = policy?.sync_google_calendar === true;
 
-    const hasGoogleCalendar = shouldSyncGoogle && !!googleData;
+    const hasGoogleCalendar = shouldSyncGoogle && !!googleData?.refresh_token;;
 
 
     
@@ -260,12 +260,15 @@ export const getAvailableTimes = async (req, res) => {
       return res.json([]);
     }
 
+    const BLOCKING_STATUSES = ['confirmed', 'completed'];
+
     const { data: appointments, error: appointmentsError } = await supabase
       .from('appointments')
       .select('*')
       .eq('employee_id', employeeIdInt)
       .eq('appointment_date', date)
       .eq('organization_id', orgData.id)
+      .in('status', BLOCKING_STATUSES)
       .order('start_time', { ascending: true });
 
     if (appointmentsError) throw appointmentsError;
@@ -316,13 +319,19 @@ export const getAvailableTimes = async (req, res) => {
         );
 
         const events = await response.json();
+
+        const eventsNotCanceled = (events || []).filter(ev => {
+          const s = (ev.summary || "").toLowerCase().trim();
+          return !s.startsWith("agendamento cancelado:");
+        });
+
         const selectedDateObj = new Date(`${date}T00:00:00`);
 
         console.log("Google raw events:", events);
         console.log("Google parsed events:", googleEvents);
 
         googleEvents =
-          events
+          eventsNotCanceled
             .map(ev => parseGoogleApiEvent(ev, selectedDateObj))
             .filter(Boolean);
 

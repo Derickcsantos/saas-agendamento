@@ -264,6 +264,62 @@ export async function getCalendarEvents(req, res) {
   }
 }
 
+export async function patchCalendarEvent(req, res) {
+  try {
+    const userId = Number(req.query.userId);
+    const { calendarId, eventId } = req.params;
+    const updates = req.body || {};
+
+    if (!userId) return res.status(400).json({ error: "userId é obrigatório" });
+    if (!calendarId || !eventId) return res.status(400).json({ error: "calendarId e eventId são obrigatórios" });
+
+    const { data: integration, error } = await supabase
+      .from("organization_google_calendar")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!integration) return res.status(401).json({ error: "Google Calendar não está conectado" });
+
+    const oauth2Client = createOAuthClient();
+    oauth2Client.setCredentials({
+      access_token: integration.access_token,
+      refresh_token: integration.refresh_token,
+      token_type: integration.token_type,
+      scope: integration.scope,
+      expiry_date: integration.expiry_date,
+    });
+
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+    const { data } = await calendar.events.patch({
+      calendarId,
+      eventId,
+      requestBody: updates,
+    });
+
+    // se o Google renovar token
+    const newCreds = oauth2Client.credentials;
+    if (newCreds.access_token && newCreds.access_token !== integration.access_token) {
+      await supabase
+        .from("organization_google_calendar")
+        .update({
+          access_token: newCreds.access_token,
+          expiry_date: newCreds.expiry_date,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId);
+    }
+
+    return res.json({ ok: true, event: data });
+  } catch (err) {
+    console.error("patchCalendarEvent error:", err);
+    return res.status(500).json({ error: "Erro ao atualizar evento", details: err.message });
+  }
+}
+
+
 // =====================================================
 // 5) DISCONNECT – remove toda integração do usuário
 // =====================================================

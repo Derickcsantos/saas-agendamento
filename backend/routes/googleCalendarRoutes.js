@@ -6,6 +6,7 @@ import {
   googleCalendarCallback,
   getCalendarEvents,
   disconnectGoogleCalendar,
+  patchCalendarEvent,
 } from "../controllers/googleCalendarController.js";
 
 export const googleCalendarRouter = Router();
@@ -28,6 +29,11 @@ googleCalendarRouter.get(
 googleCalendarRouter.get(
   "/events",
   getCalendarEvents
+);
+
+googleCalendarRouter.patch(
+  "/events/:calendarId/:eventId",
+  patchCalendarEvent
 );
 
 googleCalendarRouter.post(
