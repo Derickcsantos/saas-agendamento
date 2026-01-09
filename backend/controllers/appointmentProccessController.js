@@ -199,7 +199,7 @@ export const getAvailableTimes = async (req, res) => {
 
     const { data: policy, error: policyError } = await supabase
       .from("organization_policies")
-      .select("sync_google_calendar")
+      .select("sync_google_calendar, max_schedule_days")
       .eq("organization_id", orgData.id)
       .maybeSingle();
 
@@ -312,11 +312,18 @@ export const getAvailableTimes = async (req, res) => {
 
     if (hasGoogleCalendar) {
       try {
-        const response = await fetch(
-          `${process.env.BACKEND_URL}/api/google-calendar/events?userId=${employeeUserId}`, {
-            credentials: "include"
-          }
-        );
+        const dayStartISO = new Date(`${date}T00:00:00`).toISOString();
+        const dayEndISO = new Date(`${date}T23:59:59`).toISOString();
+
+        const url =
+          `${process.env.BACKEND_URL}/api/google-calendar/events` +
+          `?userId=${encodeURIComponent(employeeUserId)}` +
+          `&timeMin=${encodeURIComponent(dayStartISO)}` +
+          `&timeMax=${encodeURIComponent(dayEndISO)}` +
+          `&excludeHolidays=true`;
+
+        const response = await fetch(url, { credentials: "include" });
+
 
         const events = await response.json();
 
