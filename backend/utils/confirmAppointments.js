@@ -1,49 +1,43 @@
-import { supabase } from '../lib/supabase.js';
+import { supabase } from "../lib/supabase.js";
 
-export default async function updateYesterdayAppointmentsToCompleted() {
+// formata data no timezone local (BR) sem depender de toISOString()
+function formatDateBR(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export default async function updateYesterdayAppointmentsToCompleted({ lookbackDays = 2 } = {}) {
   try {
-    // Obter a data de ontem no formato YYYY-MM-DD
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayFormatted = yesterday.toISOString().split('T')[0];
+    // Vamos rodar para "ontem" e também "anteontem" (lookbackDays=2)
+    const dates = [];
+    for (let i = 1; i <= lookbackDays; i++) {
+      const dt = new Date();
+      dt.setDate(dt.getDate() - i);
+      dates.push(formatDateBR(dt));
+    }
 
-    // Buscar todos os agendamentos de ontem que não estão cancelados
-    const { data: appointments, error: fetchError } = await supabase
-      .from('appointments')
-      .select('id, status')
-      .eq('appointment_date', yesterdayFormatted)
-      .neq('status', 'canceled');
+    const { data, error, count } = await supabase
+      .from("appointments")
+      .update({ status: "completed" })
+      .in("appointment_date", dates)
+      .eq("status", "confirmed")
+      .select("id", { count: "exact" }); // retorna ids atualizados + count
 
-    if (fetchError) throw fetchError;
+    if (error) throw error;
 
-    // Filtrar apenas os que estão "confirmed" ou outros status que devem ser completados
-    const appointmentsToUpdate = appointments.filter(
-      appt => appt.status === 'confirmed' // Adicione outros status se necessário
-    );
-
-    // Atualizar cada agendamento
-    const updatePromises = appointmentsToUpdate.map(async (appt) => {
-      const { error } = await supabase
-        .from('appointments')
-        .update({ status: 'completed' })
-        .eq('id', appt.id);
-
-      if (error) throw error;
-      return appt.id;
-    });
-
-    const updatedIds = await Promise.all(updatePromises);
+    const updatedIds = (data || []).map((x) => x.id);
 
     return {
       success: true,
-      message: `${updatedIds.length} agendamentos atualizados para "completed"`,
-      updatedIds
+      message: `${updatedIds.length} agendamentos atualizados para "completed" (datas: ${dates.join(", ")})`,
+      updatedIds,
+      count: count ?? updatedIds.length,
+      dates,
     };
   } catch (error) {
-    console.error('Error updating yesterday appointments:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    console.error("Error updating yesterday appointments:", error);
+    return { success: false, error: error.message };
   }
 }
