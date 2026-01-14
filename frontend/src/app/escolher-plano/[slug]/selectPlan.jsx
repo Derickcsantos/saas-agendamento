@@ -241,10 +241,12 @@ export default function EscolherPlano({ slug }) {
                 <ul className="text-sm text-gray-700 space-y-2 mb-5">
                   <li>✔ Agendamento online sem necessidade de login</li>
                   <li>✔ Página de agendamentos personalizada</li>
-                  <li>✔ Landing page com CMS e galeria própria</li>
-                  <li>✔ Painel do cliente e administrativo</li>
+                  <li>✔ Landing page com CMS</li>
+                  <li>✔ Galeria de fotos</li>
+                  <li>✔ Painel para o cliente</li>
+                  <li>✔ Painel administrativo</li>
                   <li>✔ Relatórios básicos em PDF/CSV</li>
-                  <li>✔ Controle de cupons e promoções básicas</li>
+                  <li>✔ Controle de cupons</li>
                   <li>✔ Link de agendamento compartilhável</li>
                   <li>✔ Armazenamento seguro em nuvem</li>
                 </ul>
@@ -282,7 +284,8 @@ export default function EscolherPlano({ slug }) {
                     setSelectedPlan(chosenPlan);
                     setStep(2);
                   }}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-semibold"
+                  className="w-full text-white py-2 rounded-lg font-semibold"
+                  style={{ backgroundColor: BRAND }}
                 >
                   Selecionar plano
                 </button>
@@ -314,7 +317,9 @@ export default function EscolherPlano({ slug }) {
                 <ul className="text-sm text-gray-700 space-y-2 mb-5">
                   <li>✔ Todas funcionalidades do Básico</li>
                   <li>✔ Painel do funcionário com permissões individuais</li>
-                  <li>✔ Emissão automática de NF</li>
+                  <li>✔ Integração com Google Agenda</li>
+                  <li>✔ Integração com Google meet</li>
+                  <li>✔ treinamento e suporte</li>
                   <li>✔ Backups automáticos de documentos</li>
                   <li>✔ Exportação/importação de massa (Excel, CSV)</li>
                   <li>✔ Controle financeiro completo</li>
@@ -350,7 +355,8 @@ export default function EscolherPlano({ slug }) {
                     setSelectedPlan(chosenPlan);
                     setStep(2);
                   }}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-semibold"
+                  className="w-full text-white py-2 rounded-lg font-semibold"
+                  style={{ backgroundColor: BRAND }}
                 >
                   Selecionar plano
                 </button>
@@ -382,9 +388,10 @@ export default function EscolherPlano({ slug }) {
                 <ul className="text-sm text-gray-700 space-y-2 mb-5">
                   <li>✔ Tudo do plano Plus</li>
                   <li>✔ SEO especializado para sua landing page</li>
-                  <li>✔ Suporte 24h + treinamento personalizado</li>
-                  <li>✔ Sugestão e priorização de novas features</li>
-                  <li>✔ Integração com Google Agenda</li>
+                  <li>✔ Suporte 24h</li>
+                  <li>✔ Sugestão e priorização de novas funcionalidades</li>
+                  <li>✔ Gestão de assinaturas</li>
+                  <li>✔ Pagamento antecipado no agendamento</li>
                   <li>✔ Controle avançado multiusuário</li>
                   <li>✔ Auditoria de segurança</li>
                   <li>✔ Consultoria personalizada</li>
@@ -418,7 +425,8 @@ export default function EscolherPlano({ slug }) {
                     setSelectedPlan(chosenPlan);
                     setStep(2);
                   }}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-semibold"
+                  className="w-full text-white py-2 rounded-lg font-semibold"
+                  style={{ backgroundColor: BRAND }}
                 >
                   Selecionar plano
                 </button>
@@ -491,7 +499,8 @@ export default function EscolherPlano({ slug }) {
                 <button
                   type="button"
                   onClick={validateCoupon}
-                  className="px-4 py-2 bg-purple-600 rounded-lg text-white"
+                  className="px-4 py-2 rounded-lg text-white"
+                  style={{ backgroundColor: BRAND }}
                 >
                   Aplicar
                 </button>
@@ -512,6 +521,7 @@ export default function EscolherPlano({ slug }) {
                 <label className="font-medium text-gray-900 text-sm">Nome do Titular</label>
                 <input
                   type="text"
+                  placeholder="ANDRE F SANTOS"
                   required
                   value={cardData.holder_name}
                   onChange={(e) =>
@@ -526,6 +536,7 @@ export default function EscolherPlano({ slug }) {
                 <input
                   type="text"
                   required
+                  placeholder="4242 4242 4242 4242"
                   maxLength={16}
                   value={cardData.number}
                   onChange={(e) =>
@@ -541,6 +552,7 @@ export default function EscolherPlano({ slug }) {
                   <input
                     type="text"
                     required
+                    placeholder="MM"
                     maxLength={2}
                     value={cardData.exp_month}
                     onChange={(e) =>
@@ -555,6 +567,7 @@ export default function EscolherPlano({ slug }) {
                   <input
                     type="text"
                     required
+                    placeholder="YYYY"
                     maxLength={4}
                     value={cardData.exp_year}
                     onChange={(e) =>
@@ -569,6 +582,7 @@ export default function EscolherPlano({ slug }) {
                   <input
                     type="text"
                     required
+                    placeholder="CVV"
                     maxLength={4}
                     value={cardData.cvv}
                     onChange={(e) =>
