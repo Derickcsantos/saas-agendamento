@@ -235,17 +235,61 @@ export const PagarmeController = {
   // =========================================
   // Criar uma ASSINATURA (recorrência)
   // =========================================
+  // =========================================
+  // Criar uma ASSINATURA (recorrência)
+  // =========================================
   async createSubscription(req, res) {
     try {
+      // ✅ (1) normalize/garanta que "nota" exista
+      let nota = null;
+
+      // ✅ (2) validações mínimas
+      const { plan_id, organization_id } = req.body;
+
+      if (!plan_id) {
+        return res.status(400).json({ message: "plan_id é obrigatório" });
+      }
+      if (!organization_id) {
+        return res.status(400).json({ message: "organization_id é obrigatório" });
+      }
+
+      // ✅ (3) Busca o plano no Pagar.me para pegar um plan_item_id válido
+      const planResp = await pagarme.get(`/plans/${plan_id}`);
+      const plan = planResp.data;
+
+      const firstPlanItemId = plan?.items?.[0]?.id; // geralmente "pi_xxx"
+      if (!firstPlanItemId) {
+        return res.status(400).json({
+          message: "Plano não possui items. Crie ao menos 1 item no plano antes de assinar.",
+          plan_id,
+        });
+      }
+
+      // ✅ (4) Monta payload correto para assinatura de plano:
+      // items precisam de quantity e (description OU plan_item_id)
       const payload = {
         ...req.body,
+
+        // garante que o plan_id esteja correto
+        plan_id,
+
+        // sobrescreve items com o formato válido
         items: [
           {
-            pricing_scheme: { price: req.body.amount }
-          }
-        ]
+            plan_item_id: firstPlanItemId,
+            quantity: 1,
+          },
+        ],
       };
 
+      console.log("SUBSCRIPTION PAYLOAD:", JSON.stringify(payload, null, 2));
+
+
+      // Dica: se você quiser permitir qty variável via frontend:
+      // const qty = Number(req.body?.items?.[0]?.quantity ?? 1);
+      // payload.items[0].quantity = qty;
+
+      // ✅ (5) Cria assinatura
       const response = await pagarme.post("/subscriptions", payload);
       const sub = response.data;
 
@@ -255,41 +299,34 @@ export const PagarmeController = {
       const { data: org, error: orgError } = await supabase
         .from("organizations")
         .select("*")
-        .eq("id", payload.organization_id)
+        .eq("id", organization_id)
         .single();
 
       if (orgError || !org) {
-        console.warn("Organização não encontrada:", payload.organization_id);
+        console.warn("Organização não encontrada:", organization_id);
       }
 
-      // // ------------------------------------------------------
-      // // 2️⃣ Emitir Nota Fiscal AUTOMATICAMENTE
-      // // ------------------------------------------------------
-      // const chargeAmount = sub.plan?.amount;
-
-      // const nota = await NfeController.emitirNota({
-      //   organization: org,
-      //   customer: payload.customer,
-      //   amount: chargeAmount,
-      //   pagarme_charge_id: sub.latest_invoice?.charge_id,
-      //   subscription_id: sub.id,
-      // });
+      // ------------------------------------------------------
+      // 2️⃣ (Opcional) Emitir Nota Fiscal
+      // ------------------------------------------------------
+      // Se você for reativar depois, descomente e use "nota"
+      // nota = await NfeController.emitirNota({ ... })
 
       // ------------------------------------------------------
       // 3️⃣ Salvar assinatura no banco
       // ------------------------------------------------------
       const { error } = await supabase.from("subscriptions").insert({
-        organization_id: payload.organization_id,
-        plan_id: sub.plan.id,
+        organization_id,
+        plan_id: sub?.plan?.id || plan_id,
         pagarme_subscription_id: sub.id,
         status: sub.status,
-        billing_type: sub.plan.billing_type,
-        current_period_start: sub.current_period.start,
-        current_period_end: sub.current_period.end,
+        billing_type: sub?.plan?.billing_type || null,
+        current_period_start: sub?.current_period?.start || null,
+        current_period_end: sub?.current_period?.end || null,
         created_at: sub.created_at,
         updated_at: sub.updated_at,
-        latest_invoice_id: sub.latest_invoice?.id,
-        latest_invoice_amount: sub.plan?.amount ? sub.plan.amount / 100 : null,
+        latest_invoice_id: sub?.latest_invoice?.id || null,
+        latest_invoice_amount: sub?.plan?.amount ? sub.plan.amount / 100 : null,
         nfe_document_id: nota?.id || null,
       });
 
@@ -301,6 +338,7 @@ export const PagarmeController = {
       return res.status(500).json(error.response?.data || { message: "Erro interno" });
     }
   },
+
 
   // =========================================
   // Atualizar assinatura existente
