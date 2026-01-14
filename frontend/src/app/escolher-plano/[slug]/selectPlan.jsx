@@ -43,8 +43,14 @@ export default function EscolherPlano({ slug }) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/pagarme/plans`
       );
 
-      const list = Array.isArray(res.data?.data) ? res.data.data : [];
+      const list = Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data)
+          ? res.data
+          : [];
+
       setPlans(list);
+
     } catch (err) {
       console.error("Erro ao carregar planos:", err);
       toast.error("Falha ao carregar planos");
@@ -82,7 +88,7 @@ export default function EscolherPlano({ slug }) {
     try {
       const res = await axios.get(
         `${process.env.NEXT_PUBLIC_API_URL}/api/coupons/validate?code=${couponCode}`, {
-          credentials: 'include'
+          withCredentials: true
         }
       );
 
@@ -134,7 +140,20 @@ export default function EscolherPlano({ slug }) {
     setProcessing(true);
 
     try {
+
+      const rep = Array.isArray(representante) ? representante[0] : representante;
+
+      const organizationId =
+        rep?.organizations?.id || rep?.organization_id || rep?.organizations?.organization_id;
+
+      if (!organizationId) {
+        toast.error("Não foi possível identificar sua organização (organization_id).");
+        setProcessing(false);
+        return;
+      }
+
       const body = {
+        organization_id: Number(organizationId),
         plan_id: selectedPlan.id,
         billing_type: selectedBilling,
         payment_method: "credit_card",
