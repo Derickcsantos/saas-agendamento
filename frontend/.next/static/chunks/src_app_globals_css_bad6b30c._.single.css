@@ -2879,6 +2879,10 @@
     color: var(--color-emerald-700);
   }
 
+  .text-gray-50 {
+    color: var(--color-gray-50);
+  }
+
   .text-gray-300 {
     color: var(--color-gray-300);
   }

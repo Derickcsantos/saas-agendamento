@@ -172,7 +172,7 @@ userRouter.post('/:slug', createUser)
  *       500:
  *         description: Erro interno do servidor
  */
-userRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, updateUser)
+userRouter.put('/:slug/:id', authenticateJWT, updateUser)
 
 
 /**

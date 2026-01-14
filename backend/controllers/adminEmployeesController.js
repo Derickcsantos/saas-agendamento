@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase.js';
 import express from 'express';
 import sharp from 'sharp';
+import { v4 as uuidv4 } from 'uuid';
 
 export const getEmployees = async (req, res) => {
   try {
@@ -116,14 +117,29 @@ export const createEmployee = async (req, res) => {
       return res.status(404).json({ error: "Organização não encontrada" });
     }
 
-    // Se houver arquivo, converte para base64
+    // Se houver arquivo, converte para url
     if (req.file) {
       const buffer = await sharp(req.file.buffer)
         .resize({ width: 600 }) // opcional: redimensiona para largura máxima de 600px
         .webp({ quality: 80 }) // converte para webp com qualidade razoável
         .toBuffer();
 
-        imageData = buffer.toString('base64'); // se ainda quiser salvar como base64
+        const fileName = `${uuidv4()}.webp`;
+
+        const {error: uploadError} = await supabase.storage
+          .from('employee_images')
+          .upload(fileName, buffer, {
+            contentType: 'image/webp', 
+            upsert: false,
+          })
+        
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrl } = supabase.storage
+          .from('employee_images')
+          .getPublicUrl(fileName);
+
+        imageData = publicUrl.publicUrl;
     }
 
     const { data, error } = await supabase
@@ -164,14 +180,29 @@ export const updateEmployee = async (req, res) => {
       return res.status(404).json({ error: "Organização não encontrada" });
     }
 
-    // Se enviou nova imagem, converte para base64
+    // Se enviou nova imagem, converte para url
     if (req.file) {
       const buffer = await sharp(req.file.buffer)
         .resize({ width: 600 }) // opcional: redimensiona para largura máxima de 600px
         .webp({ quality: 80 }) // converte para webp com qualidade razoável
         .toBuffer();
 
-        imageData = buffer.toString('base64'); // se ainda quiser salvar como base64
+        const fileName = `${uuidv4()}.webp`;
+
+        const {error: uploadError} = await supabase.storage
+          .from('employee_images')
+          .upload(fileName, buffer, {
+            contentType: 'image/webp', 
+            upsert: false,
+          })
+        
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrl } = supabase.storage
+          .from('employee_images')
+          .getPublicUrl(fileName);
+
+        imageData = publicUrl.publicUrl;
     }
 
     const updateData = { 

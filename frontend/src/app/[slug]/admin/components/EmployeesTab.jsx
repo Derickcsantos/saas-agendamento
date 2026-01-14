@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from 'react-toastify'
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import ImageDropzone from "./ImageDropzone";
 
 export default function EmployeesTab({ org }) {
   const [employees, setEmployees] = useState([]);
@@ -124,7 +125,7 @@ export default function EmployeesTab({ org }) {
       is_active: emp.is_active,
     });
 
-    setPreview(emp.image_url || "");
+    setPreview(emp.image_url);
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/schedules/${org.slug_organization}/${emp.id}`, {
       credentials: 'include'
@@ -210,37 +211,56 @@ export default function EmployeesTab({ org }) {
         </h4>
 
         <div className="flex flex-col gap-4 md:flex-row md:flex-wrap">
-          <input type="text" required placeholder="Nome" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
-            value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <div className="w-full md:basis-[calc(50%-0.5rem)] ">
+            <label className="text-gray-800 text-sm" htmlFor="username">Nome Completo</label>
+            <input type="text" required placeholder="Nome" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
+              value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
 
-          <input type="email" placeholder="Email" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
-            value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <div className="w-full md:basis-[calc(50%-0.5rem)] ">
+            <label className="text-gray-800 text-sm" htmlFor="username">E-mail</label>
+            <input type="email" placeholder="Email" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
+              value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          </div>
 
-          <input type="tel" placeholder="Telefone" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
+          <div className="w-full md:basis-[calc(50%-0.5rem)] ">
+            <label className="text-gray-800 text-sm" htmlFor="username">Telefone</label>
+            <input type="tel" placeholder="Telefone" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
             value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          </div>
 
-          <input type="number" placeholder="Comissão (%)" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
+          <div className="w-full md:basis-[calc(50%-0.5rem)] ">
+            <label className="text-gray-800 text-sm" htmlFor="username">Comissão</label>
+            <input type="number" placeholder="Comissão (%)" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
             value={form.comissao} onChange={(e) => setForm({ ...form, comissao: e.target.value })} />
+          </div>
+
 
           <div className="w-full md:basis-[calc(50%-0.5rem)]">
+            <label className="text-gray-800 text-sm" htmlFor="username">Salário</label>
             <input type="number" placeholder="Salário" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
             value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} />
           </div>
 
-          <div className="md:col-span-2 w-full md:basis-[calc(50%-0.5rem)]">
-            <input type="file" accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files[0];
-              setImage(file);
-              setPreview(URL.createObjectURL(file));
-            }} />
-          </div>
-          
           <label className="flex items-center gap-2 col-span-2">
             <input type="checkbox" checked={form.is_active}
               onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
             Ativo
           </label>
+
+          <div className="md:col-span-2 w-full ">
+            <ImageDropzone
+              valueFile={image}
+              previewUrl={preview}
+              paletteColor={palette?.strong_color}
+              onChangeFile={(file, url) => {
+                setImage(file);
+                setPreview(url);
+              }}
+            />
+          </div>
+          
+        
         </div>
 
         {preview && <img src={preview} className="w-32 h-32 object-cover rounded-md" />}

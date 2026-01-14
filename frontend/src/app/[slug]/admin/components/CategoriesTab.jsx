@@ -123,14 +123,14 @@ export default function CategoriesTab({ org }) {
 
           <div>
             <ImageDropzone
-            valueFile={image}
-            previewUrl={preview}
-            paletteColor={palette?.strong_color}
-            onChangeFile={(file, url) => {
-              setImage(file);
-              setPreview(url);
-            }}
-          />
+              valueFile={image}
+              previewUrl={preview}
+              paletteColor={palette?.strong_color}
+              onChangeFile={(file, url) => {
+                setImage(file);
+                setPreview(url);
+              }}
+            />
           </div>
         </div>
 
