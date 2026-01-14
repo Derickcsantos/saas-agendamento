@@ -10,12 +10,7 @@ import {
   Wand2,
   LineChart,
   CheckCircle2,
-  ShieldCheck,
   Sparkles,
-  Zap,
-  Mail,
-  Database,
-  CloudUpload,
 } from "lucide-react";
 
 const BRAND = "#5E3BEE"; 
