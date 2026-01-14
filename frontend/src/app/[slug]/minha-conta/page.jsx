@@ -217,7 +217,7 @@ export default function MyAccountPage() {
 
       {/* MODAL */}
       {showProfile && (
-        <ProfileModal user={user} setUser={setUser} onClose={() => setShowProfile(false)} />
+        <ProfileModal user={user} slug={slug} setUser={setUser} onClose={() => setShowProfile(false)} />
       )}
 
       {/* FOOTER */}

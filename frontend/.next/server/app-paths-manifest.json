@@ -1,6 +1,7 @@
 {
   "/[slug]/admin/page": "app/[slug]/admin/page.js",
+  "/[slug]/agendar/page": "app/[slug]/agendar/page.js",
   "/[slug]/login/page": "app/[slug]/login/page.js",
-  "/[slug]/profissional/calendario/page": "app/[slug]/profissional/calendario/page.js",
-  "/[slug]/profissional/page": "app/[slug]/profissional/page.js"
+  "/[slug]/minha-conta/page": "app/[slug]/minha-conta/page.js",
+  "/[slug]/page": "app/[slug]/page.js"
 }
