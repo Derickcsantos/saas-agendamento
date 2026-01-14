@@ -507,18 +507,18 @@ export default function EscolherPlano({ slug }) {
                 Cupom de desconto
               </label>
 
-              <div className="flex gap-3 mt-2">
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row">
                 <input
                   type="text"
                   value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value)}
                   placeholder="Digite seu cupom"
-                  className="flex-1 border rounded-lg p-3"
+                  className="w-full min-w-0 flex-1 border rounded-lg p-3 text-gray-900"
                 />
                 <button
                   type="button"
                   onClick={validateCoupon}
-                  className="px-4 py-2 rounded-lg text-white"
+                  className="w-full sm:w-auto px-5 py-3 rounded-lg text-white font-semibold whitespace-nowrap"
                   style={{ backgroundColor: BRAND }}
                 >
                   Aplicar
