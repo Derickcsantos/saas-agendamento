@@ -191,9 +191,9 @@ export default function SiteTab({ org }) {
     );
 
   return (
-    <div className="flex gap-8">
+    <div className="flex flex-col xl:flex-row gap-6">
       {/* ============================ LEFT FORM ============================ */}
-      <div className="w-1/2 space-y-10">
+      <div className="w-full xl:w-[480px] 2xl:w-[520px] shrink-0">
         <h2 className="text-2xl font-semibold">Configurações do Site</h2>
 
         {/* SEO */}
@@ -345,7 +345,7 @@ export default function SiteTab({ org }) {
       </div>
 
       {/* ============================ RIGHT PREVIEW ============================ */}
-      <div className="w-1/2">
+      <div className="w-full flex-1">
         <div className="flex justify-between px-2 mb-3">
           <h3 className="text-lg font-semibold">Preview ao vivo</h3>
 
