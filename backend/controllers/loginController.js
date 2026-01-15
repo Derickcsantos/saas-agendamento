@@ -16,17 +16,23 @@ export const login = async (req, res) => {
   }
 
   try {
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('id, username, email, aniversario, password, phone, tipo')
-      .eq('organization_id', req.organizationId)
-      .or(`username.eq.${login},email.eq.${login}`)
-      .single();
+    const loginValue = String(login || "").trim();
 
-    if (error || !user) {
-      console.warn(`Usuário não encontrado para login: ${login}`);
-      return res.status(401).json({ error: 'Credenciais inválidas.' });
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("id, username, email, aniversario, password, phone, tipo")
+      .eq("organization_id", req.organizationId)
+      // ILIKE sem % funciona como "igual ignorando maiúsc/minúsc"
+      .or(`username.ilike.${loginValue},email.ilike.${loginValue}`)
+      .maybeSingle(); // não explode se não achar (mas ainda pode acusar múltiplos)
+
+
+    if (error) {
+      console.warn("Login query error:", error);
+      // se for múltiplos, é porque username não é único
+      return res.status(401).json({ error: "Credenciais inválidas." });
     }
+
 
     const passwordMatches = await verifyPassword(password, user.password);
     if (!passwordMatches) {

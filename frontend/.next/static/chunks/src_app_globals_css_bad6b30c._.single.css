@@ -2883,10 +2883,6 @@
     color: var(--color-emerald-700);
   }
 
-  .text-gray-50 {
-    color: var(--color-gray-50);
-  }
-
   .text-gray-300 {
     color: var(--color-gray-300);
   }
@@ -4450,8 +4446,26 @@
   }
 
   @media (min-width: 80rem) {
+    .xl\:w-\[480px\] {
+      width: 480px;
+    }
+  }
+
+  @media (min-width: 80rem) {
     .xl\:grid-cols-3 {
       grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 80rem) {
+    .xl\:flex-row {
+      flex-direction: row;
+    }
+  }
+
+  @media (min-width: 96rem) {
+    .\32 xl\:w-\[520px\] {
+      width: 520px;
     }
   }
 
