@@ -24,6 +24,9 @@ export const corsOptions = {
     'organization_id', 
     'Accept'
   ],
+  exposedHeaders: [
+    'Authorization'
+  ],
   credentials: true,
   preflightContinue: false,
   optionsSuccessStatus: 204,

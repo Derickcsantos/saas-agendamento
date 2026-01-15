@@ -15,6 +15,7 @@ export default function LoginPage({ slug }) {
   const [successMsg, setSuccessMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const { palette } = useOrganizationColors(slug);
+  const [organization, setOrganization] = useState(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -60,7 +61,24 @@ export default function LoginPage({ slug }) {
     };
 
     checkAuth();
+    loadOrganizations();
   }, [router, slug]);
+
+  const loadOrganizations = async () => {
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${slug}`);
+      const data = await res.json();
+
+      setOrganization(data);
+    } catch (err) {
+      console.error("Erro ao buscar organização:", err);
+      setOrganization(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -130,7 +148,7 @@ export default function LoginPage({ slug }) {
     <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full bg-white rounded-xl shadow-md p-8">
         <h1 className="text-2xl font-semibold text-center mb-6" style={{color: palette?.strong_color}}>
-          Login — {slug}
+          Login — {organization?.name || slug}
         </h1>
 
         <form onSubmit={handleLogin} className="space-y-4">
