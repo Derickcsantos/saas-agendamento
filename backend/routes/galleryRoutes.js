@@ -20,7 +20,7 @@ export const galleryRouter = Router();
  * @swagger
  * /api/galeria/{slug}:
  *   get:
- *     summary: Lista imagens da galeria por organização (slug), permitindo também a busca por filtro de nome
+ *     summary: Lista imagens da galeria por organização (slug)
  *     description: Retorna as imagens de uma organização com paginação e busca opcional por nome.
  *     tags: [Galeria]
  *     parameters:
@@ -95,7 +95,7 @@ galleryRouter.get('/:slug', getImagesBySlug);
  *       500:
  *         description: Erro no upload
  */
-galleryRouter.post('/:slug/upload', upload.single('imagem'), uploadImageBySlug);
+galleryRouter.post('/:slug/upload', upload.array('imagens[]', 10), uploadImageBySlug);
 
 /**
  * @swagger
