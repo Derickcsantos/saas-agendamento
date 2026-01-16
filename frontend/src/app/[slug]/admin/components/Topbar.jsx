@@ -65,6 +65,8 @@ export default function Topbar({ org, slug, setActiveTab }) {
       method: "POST", 
       credentials: "include" 
     });
+    // 🔥 Limpa token do sessionStorage
+    sessionStorage.removeItem('token');
     router.push(`/${slug}/login`);
   };
 

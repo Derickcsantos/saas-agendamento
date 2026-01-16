@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 export default function LoginPage({ slug }) {
   const router = useRouter();
@@ -20,9 +21,8 @@ export default function LoginPage({ slug }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/${slug}/check`,
-          { credentials: "include" }
+        const res = await fetchWithAuth(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/${slug}/check`
         );
         const data = await res.json();
 
@@ -101,6 +101,13 @@ export default function LoginPage({ slug }) {
 
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Credenciais inválidas");
+      }
+
+      // 🔥 Lê o token do header Authorization (fallback para iOS/Safari)
+      const authHeader = res.headers.get('Authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        sessionStorage.setItem('token', token);
       }
 
       const tipo = data.user?.tipo;

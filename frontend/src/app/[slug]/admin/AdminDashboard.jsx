@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Briefcase, Users, Layers, CalendarCheck } from "lucide-react";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import Card from "./components/Card";
@@ -38,9 +39,7 @@ export default function AdminDashboard({ slug }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/${slug}/check`, {
-          credentials: "include",
-        });
+        const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/${slug}/check`);
         const data = await res.json();
 
         if (!data.authenticated) {
@@ -82,6 +81,8 @@ export default function AdminDashboard({ slug }) {
       credentials: "include"
     });
 
+    // 🔥 Limpa token do sessionStorage
+    sessionStorage.removeItem('token');
     router.push(`/${slug}/login`);
   };
 
