@@ -73,13 +73,17 @@ export default function EscolherPlano({ slug }) {
         }
         );
         setRepresentante(res.data);
-        console.log("FRONT RECEBEU REPRESENTANTE =>", res.data[0]);
+        console.log("🔍 REPRESENTANTE COMPLETO =>", res.data);
+        console.log("🔍 ORGANIZATION_ID =>", res.data?.organization_id || res.data?.organizations?.id);
+        console.log("🔍 ESTRUTURA =>", JSON.stringify(res.data, null, 2));
       } catch (err) {
         console.error("Erro ao carregar dados do representante:", err);
       }
     };
 
-    loadRep();
+    if (slug) {
+      loadRep();
+    }
   }, [slug]);
 
   const validateCoupon = async () => {
@@ -137,20 +141,59 @@ export default function EscolherPlano({ slug }) {
       return;
     }
 
+    // Validar campos do cartão
+    if (!cardData.holder_name || cardData.holder_name.trim().length < 3) {
+      toast.error("Nome do titular inválido");
+      return;
+    }
+
+    const cleanCardNumber = cardData.number.replace(/\D/g, "");
+    if (cleanCardNumber.length < 13 || cleanCardNumber.length > 19) {
+      toast.error("Número do cartão inválido");
+      return;
+    }
+
+    if (!cardData.exp_month || !cardData.exp_year || !cardData.cvv) {
+      toast.error("Preencha todos os dados do cartão");
+      return;
+    }
+
     setProcessing(true);
 
     try {
+      // A API retorna um objeto único, não array
+      const rep = representante;
 
-      const rep = Array.isArray(representante) ? representante[0] : representante;
+      console.log("🔍 REP COMPLETO =>", rep);
+      console.log("🔍 REP.organization_id =>", rep?.organization_id);
+      console.log("🔍 REP.organizations.id =>", rep?.organizations?.id);
 
-      const organizationId =
-        rep?.organizations?.id || rep?.organization_id || rep?.organizations?.organization_id;
+      // Extrair organization_id (pode vir diretamente ou dentro de organizations)
+      const organizationId = rep?.organization_id || rep?.organizations?.id;
+
+      console.log("🎯 ORGANIZATION_ID FINAL =>", organizationId);
 
       if (!organizationId) {
-        toast.error("Não foi possível identificar sua organização (organization_id).");
+        console.error("❌ Estrutura completa do representante:", JSON.stringify(rep, null, 2));
+        toast.error("Não foi possível identificar sua organização. Verifique se o cadastro está completo.");
         setProcessing(false);
         return;
       }
+
+      // Limpar e formatar telefone
+      const cleanPhone = (rep?.users?.phone || "").replace(/\D/g, "");
+      const areaCode = cleanPhone.slice(0, 2) || "11";
+      const phoneNumber = cleanPhone.slice(2) || "999999999";
+
+      // Limpar número do cartão
+      const cleanCardNumber = cardData.number.replace(/\D/g, "");
+
+      // Normalizar nome do titular
+      const cleanHolderName = cardData.holder_name
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
 
       const body = {
         organization_id: Number(organizationId),
@@ -160,20 +203,38 @@ export default function EscolherPlano({ slug }) {
         amount: Math.round(finalPrice),
         slug,
         customer: {
-          name: representante?.users?.username?.normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
-          email: representante?.users?.email,
-          document: representante?.organizations?.document_number,
-          type: representante?.organizations?.document_type === "cnpj" ? "company" : "individual",
+          name: (rep?.users?.username || "Cliente")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim(),
+          email: rep?.users?.email || "",
+          document: (rep?.organizations?.document_number || "").replace(/\D/g, ""),
+          type: rep?.organizations?.document_type === "cnpj" ? "company" : "individual",
           phones: {
             mobile_phone: {
               country_code: "55",
-              area_code: representante?.users?.phone?.replace(/\D/g, "").slice(0, 2),
-              number: representante?.users?.phone?.replace(/\D/g, "").slice(2),
+              area_code: areaCode,
+              number: phoneNumber,
             }
           }
         },
-        card: { ...cardData },
+        card: {
+          holder_name: cleanHolderName,
+          number: cleanCardNumber,
+          exp_month: parseInt(cardData.exp_month),
+          exp_year: parseInt(cardData.exp_year),
+          cvv: cardData.cvv,
+          billing_address: {
+            line_1: rep?.organizations?.address || "Rua Exemplo, 123",
+            zip_code: (rep?.organizations?.zip_code || "01310100").replace(/\D/g, ""),
+            city: rep?.organizations?.city || "São Paulo",
+            state: rep?.organizations?.state || "SP",
+            country: "BR"
+          }
+        },
       };
+
+      console.log("📤 Payload sendo enviado:", JSON.stringify(body, null, 2));
 
       await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/pagarme/subscriptions`,
@@ -188,8 +249,15 @@ export default function EscolherPlano({ slug }) {
       }, 800);
 
     } catch (err) {
-      console.error(err);
-      toast.error("Erro ao criar assinatura");
+      console.error("❌ Erro completo:", err);
+      console.error("❌ Resposta da API:", err.response?.data);
+      
+      const errorMessage = err.response?.data?.message 
+        || err.response?.data?.errors?.[0]?.message
+        || err.message 
+        || "Erro ao criar assinatura";
+      
+      toast.error(errorMessage);
     } finally {
       setProcessing(false);
     }
@@ -563,11 +631,15 @@ export default function EscolherPlano({ slug }) {
                   type="text"
                   required
                   placeholder="4242 4242 4242 4242"
-                  maxLength={16}
+                  maxLength={19}
                   value={cardData.number}
-                  onChange={(e) =>
-                    setCardData({ ...cardData, number: e.target.value })
-                  }
+                  onChange={(e) => {
+                    // Remove tudo que não é número
+                    const value = e.target.value.replace(/\D/g, "");
+                    // Adiciona espaços a cada 4 dígitos para melhor visualização
+                    const formatted = value.replace(/(\d{4})(?=\d)/g, "$1 ");
+                    setCardData({ ...cardData, number: formatted });
+                  }}
                   className="w-full border rounded-lg p-3 mt-1 text-gray-900"
                 />
               </div>

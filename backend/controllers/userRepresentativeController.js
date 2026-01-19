@@ -53,7 +53,8 @@ export const getUserRepresentativeBySlug = async (req, res) => {
     const { data, error } = await supabase
       .from('organization_representative')
       .select(`
-        representative_id, 
+        representative_id,
+        organization_id,
         users (
           id,
           username,
@@ -72,8 +73,9 @@ export const getUserRepresentativeBySlug = async (req, res) => {
         created_at
       `)
       .eq('organization_id', org.id)
-      .single()
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
     if (error) throw error;
     res.json(data);
