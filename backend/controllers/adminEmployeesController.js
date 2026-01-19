@@ -45,10 +45,18 @@ export const getEmployees = async (req, res) => {
 
         if (schedulesError) throw schedulesError;
 
+        // Buscar cor do calendário
+        const { data: colorData } = await supabase
+          .from('employee_calendar_color')
+          .select('calendar_color_id')
+          .eq('employee_id', employee.id)
+          .maybeSingle();
+
         return { 
           ...employee, 
           services: services?.map(item => item.services) || [],
-          work_schedules: schedules || [] 
+          work_schedules: schedules || [],
+          calendar_color_id: colorData?.calendar_color_id || null
         };
       })
     );
@@ -86,13 +94,21 @@ export const getEmployeeById = async (req, res) => {
 
     if (error) throw error;
 
+    // Buscar cor do calendário
+    const { data: colorData } = await supabase
+      .from('employee_calendar_color')
+      .select('calendar_color_id')
+      .eq('employee_id', id)
+      .maybeSingle();
+
     // Converter imagem base64 para URL de dados se existir
     const employeeWithImage = data.imagem_funcionario 
       ? {
           ...data,
+          calendar_color_id: colorData?.calendar_color_id || null,
           imagem_funcionario: `data:image/jpeg;base64,${data.imagem_funcionario}`
         }
-      : data;
+      : { ...data, calendar_color_id: colorData?.calendar_color_id || null };
 
     res.json(employeeWithImage);
   } catch (error) {
@@ -103,7 +119,7 @@ export const getEmployeeById = async (req, res) => {
 
 export const createEmployee = async (req, res) => {
   try {
-    const { name, email, phone, comissao, salary, is_active } = req.body;
+    const { name, email, phone, comissao, salary, is_active, calendar_color_id } = req.body;
     let imageData = null;
     const { slug } = req.params;
 
@@ -157,7 +173,26 @@ export const createEmployee = async (req, res) => {
       .select();
 
     if (error) throw error;
-    res.status(201).json(data[0]);
+
+    const createdEmployee = data[0];
+
+    // Salvar cor do calendário se fornecida
+    if (calendar_color_id) {
+      const { error: colorError } = await supabase
+        .from('employee_calendar_color')
+        .insert([{
+          employee_id: createdEmployee.id,
+          calendar_color_id: parseInt(calendar_color_id)
+        }])
+        .select();
+
+      if (colorError) {
+        console.error('Error saving employee calendar color:', colorError);
+        // Não lançar erro aqui - o funcionário foi criado, só a cor não salvou
+      }
+    }
+
+    res.status(201).json({ ...createdEmployee, calendar_color_id: calendar_color_id || null });
   } catch (error) {
     console.error('Error creating employee:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -167,7 +202,7 @@ export const createEmployee = async (req, res) => {
 export const updateEmployee = async (req, res) => {
   try {
     const { slug, id } = req.params;
-    const { name, email, phone, comissao, salary, is_active } = req.body;
+    const { name, email, phone, comissao, salary, is_active, calendar_color_id } = req.body;
     let imageData = null;
 
     const { data: org, orgError } = await supabase
@@ -223,7 +258,42 @@ export const updateEmployee = async (req, res) => {
       .select();
 
     if (error) throw error;
-    res.json(data[0]);
+
+    const updatedEmployee = data[0];
+
+    // Atualizar cor do calendário
+    if (calendar_color_id) {
+      // Primeiro, verificar se já existe uma cor para este funcionário
+      const { data: existingColor } = await supabase
+        .from('employee_calendar_color')
+        .select('id')
+        .eq('employee_id', id)
+        .maybeSingle();
+
+      if (existingColor) {
+        // Atualizar cor existente
+        await supabase
+          .from('employee_calendar_color')
+          .update({ calendar_color_id: parseInt(calendar_color_id) })
+          .eq('employee_id', id);
+      } else {
+        // Criar nova relação de cor
+        await supabase
+          .from('employee_calendar_color')
+          .insert([{
+            employee_id: id,
+            calendar_color_id: parseInt(calendar_color_id)
+          }]);
+      }
+    } else if (calendar_color_id === null || calendar_color_id === '') {
+      // Se enviou para remover a cor
+      await supabase
+        .from('employee_calendar_color')
+        .delete()
+        .eq('employee_id', id);
+    }
+
+    res.json({ ...updatedEmployee, calendar_color_id });
   } catch (error) {
     console.error('Error updating employee:', error);
     res.status(500).json({ error: 'Internal server error' });

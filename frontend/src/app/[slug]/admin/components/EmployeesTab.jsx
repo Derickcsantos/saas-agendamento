@@ -27,11 +27,29 @@ export default function EmployeesTab({ org }) {
   const [allServices, setAllServices] = useState([]);
   const [showServicesModal, setShowServicesModal] = useState(false);
   const [searchService, setSearchService] = useState("");
+  const [availableColors, setAvailableColors] = useState([]);
+  const [selectedColorId, setSelectedColorId] = useState(null);
   const { palette } = useOrganizationColors(org.slug_organization);
 
   useEffect(() => {
     loadEmployees();
+    loadAvailableColors();
   }, []);
+
+  const loadAvailableColors = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/calendar-colors/${org.slug_organization}`,
+        { credentials: 'include' }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableColors(data);
+      }
+    } catch (err) {
+      console.log('Erro ao carregar cores:', err);
+    }
+  };
 
   const loadEmployees = async () => {
     const res = await fetch(
@@ -69,6 +87,7 @@ export default function EmployeesTab({ org }) {
       const formData = new FormData();
       for (const [k, v] of Object.entries(form)) formData.append(k, v);
       if (image) formData.append("image", image);
+      if (selectedColorId) formData.append("calendar_color_id", selectedColorId);
 
       const method = editing ? "PUT" : "POST";
       const url = editing
@@ -105,6 +124,7 @@ export default function EmployeesTab({ org }) {
       setImage(null);
       setPreview("");
       setEditing(null);
+      setSelectedColorId(null);
       setSchedules([{ day_of_week: 1, start_time: "08:00", end_time: "17:00" }]);
       toast.success('Funcionário cadastrado com sucesso');
       loadEmployees();
@@ -124,6 +144,7 @@ export default function EmployeesTab({ org }) {
       comissao: emp.comissao,
       is_active: emp.is_active,
     });
+    setSelectedColorId(emp.calendar_color_id || null);
 
     setPreview(emp.image_url);
 
@@ -266,10 +287,36 @@ export default function EmployeesTab({ org }) {
         {preview && <img src={preview} className="w-32 h-32 object-cover rounded-md" />}
 
         <div className="space-y-2">
-          <h5 className="font-medium text-gray-700">Horários de Trabalho</h5>
+          <label className="font-medium text-gray-700">Cor do Evento do Calendário</label>
+          <select
+            value={selectedColorId === null ? '' : selectedColorId}
+            onChange={(e) => setSelectedColorId(e.target.value ? parseInt(e.target.value) : null)}
+            className="border p-2 rounded-md w-full"
+          >
+            <option value="">Sem cor</option>
+            {availableColors.map((color) => (
+              <option key={color.id} value={color.id}>
+                {color.color_name || `Cor ${color.id}`} - {color.hex_color}
+              </option>
+            ))}
+          </select>
+          {selectedColorId && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Cor selecionada:</span>
+              <div
+                className="w-8 h-8 rounded-md border border-gray-300"
+                style={{ 
+                  backgroundColor: availableColors.find(c => c.id === selectedColorId)?.hex_color || '#000000'
+                }}
+              />
+            </div>
+          )}
+        </div>
 
+        <div className="space-y-2">
+          <h5 className="font-medium text-gray-700">Horários de Trabalho</h5>
           {schedules.map((s, i) => (
-            <div key={i} className="flex gap-2 items-center">
+            <div key={i} className="border p-3 rounded-md space-y-2">
               <select value={s.day_of_week}
                 onChange={(e) => {
                   setSchedules(
@@ -278,34 +325,36 @@ export default function EmployeesTab({ org }) {
                     )
                   );
                 }}
-                className="border p-2 rounded-md"
+                className="border p-2 rounded-md w-full"
               >
-                {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d, idx) => (
+                {["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"].map((d, idx) => (
                   <option key={idx} value={idx}>{d}</option>
                 ))}
               </select>
 
-              <input type="time" className="border p-2 rounded-md"
-                value={s.start_time}
-                onChange={(e) =>
-                  setSchedules(
-                    schedules.map((item, idx) =>
-                      idx === i ? { ...item, start_time: e.target.value } : item
+              <div className="flex gap-2 items-center">
+                <input type="time" className="border p-2 rounded-md flex-1"
+                  value={s.start_time}
+                  onChange={(e) =>
+                    setSchedules(
+                      schedules.map((item, idx) =>
+                        idx === i ? { ...item, start_time: e.target.value } : item
+                      )
                     )
-                  )
-                } />
+                  } />
 
-              <input type="time" className="border p-2 rounded-md"
-                value={s.end_time}
-                onChange={(e) =>
-                  setSchedules(
-                    schedules.map((item, idx) =>
-                      idx === i ? { ...item, end_time: e.target.value } : item
+                <input type="time" className="border p-2 rounded-md flex-1"
+                  value={s.end_time}
+                  onChange={(e) =>
+                    setSchedules(
+                      schedules.map((item, idx) =>
+                        idx === i ? { ...item, end_time: e.target.value } : item
+                      )
                     )
-                  )
-                } />
+                  } />
 
-              <button type="button" className="text-red-500" onClick={() => removeSchedule(i)}>✕</button>
+                <button type="button" className="text-red-500 text-lg font-bold flex-shrink-0 w-8 h-8 flex items-center justify-center" onClick={() => removeSchedule(i)}>✕</button>
+              </div>
             </div>
           ))}
 

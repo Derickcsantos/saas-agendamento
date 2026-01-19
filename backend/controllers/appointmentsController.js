@@ -212,12 +212,30 @@ export const createAppointment = async (req, res) => {
             const eventStart = new Date(`${date}T${start_time}:00-03:00`).toISOString();
             const eventEnd = new Date(`${date}T${end_time}:00-03:00`).toISOString();
 
+            // Buscar cor do funcionário
+            const { data: employeeColor } = await supabase
+              .from('employee_calendar_color')
+              .select('calendar_color_id')
+              .eq('employee_id', employee_id)
+              .maybeSingle();
+
+            // Buscar informações da cor do Google Calendar
+            let colorId = null;
+            if (employeeColor?.calendar_color_id) {
+              const { data: colorInfo } = await supabase
+                .from('google_calendar_colors')
+                .select('google_color_id')
+                .eq('id', employeeColor.calendar_color_id)
+                .single();
+              colorId = colorInfo?.google_color_id || null;
+            }
+
             const eventBody = {
               summary: `Agendamento: ${client_name}`,
               description: `Serviço: ${serviceInfo?.name}\nProfissional: ${employee?.name}\nPreço original: ${original_price}\nPreço final: ${final_price}\nCliente: ${client_name}\nTelefone: ${normalizedClientPhone}`,
               start: { dateTime: eventStart, timeZone: "America/Sao_Paulo" },
               end: { dateTime: eventEnd, timeZone: "America/Sao_Paulo" },
-
+              ...(colorId && { colorId }),
               conferenceData: {
                 createRequest: {
                   requestId: `${created?.id}-${Date.now()}`,
