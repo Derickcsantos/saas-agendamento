@@ -244,13 +244,19 @@ export const PagarmeController = {
       let nota = null;
 
       // ✅ (2) validações mínimas
-      const { plan_id, organization_id } = req.body;
+      const { plan_id, organization_id, card, customer } = req.body;
 
       if (!plan_id) {
         return res.status(400).json({ message: "plan_id é obrigatório" });
       }
       if (!organization_id) {
         return res.status(400).json({ message: "organization_id é obrigatório" });
+      }
+      if (!card || !card.number || !card.holder_name || !card.cvv) {
+        return res.status(400).json({ message: "Dados do cartão incompletos" });
+      }
+      if (!customer || !customer.email) {
+        return res.status(400).json({ message: "Dados do cliente incompletos" });
       }
 
       // ✅ (3) Busca o plano no Pagar.me para pegar um plan_item_id válido
@@ -268,21 +274,37 @@ export const PagarmeController = {
       // ✅ (4) Monta payload correto para assinatura de plano:
       // items precisam de quantity e (description OU plan_item_id)
       const payload = {
-        ...req.body,
-
-        // garante que o plan_id esteja correto
         plan_id,
+        customer: req.body.customer,
+        payment_method: req.body.payment_method || "credit_card",
+        billing_type: req.body.billing_type,
 
-        // sobrescreve items com o formato válido
+        // items com formato válido
         items: [
           {
             plan_item_id: firstPlanItemId,
             quantity: 1,
           },
         ],
+
+        // dados do cartão
+        card: {
+          number: req.body.card.number,
+          holder_name: req.body.card.holder_name,
+          exp_month: parseInt(req.body.card.exp_month),
+          exp_year: parseInt(req.body.card.exp_year),
+          cvv: req.body.card.cvv,
+          billing_address: req.body.card.billing_address || {
+            line_1: "Rua Exemplo, 123",
+            zip_code: "01310100",
+            city: "São Paulo",
+            state: "SP",
+            country: "BR"
+          }
+        },
       };
 
-      console.log("SUBSCRIPTION PAYLOAD:", JSON.stringify(payload, null, 2));
+      console.log("📤 SUBSCRIPTION PAYLOAD:", JSON.stringify(payload, null, 2));
 
 
       // Dica: se você quiser permitir qty variável via frontend:
@@ -334,8 +356,20 @@ export const PagarmeController = {
 
       return res.status(201).json({ subscription: sub, nota });
     } catch (error) {
-      console.error("Erro ao criar assinatura:", error.response?.data || error);
-      return res.status(500).json(error.response?.data || { message: "Erro interno" });
+      console.error("❌ Erro ao criar assinatura:", error.response?.data || error.message);
+      
+      const errorMessage = error.response?.data?.message 
+        || error.response?.data?.errors?.[0]?.message
+        || error.message
+        || "Erro interno";
+      
+      const statusCode = error.response?.status || 500;
+      
+      return res.status(statusCode).json({
+        message: errorMessage,
+        errors: error.response?.data?.errors || [],
+        details: error.response?.data
+      });
     }
   },
 
