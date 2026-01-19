@@ -328,7 +328,10 @@ export const updateAdminAppointment = async (req, res) => {
     const becameCanceled =
       updates.status === "canceled" && appointment.status !== "canceled";
 
-    if (becameCanceled) {
+    // ✅ 4.5) Se o funcionário mudou -> atualizar cor no Google Calendar
+    const employeeChanged = updates.employee_id && updates.employee_id !== appointment.employee_id;
+
+    if (becameCanceled || employeeChanged) {
       // 4.1) Política da organização
       const { data: policy, error: policyErr } = await supabase
         .from("organization_policies")
@@ -341,11 +344,14 @@ export const updateAdminAppointment = async (req, res) => {
       const shouldSyncGoogle = policy?.sync_google_calendar === true;
 
       if (shouldSyncGoogle && updated.google_event_id) {
+        // Usar o novo employee_id se mudou, senão usar o antigo
+        const targetEmployeeId = employeeChanged ? updates.employee_id : updated.employee_id;
+
         // 4.2) Pegar user_id do profissional
         const { data: employee, error: empErr } = await supabase
           .from("employees")
           .select("user_id")
-          .eq("id", updated.employee_id)
+          .eq("id", targetEmployeeId)
           .single();
 
         if (!empErr && employee?.user_id) {
@@ -373,18 +379,48 @@ export const updateAdminAppointment = async (req, res) => {
               const calendarId =
                 (await findCalendarIdByEventId(calendar, updated.google_event_id)) || "primary";
 
-              const clientName = updated.client_name || "Cliente";
-              const canceledSummary = `Agendamento cancelado: ${clientName}`;
+              let colorId = null;
 
-              // 4.5) PATCH no evento (summary + vermelho)
-              await calendar.events.patch({
-                calendarId,
-                eventId: updated.google_event_id,
-                requestBody: {
-                  summary: canceledSummary,
-                  colorId: "11", // vermelho (geralmente)
-                },
-              });
+              // Se cancelou, usar vermelho
+              if (becameCanceled) {
+                const clientName = updated.client_name || "Cliente";
+                const canceledSummary = `Agendamento cancelado: ${clientName}`;
+                
+                // 4.5) PATCH no evento (summary + vermelho)
+                await calendar.events.patch({
+                  calendarId,
+                  eventId: updated.google_event_id,
+                  requestBody: {
+                    summary: canceledSummary,
+                    colorId: "11", // vermelho (geralmente)
+                  },
+                });
+              } else if (employeeChanged) {
+                // Se funcionário mudou, buscar a cor do novo funcionário
+                const { data: employeeColor } = await supabase
+                  .from('employee_calendar_color')
+                  .select('calendar_color_id')
+                  .eq('employee_id', targetEmployeeId)
+                  .maybeSingle();
+
+                if (employeeColor?.calendar_color_id) {
+                  const { data: colorInfo } = await supabase
+                    .from('google_calendar_colors')
+                    .select('google_color_id')
+                    .eq('id', employeeColor.calendar_color_id)
+                    .single();
+                  colorId = colorInfo?.google_color_id || null;
+                }
+
+                // Atualizar apenas a cor do evento
+                await calendar.events.patch({
+                  calendarId,
+                  eventId: updated.google_event_id,
+                  requestBody: {
+                    ...(colorId && { colorId }),
+                  },
+                });
+              }
 
               // 4.6) Se Google renovou token, salva no Supabase (igual seu controller faz)
               const newCreds = oauth2Client.credentials;

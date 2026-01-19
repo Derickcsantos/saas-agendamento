@@ -102,6 +102,8 @@ export default function AppointmentsTab({ org }) {
   const [appointments, setAppointments] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [calendarColors, setCalendarColors] = useState([]);
+  const [employeeColorMap, setEmployeeColorMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("calendar");
   const [savingId, setSavingId] = useState(null);
@@ -158,10 +160,37 @@ export default function AppointmentsTab({ org }) {
     []
   );
 
+  const loadEmployeeColors = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/employees/${org.slug_organization}`,
+        { credentials: 'include' }
+      );
+      const data = await res.json();
+      setEmployees(data);
+      
+      // Criar mapa de cores dos funcionários
+      const colorMap = {};
+      data.forEach(emp => {
+        if (emp.calendar_color_id) {
+          colorMap[emp.id] = emp.calendar_color_id;
+        }
+      });
+      setEmployeeColorMap(colorMap);
+      return colorMap;
+    } catch (err) {
+      console.log('Erro ao carregar cores dos funcionários:', err);
+      return {};
+    }
+  };
+
 
   async function loadAppointments(customFilters = filters) {
     setLoading(true);
     try {
+      // Recarregar cores dos funcionários
+      const colorMap = await loadEmployeeColors();
+      
       const params = new URLSearchParams({
       search: customFilters.search || "",
       employee: customFilters.employee || "",
@@ -184,18 +213,32 @@ export default function AppointmentsTab({ org }) {
       setAppointments(filteredByStatus);
 
       setCalendarEvents(
-        filteredByStatus.map((a) => ({
-          id: a.id,
-          title: `${a.client_name} — ${a.services.name}`,
-          start: `${a.appointment_date}T${a.start_time}`,
-          end: `${a.appointment_date}T${a.end_time}`,
-          backgroundColor:
-            a.status === "completed"
-              ? "#059669"
-              : a.status === "canceled"
-              ? "#dc2626"
-              : "#2563eb",
-        }))
+        filteredByStatus.map((a) => {
+          let backgroundColor = "#2563eb"; // cor padrão
+          
+          // Se está cancelado, usar vermelho (prioridade máxima)
+          if (a.status === "canceled") {
+            backgroundColor = "#dc2626";
+          } else if (a.status === "completed") {
+            // Se está completo, usar verde (prioridade máxima)
+            backgroundColor = "#059669";
+          } else if (a.status === "confirmed" && colorMap[a.employee_id]) {
+            // Se está confirmado E o funcionário tem cor, usar a cor do funcionário
+            const colorId = colorMap[a.employee_id];
+            const colorObj = calendarColors.find(c => c.id === colorId);
+            if (colorObj?.hex_color) {
+              backgroundColor = colorObj.hex_color;
+            }
+          }
+          
+          return {
+            id: a.id,
+            title: `${a.client_name} — ${a.services.name}`,
+            start: `${a.appointment_date}T${a.start_time}`,
+            end: `${a.appointment_date}T${a.end_time}`,
+            backgroundColor,
+          };
+        })
       );
 
 
@@ -208,11 +251,14 @@ export default function AppointmentsTab({ org }) {
 
   useEffect(() => {
     loadAppointments();
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/employees/${org.slug_organization}`, {
+    
+    // Carregar cores disponíveis
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/calendar-colors/${org.slug_organization}`, {
       credentials: 'include'
     })
       .then((r) => r.json())
-      .then((data) => setEmployees(data));
+      .then((data) => setCalendarColors(data))
+      .catch(err => console.log('Erro ao carregar cores:', err));
   }, []);
 
   const updateFilter = (field, value) => {
@@ -536,39 +582,63 @@ export default function AppointmentsTab({ org }) {
                   </td>
                 </tr>
               ) : (
-                appointments.map(a => (
-                  <tr 
-                  key={a.id} 
-                  className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition" 
-                  onDoubleClick={() => openEditModal(a.id)}
-                  >
-                    <td className="px-4 py-3">{a.client_name}</td>
-                    <td className="px-4 py-3">{a.services.name}</td>
-                    <td className="px-4 py-3">{a.employees.name}</td>
-                    <td className="px-4 py-3">{formatDateFromYYYYMMDD(a.appointment_date)}</td>
-                    <td className="px-4 py-3">
-                      {a.start_time.slice(0,5)} — {a.end_time.slice(0,5)}
-                    </td>
+                appointments.map(a => {
+                  // Encontrar a cor do funcionário
+                  let employeeColor = "#2563eb";
+                  if (a.status === "canceled") {
+                    employeeColor = "#dc2626";
+                  } else if (a.status === "completed") {
+                    employeeColor = "#059669";
+                  } else if (a.status === "confirmed" && employeeColorMap[a.employee_id]) {
+                    const colorId = employeeColorMap[a.employee_id];
+                    const colorObj = calendarColors.find(c => c.id === colorId);
+                    if (colorObj?.hex_color) {
+                      employeeColor = colorObj.hex_color;
+                    }
+                  }
+                  
+                  return (
+                    <tr 
+                    key={a.id} 
+                    className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition" 
+                    onDoubleClick={() => openEditModal(a.id)}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: employeeColor }}
+                          />
+                          {a.client_name}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">{a.services.name}</td>
+                      <td className="px-4 py-3">{a.employees.name}</td>
+                      <td className="px-4 py-3">{formatDateFromYYYYMMDD(a.appointment_date)}</td>
+                      <td className="px-4 py-3">
+                        {a.start_time.slice(0,5)} — {a.end_time.slice(0,5)}
+                      </td>
 
-                    <td className="px-4 py-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusInfo[a.status]?.className || 'bg-gray-100 text-gray-700'}`}>
-                        {savingId === a.id ? "Salvando..." : statusInfo[a.status]?.label || 'Indefinido'}
-                      </span>
-                    </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusInfo[a.status]?.className || 'bg-gray-100 text-gray-700'}`}>
+                          {savingId === a.id ? "Salvando..." : statusInfo[a.status]?.label || 'Indefinido'}
+                        </span>
+                      </td>
 
-                    <td className="px-4 py-3">
-                      <select
-                        className="rounded-lg px-2 py-1 bg-gray-100 dark:bg-gray-900 border dark:border-gray-700 shadow-sm"
-                        value={a.status}
-                        onChange={(e) => handleStatusChange(a.id, e.target.value)}
-                      >
-                        <option value="confirmed">Pendente</option>
-                        <option value="completed">Concluído</option>
-                        <option value="canceled">Cancelado</option>
-                      </select>
-                    </td>
-                  </tr>
-                ))
+                      <td className="px-4 py-3">
+                        <select
+                          className="rounded-lg px-2 py-1 bg-gray-100 dark:bg-gray-900 border dark:border-gray-700 shadow-sm"
+                          value={a.status}
+                          onChange={(e) => handleStatusChange(a.id, e.target.value)}
+                        >
+                          <option value="confirmed">Pendente</option>
+                          <option value="completed">Concluído</option>
+                          <option value="canceled">Cancelado</option>
+                        </select>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
