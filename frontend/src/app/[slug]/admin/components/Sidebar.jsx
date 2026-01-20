@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const { palette } = useOrganizationColors(org.slug_organization);
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -42,6 +45,18 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
     { name: "Configurações", key: "settings", icon: "bi-gear" },
     { name: "Sair", key: "exit", icon: "bi bi-door-open" },
   ];
+
+  // Páginas do dropdown "Outras páginas"
+  const dropdownPages = [
+    { name: "Agenda", path: `/${slug}/agendar`, icon: "bi-calendar-event" },
+    { name: "Página do cliente", path: `/${slug}/minha-conta`, icon: "bi-person-circle" },
+    { name: "Página do colaborador", path: `/${slug}/profissional`, icon: "bi-briefcase" },
+  ];
+
+  // Adicionar "Marketing" apenas se o slug for 'marcafy'
+  if (slug === "marcafy") {
+    dropdownPages.push({ name: "Marketing", path: "/marketing", icon: "bi-megaphone" });
+  }
 
   const strong = palette?.strong_color || "#5E3BEE";
   const light = palette?.light_color || "#F5F5F5";
@@ -143,7 +158,46 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
 
             );
           })}
-          
+
+          {/* DROPDOWN "OUTRAS PÁGINAS" */}
+          <div className="pt-2 border-t">
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-all"
+            >
+              <i className="bi bi-box-arrow-up-right text-lg"></i>
+              {!collapsed && (
+                <>
+                  <span>Outras páginas</span>
+                  <ChevronDown
+                    size={16}
+                    className={`ml-auto transition-transform ${
+                      dropdownOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </>
+              )}
+            </button>
+
+            {/* ITENS DO DROPDOWN */}
+            {dropdownOpen && !collapsed && (
+              <div className="pl-6 space-y-1 mt-1">
+                {dropdownPages.map((page, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      router.push(page.path);
+                      setMobileOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-all"
+                  >
+                    <i className={`bi ${page.icon} text-sm`}></i>
+                    <span>{page.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </nav>
 
         {/* FOOTER */}
