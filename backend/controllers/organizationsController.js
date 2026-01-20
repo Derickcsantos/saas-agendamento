@@ -247,7 +247,7 @@ export async function updateOrganization(req, res) {
 
     const { data: org, error: orgErr } = await supabase
       .from('organizations')
-      .select('id, name, logo_organization')
+      .select('id, name, logo_organization, slug_organization')
       .eq('slug_organization', slug)
       .single();
 
@@ -313,7 +313,26 @@ export async function updateOrganization(req, res) {
       return res.status(404).json({ error: 'Organização não encontrada' });
     }
 
-    res.json(data[0]);
+    // ✅ SE O SLUG FOI ALTERADO, ATUALIZAR organization_landing TAMBÉM
+    if (slug_organization && slug_organization !== org.slug_organization) {
+      const { error: landingError } = await supabase
+        .from('organization_landing')
+        .update({ slug: slug_organization })
+        .eq('slug', org.slug_organization);
+
+      if (landingError) {
+        console.error('Erro ao atualizar organization_landing:', landingError);
+        // Não falha a requisição principal, mas loga o erro
+      } else {
+        console.log(`✅ organization_landing.slug atualizado de "${org.slug_organization}" para "${slug_organization}"`);
+      }
+    }
+
+    // Retornar também o novo slug para o frontend saber para onde redirecionar
+    res.json({
+      ...data[0],
+      newSlug: slug_organization !== org.slug_organization ? slug_organization : null
+    });
   } catch (error) {
     console.error('Error updating organization:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });

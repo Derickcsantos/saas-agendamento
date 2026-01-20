@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 
 const Input = React.memo(function Input({
@@ -32,6 +33,7 @@ const Input = React.memo(function Input({
 });
 
 export default function SettingsTab({ org }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [savingField, setSavingField] = useState(null);
   const [palette, setPalette] = useState(null);
@@ -108,9 +110,22 @@ export default function SettingsTab({ org }) {
 
       if (!res.ok) throw new Error("Erro ao atualizar");
 
-      toast.success("Atualizado!");
+      const json = await res.json();
+
+      // ✅ SE FOI ATUALIZADO O SLUG E RECEBEMOS newSlug, REDIRECIONAR
+      if (key === "slug_organization" && json?.newSlug) {
+        toast.success("Slug atualizado! Redirecionando...");
+        
+        // Usar window.location.href para forçar reload completo
+        setTimeout(() => {
+          window.location.href = `/${json.newSlug}/admin`;
+        }, 1500);
+      } else {
+        toast.success("Atualizado!");
+      }
     } catch (err) {
       toast.error("Erro ao atualizar campo.");
+      console.error("Erro ao atualizar:", err);
     } finally {
       setSavingField(null);
     }
