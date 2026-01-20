@@ -78,7 +78,16 @@ export const getUserRepresentativeBySlug = async (req, res) => {
       .single();
 
     if (error) throw error;
-    res.json(data);
+    
+    // Garantir que organization_id esteja disponível no nível raiz
+    const response = {
+      ...data,
+      organization_id: data.organization_id || data.organizations?.id
+    };
+    
+    console.log("✅ Representante retornado com organization_id:", response.organization_id);
+    
+    res.json(response);
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -132,7 +141,7 @@ export const createUserRepresentative = async (req, res) => {
     console.log("Slug recebido no users:", slug);
     console.log("User id recebido no users representative:", userId);
 
-    const { data: org, orgError } = await supabase
+    const { data: org, error: orgError } = await supabase
       .from("organizations")
       .select("id")
       .eq("slug_organization", slug)
@@ -149,6 +158,8 @@ export const createUserRepresentative = async (req, res) => {
       return res.status(400).json({ error: 'Campos obrigatórios ausentes.' });
     }
 
+    console.log("✅ Criando representante para org:", org.id, "e user:", userId);
+
     const { data: newUser, error: insertError } = await supabase
       .from('organization_representative')
       .insert([
@@ -160,7 +171,12 @@ export const createUserRepresentative = async (req, res) => {
       .select('*')
       .single();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      console.error("❌ Erro ao inserir representante:", insertError);
+      throw insertError;
+    }
+
+    console.log("✅ Representante criado com sucesso:", newUser);
 
     res.status(201).json(newUser);
   } catch (err) {
