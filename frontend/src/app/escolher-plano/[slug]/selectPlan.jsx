@@ -73,9 +73,6 @@ export default function EscolherPlano({ slug }) {
         }
         );
         setRepresentante(res.data);
-        console.log("🔍 REPRESENTANTE COMPLETO =>", res.data);
-        console.log("🔍 ORGANIZATION_ID =>", res.data?.organization_id || res.data?.organizations?.id);
-        console.log("🔍 ESTRUTURA =>", JSON.stringify(res.data, null, 2));
       } catch (err) {
         console.error("Erro ao carregar dados do representante:", err);
       }
@@ -164,14 +161,8 @@ export default function EscolherPlano({ slug }) {
       // A API retorna um objeto único, não array
       const rep = representante;
 
-      console.log("🔍 REP COMPLETO =>", rep);
-      console.log("🔍 REP.organization_id =>", rep?.organization_id);
-      console.log("🔍 REP.organizations.id =>", rep?.organizations?.id);
-
       // Extrair organization_id (pode vir diretamente ou dentro de organizations)
       const organizationId = rep?.organization_id || rep?.organizations?.id;
-
-      console.log("🎯 ORGANIZATION_ID FINAL =>", organizationId);
 
       if (!organizationId) {
         console.error("❌ Estrutura completa do representante:", JSON.stringify(rep, null, 2));
@@ -196,7 +187,7 @@ export default function EscolherPlano({ slug }) {
         .trim();
 
       const body = {
-        organization_id: Number(organizationId),
+        organization_id: organizationId, // UUID, não precisa converter para Number
         plan_id: selectedPlan.id,
         billing_type: selectedBilling,
         payment_method: "credit_card",
@@ -233,8 +224,6 @@ export default function EscolherPlano({ slug }) {
           }
         },
       };
-
-      console.log("📤 Payload sendo enviado:", JSON.stringify(body, null, 2));
 
       await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/pagarme/subscriptions`,

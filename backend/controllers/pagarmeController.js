@@ -259,15 +259,32 @@ export const PagarmeController = {
         return res.status(400).json({ message: "Dados do cliente incompletos" });
       }
 
-      // ✅ (3) Busca o plano no Pagar.me para pegar um plan_item_id válido
+      // ✅ (3) Buscar plano externo no Pagar.me (para montar payload) e plano interno (FK int4)
       const planResp = await pagarme.get(`/plans/${plan_id}`);
       const plan = planResp.data;
 
-      const firstPlanItemId = plan?.items?.[0]?.id; // geralmente "pi_xxx"
+      const firstPlanItem = plan?.items?.[0];
+      const firstPlanItemId = firstPlanItem?.id; // geralmente "pi_xxx"
+
       if (!firstPlanItemId) {
         return res.status(400).json({
           message: "Plano não possui items. Crie ao menos 1 item no plano antes de assinar.",
           plan_id,
+        });
+      }
+
+      // 🔗 Buscar plano interno pelo pagarme_plan_id (evita 22P02 em FK int4)
+      const { data: dbPlan, error: dbPlanError } = await supabase
+        .from("plans")
+        .select("plan_id, pagarme_plan_id, billing_type")
+        .eq("pagarme_plan_id", plan_id)
+        .single();
+
+      if (dbPlanError || !dbPlan?.plan_id) {
+        console.error("❌ Plano interno não encontrado para pagarme_plan_id:", plan_id, dbPlanError);
+        return res.status(400).json({
+          message: "Plano não encontrado no banco para este pagarme_plan_id",
+          pagarme_plan_id: plan_id,
         });
       }
 
@@ -283,7 +300,11 @@ export const PagarmeController = {
         items: [
           {
             plan_item_id: firstPlanItemId,
-            quantity: 1,
+            quantity: Number(req.body?.items?.[0]?.quantity) || 1,
+            pricing_scheme: firstPlanItem?.pricing_scheme || {
+              scheme_type: "unit",
+              price: Math.round(req.body.amount || firstPlanItem?.amount || 0),
+            },
           },
         ],
 
@@ -304,9 +325,6 @@ export const PagarmeController = {
         },
       };
 
-      console.log("📤 SUBSCRIPTION PAYLOAD:", JSON.stringify(payload, null, 2));
-
-
       // Dica: se você quiser permitir qty variável via frontend:
       // const qty = Number(req.body?.items?.[0]?.quantity ?? 1);
       // payload.items[0].quantity = qty;
@@ -325,7 +343,7 @@ export const PagarmeController = {
         .single();
 
       if (orgError || !org) {
-        console.warn("Organização não encontrada:", organization_id);
+        console.warn("⚠️ Organização não encontrada:", organization_id, orgError);
       }
 
       // ------------------------------------------------------
@@ -339,10 +357,10 @@ export const PagarmeController = {
       // ------------------------------------------------------
       const { error } = await supabase.from("subscriptions").insert({
         organization_id,
-        plan_id: sub?.plan?.id || plan_id,
+        plan_id: dbPlan.plan_id, // FK interna int4
         pagarme_subscription_id: sub.id,
         status: sub.status,
-        billing_type: sub?.plan?.billing_type || null,
+        billing_type: sub?.plan?.billing_type || dbPlan.billing_type || null,
         current_period_start: sub?.current_period?.start || null,
         current_period_end: sub?.current_period?.end || null,
         created_at: sub.created_at,
@@ -352,7 +370,12 @@ export const PagarmeController = {
         nfe_document_id: nota?.id || null,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Erro ao salvar assinatura:", error);
+        throw error;
+      }
+      
+      console.log("✅ Assinatura salva com sucesso!");
 
       return res.status(201).json({ subscription: sub, nota });
     } catch (error) {
