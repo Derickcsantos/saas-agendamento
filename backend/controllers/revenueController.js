@@ -90,6 +90,9 @@ export const getRevenues = async (req, res) => {
     const details = Array.from(employeesMap.values())
       .sort((a, b) => b.total_revenue - a.total_revenue);
     
+    // Calcular ticket médio
+    const averageTicket = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
+    
     // 4. Retornar os dados
     res.json({
       period: start_date && end_date 
@@ -98,6 +101,7 @@ export const getRevenues = async (req, res) => {
       total_appointments: totalAppointments,
       total_revenue: totalRevenue,
       total_commissions: totalCommissions,
+      average_ticket: averageTicket,
       details: details
     });
     
@@ -204,10 +208,14 @@ export const getRevenuesLast12Months = async (req, res) => {
       totalRevenue += price;
     }
 
+    // Calcular ticket médio
+    const averageTicket = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
+
     return res.json({
       period: `${startDate} a ${endDate}`,
       total_appointments: totalAppointments,
       total_revenue: totalRevenue,
+      average_ticket: averageTicket,
       months // sempre 12 itens, ordenados do mais antigo -> mais recente
     });
   } catch (error) {
