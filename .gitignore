@@ -1,6 +1,15 @@
-# Node modules
+# Dependencies
 node_modules/
 
-.env
+# Build artifacts
+.next/
+dist/
+build/
 
-.vscode
+# Env
+.env
+.env.*
+
+# Editor / OS
+.vscode/
+.DS_Store
