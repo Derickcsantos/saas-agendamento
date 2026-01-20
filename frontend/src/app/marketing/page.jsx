@@ -186,8 +186,11 @@ export default function MarketingDashboard() {
 
   const handleImageUpload = (files) => {
     const incoming = Array.isArray(files) ? files : [];
-    const merged = [...images, ...incoming].slice(0, 3);
-    setImages(merged);
+    
+    setImages((prevImages) => {
+      const merged = [...prevImages, ...incoming];
+      return merged.slice(0,3)
+    });
   };
 
   const removeImage = (index) => {
@@ -504,7 +507,7 @@ export default function MarketingDashboard() {
                   images={images}
                   onUpload={handleImageUpload}
                   onRemove={removeImage}
-                  maxFiles={3}
+                  maxFiles={10}
                 />
               </div>
 
