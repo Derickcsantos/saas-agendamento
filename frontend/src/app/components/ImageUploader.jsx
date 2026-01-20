@@ -1,10 +1,12 @@
-// components/marketing/ImageUploader.tsx
+
 import { Upload, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react"; // 1. Importamos o useRef
 
 export default function ImageUploader({ images, onUpload, onRemove, maxFiles }) {
   const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useState(null);
+  
+  // 2. Mudamos de useState para useRef para referenciar o input corretamente
+  const fileInputRef = useRef(null);
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -16,12 +18,14 @@ export default function ImageUploader({ images, onUpload, onRemove, maxFiles }) 
     
     if (files.length > 0) {
       const remainingSlots = maxFiles - images.length;
+      // Selecionamos múltiplos ficheiros até ao limite restante
       const filesToAdd = files.slice(0, remainingSlots);
       onUpload(filesToAdd);
     }
   };
 
   const handleFileSelect = (e) => {
+    // 3. Convertemos a FileList em Array para manipularmos vários ficheiros
     const files = Array.from(e.target.files || []).filter(file => 
       file.type.startsWith('image/')
     );
@@ -32,6 +36,7 @@ export default function ImageUploader({ images, onUpload, onRemove, maxFiles }) 
       onUpload(filesToAdd);
     }
     
+    // Limpa o valor para permitir selecionar os mesmos ficheiros novamente se necessário
     if (e.target) {
       e.target.value = '';
     }
@@ -81,11 +86,11 @@ export default function ImageUploader({ images, onUpload, onRemove, maxFiles }) 
           <label className="cursor-pointer">
             <input
               type="file"
-              multiple
+              multiple // 4. Garante que o atributo multiple está presente
               accept="image/*"
               onChange={handleFileSelect}
               className="hidden"
-              ref={el => fileInputRef.current = el}
+              ref={fileInputRef} // 5. Atribuição correta da ref
             />
             <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:opacity-90 transition">
               <Upload className="w-4 h-4" />
@@ -108,12 +113,13 @@ export default function ImageUploader({ images, onUpload, onRemove, maxFiles }) 
                 />
               </div>
               <button
+                type="button" // Boa prática adicionar type="button"
                 onClick={() => onRemove(index)}
-                className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition opacity-0 group-hover:opacity-100"
+                className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition opacity-0 group-hover:opacity-100 z-10"
               >
                 <X className="w-4 h-4" />
               </button>
-              <div className="absolute bottom-2 left-2 right-2 bg-black/50 backdrop-blur-sm rounded-lg px-2 py-1">
+              <div className="absolute bottom-2 left-2 right-2 bg-black/50 backdrop-blur-sm rounded-lg px-2 py-1 pointer-events-none">
                 <p className="text-xs text-white truncate">{image.name}</p>
                 <p className="text-xs text-gray-300">
                   {(image.size / 1024 / 1024).toFixed(2)} MB
