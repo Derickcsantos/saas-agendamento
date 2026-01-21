@@ -133,105 +133,132 @@ export default function CouponsTab({ org }) {
         </h4>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input
-            type="text"
-            placeholder="Nome do Cupom"
-            className="border p-2 rounded-md"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
+          <div>
+            <label className="text-gray-800 text-sm">Nome do Cupom</label>
+            <input
+              type="text"
+              placeholder="Nome do Cupom"
+              className="border p-2 rounded-md w-full"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+            />
+          </div>
 
-          <input
-            type="text"
-            placeholder="Código"
-            className="border p-2 rounded-md"
-            value={form.code}
-            onChange={(e) =>
-              setForm({ ...form, code: e.target.value.toUpperCase() })
-            }
-            required
-          />
+          <div>
+            <label className="text-gray-800 text-sm">Código</label>
+            <input
+              type="text"
+              placeholder="Código"
+              className="border p-2 rounded-md w-full"
+              value={form.code}
+              onChange={(e) =>
+                setForm({ ...form, code: e.target.value.toUpperCase() })
+              }
+              required
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <select
-            className="border p-2 rounded-md"
-            value={form.discount_type}
-            onChange={(e) =>
-              setForm({ ...form, discount_type: e.target.value })
-            }
-          >
-            <option value="percentage">Porcentagem (%)</option>
-            <option value="fixed">Valor Fixo (R$)</option>
-          </select>
+          <div>
+            <label className="text-gray-800 text-sm">Tipo de Desconto</label>
+            <select
+              className="border p-2 rounded-md w-full"
+              value={form.discount_type}
+              onChange={(e) =>
+                setForm({ ...form, discount_type: e.target.value })
+              }
+            >
+              <option value="percentage">Porcentagem (%)</option>
+              <option value="fixed">Valor Fixo (R$)</option>
+            </select>
+          </div>
 
-          <input
-            type="number"
-            step="0.01"
-            placeholder="Valor do Desconto"
-            className="border p-2 rounded-md"
-            value={form.discount_value}
-            onChange={(e) =>
-              setForm({ ...form, discount_value: e.target.value })
-            }
-            required
-          />
+          <div>
+            <label className="text-gray-800 text-sm">Valor do Desconto</label>
+            <input
+              type="number"
+              step="0.01"
+              placeholder="Valor do Desconto"
+              className="border p-2 rounded-md w-full"
+              value={form.discount_value}
+              onChange={(e) =>
+                setForm({ ...form, discount_value: e.target.value })
+              }
+              required
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input
-            type="datetime-local"
-            className="border p-2 rounded-md"
-            value={form.valid_from}
-            onChange={(e) => setForm({ ...form, valid_from: e.target.value })}
-          />
+          <div>
+            <label className="text-gray-800 text-sm">Válido De</label>
+            <input
+              type="datetime-local"
+              className="border p-2 rounded-md w-full"
+              value={form.valid_from}
+              onChange={(e) => setForm({ ...form, valid_from: e.target.value })}
+            />
+          </div>
 
-          <input
-            type="datetime-local"
-            className="border p-2 rounded-md"
-            value={form.valid_until}
-            onChange={(e) => setForm({ ...form, valid_until: e.target.value })}
-          />
+          <div>
+            <label className="text-gray-800 text-sm">Válido Até</label>
+            <input
+              type="datetime-local"
+              className="border p-2 rounded-md w-full"
+              value={form.valid_until}
+              onChange={(e) => setForm({ ...form, valid_until: e.target.value })}
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input
-            type="number"
-            className="border p-2 rounded-md"
-            min="0"
-            value={form.max_uses}
-            onChange={(e) =>
-              setForm({ ...form, max_uses: Number(e.target.value) })
-            }
-            placeholder="Máximo de usos (0 = ilimitado)"
-          />
+          <div>
+            <label className="text-gray-800 text-sm">Máximo de Usos</label>
+            <input
+              type="number"
+              className="border p-2 rounded-md w-full"
+              min="0"
+              value={form.max_uses}
+              onChange={(e) =>
+                setForm({ ...form, max_uses: Number(e.target.value) })
+              }
+              placeholder="0 = ilimitado"
+            />
+          </div>
 
-          <input
-            type="number"
-            step="0.01"
-            className="border p-2 rounded-md"
-            min="0"
-            value={form.min_service_value}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                min_service_value: Number(e.target.value),
-              })
-            }
-            placeholder="Valor mínimo do serviço"
-          />
+          <div>
+            <label className="text-gray-800 text-sm">Valor Mínimo do Serviço</label>
+            <input
+              type="number"
+              step="0.01"
+              className="border p-2 rounded-md w-full"
+              min="0"
+              value={form.min_service_value}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  min_service_value: Number(e.target.value),
+                })
+              }
+              placeholder="Valor mínimo"
+            />
+          </div>
         </div>
 
-        <textarea
-          className="border p-2 rounded-md w-full"
-          rows={2}
-          placeholder="Descrição"
-          value={form.description}
-          onChange={(e) =>
-            setForm({ ...form, description: e.target.value })
-          }
-        />
+        <div>
+          <label className="text-gray-800 text-sm">Descrição</label>
+          <textarea
+            className="border p-2 rounded-md w-full"
+            rows={2}
+            placeholder="Descrição do cupom"
+            value={form.description}
+            onChange={(e) =>
+              setForm({ ...form, description: e.target.value })
+            }
+          />
+        </div>
 
         <label className="flex items-center gap-2">
           <input
