@@ -8,6 +8,55 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { generateNormalizedText } from '../utils/normalizeText'
 
+// Função para formatar CPF: 000.000.000-00
+const formatCPF = (value) => {
+  const numbers = value.replace(/\D/g, '');
+  if (numbers.length <= 11) {
+    return numbers
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  }
+  return numbers.slice(0, 11)
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{2})$/, '$1-$2');
+};
+
+// Função para formatar CNPJ: 00.000.000/0000-00
+const formatCNPJ = (value) => {
+  const numbers = value.replace(/\D/g, '');
+  if (numbers.length <= 14) {
+    return numbers
+      .replace(/(\d{2})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1/$2')
+      .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+  }
+  return numbers.slice(0, 14)
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{2})$/, '$1-$2');
+};
+
+// Função para detectar e formatar automaticamente
+const formatDocument = (value) => {
+  const numbers = value.replace(/\D/g, '');
+  
+  if (numbers.length <= 11) {
+    return formatCPF(numbers);
+  } else {
+    return formatCNPJ(numbers);
+  }
+};
+
+// Função para detectar o tipo de documento baseado no comprimento
+const detectDocumentType = (value) => {
+  const numbers = value.replace(/\D/g, '');
+  return numbers.length <= 11 ? 'cpf' : 'cnpj';
+};
+
 export default function CreateOrganization() {
   const [step, setStep] = useState(1);
   const router = useRouter();
@@ -40,7 +89,17 @@ export default function CreateOrganization() {
 
   const handleOrgChange = (e) => {
     const { name, value } = e.target;
-    setOrgData((prev) => ({ ...prev, [name]: value }));
+    
+    if (name === 'document_number') {
+      // Remove formatação mantendo apenas números
+      const numbersOnly = value.replace(/\D/g, '');
+      setOrgData((prev) => ({ 
+        ...prev, 
+        document_number: numbersOnly
+      }));
+    } else {
+      setOrgData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleRepChange = (e) => {
@@ -300,9 +359,12 @@ export default function CreateOrganization() {
                     <input
                       type="text"
                       name="document_number"
-                      value={orgData.document_number}
+                      value={orgData.document_type === 'cpf' 
+                        ? formatCPF(orgData.document_number) 
+                        : formatCNPJ(orgData.document_number)}
                       onChange={handleOrgChange}
-                      placeholder="Digite o número"
+                      placeholder={orgData.document_type === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
+                      maxLength={orgData.document_type === 'cpf' ? 14 : 18}
                       className="flex-1 border border-black/10 rounded-lg p-3 placeholder-gray-400 shadow-sm text-gray-900 focus:ring-2 focus:ring-[#5E3BEE]/40 focus:outline-none"
                     />
                   </div>
@@ -324,42 +386,44 @@ export default function CreateOrganization() {
 
                 <div>
                   <label className="font-semibold text-gray-900 text-sm">Cor Primária</label>
-                  <div className="flex items-center gap-3 mt-1">
+                  <div className="relative mt-1">
                     <input
                       type="color"
                       name="strong_color"
-                      value={orgData.strong_color}
+                      value={orgData.strong_color || '#5E3BEE'}
                       onChange={handleOrgChange}
-                      className="w-12 h-10 rounded-lg border border-black/10"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-lg border-2 border-black/10 cursor-pointer"
+                      style={{ WebkitAppearance: 'none', appearance: 'none' }}
                     />
                     <input
                       type="text"
-                      placeholder="#HEX"
+                      placeholder="#5E3BEE"
                       name="strong_color"
                       value={orgData.strong_color}
                       onChange={handleOrgChange}
-                      className="border border-black/10 p-3 rounded-lg w-full shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40"
+                      className="border border-black/10 p-3 pl-16 rounded-lg w-full shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40 text-gray-900"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="font-semibold text-gray-900 text-sm">Cor Secundária</label>
-                  <div className="flex items-center gap-3 mt-1">
+                  <div className="relative mt-1">
                     <input
                       type="color"
                       name="light_color"
-                      value={orgData.light_color}
+                      value={orgData.light_color || '#FFFFFF'}
                       onChange={handleOrgChange}
-                      className="w-12 h-10 rounded-lg border border-black/10"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-lg border-2 border-black/10 cursor-pointer"
+                      style={{ WebkitAppearance: 'none', appearance: 'none' }}
                     />
                     <input
                       type="text"
-                      placeholder="#HEX"
+                      placeholder="#FFFFFF"
                       name="light_color"
                       value={orgData.light_color}
                       onChange={handleOrgChange}
-                      className="border border-black/10 p-3 rounded-lg w-full shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40"
+                      className="border border-black/10 p-3 pl-16 rounded-lg w-full shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40 text-gray-900"
                     />
                   </div>
                 </div>
