@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { CalendarCheck, Clock, CheckCircle, XCircle, TrendingUp, User } from "lucide-react";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import EmployeeSidebar from "./components/EmployeeSidebar";
 import EmployeeTopbar from "./components/EmployeeTopbar";
 import StatCard from "./components/StatCard";
@@ -92,9 +93,8 @@ export default function EmployeePanel() {
 
     const fetchAppointments = async () => {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/by-employee/${user.id}`,
-          { credentials: "include" }
+        const res = await fetchWithAuth(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/by-employee/${user.id}`
         );
 
         const appsData = await res.json();
@@ -216,12 +216,9 @@ export default function EmployeePanel() {
 
   // LOGOUT
   const logout = async () => {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, {
+    await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, {
       method: "POST",
-      credentials: "include",
     });
-    // 🔥 Limpa token do sessionStorage
-    sessionStorage.removeItem('token');
     router.push(`/${slug}/login`);
   };
 
