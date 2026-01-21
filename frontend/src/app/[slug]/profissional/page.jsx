@@ -42,9 +42,7 @@ export default function EmployeePanel() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/${slug}/check`, {
-          credentials: "include",
-        });
+        const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/${slug}/check`);
         const data = await res.json();
 
         if (!data.authenticated) {
@@ -222,6 +220,8 @@ export default function EmployeePanel() {
       method: "POST",
       credentials: "include",
     });
+    // 🔥 Limpa token do sessionStorage
+    sessionStorage.removeItem('token');
     router.push(`/${slug}/login`);
   };
 

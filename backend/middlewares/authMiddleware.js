@@ -4,7 +4,14 @@ import generateAccessToken from '../utils/jwt.js';
 import jwt from 'jsonwebtoken';
 
 export function authenticateJWT(req, res, next) {
-  const token = req.cookies.token;
+  // Prioriza cookie (first-party). Se indisponível (p.ex. bloqueio de third-party), cai para header.
+  let token = req.cookies.token;
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    }
+  }
 
   if (!token) {
     return res.status(401).json({ error: 'Token não fornecido' });
@@ -14,6 +21,8 @@ export function authenticateJWT(req, res, next) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     req.organizationId = decoded.organization_id;
+    // Mantém o token disponível para handlers posteriores, caso precisem reenviar
+    req.token = token;
     next();
   } catch (err) {
     console.error('Token inválido:', err.message);

@@ -6,7 +6,7 @@ import { supabase } from "../lib/supabase.js";
 export const checkAuth = async (req, res) => {
   try {
     const slug = req.params.slug; // <- slug da URL (tenant)
-    const token = req.cookies?.token;
+    const user = req.user;
 
     if (!slug) {
       return res.status(400).json({
@@ -15,20 +15,12 @@ export const checkAuth = async (req, res) => {
       });
     }
 
-    if (!token) {
+    // authenticateJWT já fez o fallback cookie/header e validou o token
+    if (!user) {
       return res.status(401).json({ authenticated: false });
     }
 
-    // 1. Decodifica usuário
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (e) {
-      return res.status(401).json({ authenticated: false });
-    }
-
-    // decoded precisa ter o organization_id
-    const userOrgId = decoded.organization_id;
+    const userOrgId = user.organization_id;
 
     if (!userOrgId) {
       return res.status(401).json({
@@ -62,7 +54,7 @@ export const checkAuth = async (req, res) => {
     // 4. Autenticação OK
     return res.json({
       authenticated: true,
-      user: decoded,
+      user,
       organizationId: org.id
     });
 
@@ -84,6 +76,8 @@ export const logout = async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "none",
     });
+    // Limpa também o header de fallback
+    res.setHeader("Authorization", "");
     return res.status(200).json({ message: "Logout realizado com sucesso" });
   } catch (error) {
     console.error("Erro no logout:", error);

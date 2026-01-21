@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname, useParams } from "next/navigation";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import Footer from "../../components/Footer";
 import ProfileModal from "../../components/ProfileModal";
 import { Menu, X } from "lucide-react";
@@ -23,9 +24,7 @@ export default function MyAccountPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/${slug}/check`, {
-          credentials: "include",
-        });
+        const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/${slug}/check`);
 
         const data = await res.json();
         if (!data.authenticated) {
@@ -82,6 +81,8 @@ export default function MyAccountPage() {
       method: "POST",
       credentials: "include",
     });
+    // 🔥 Limpa token do sessionStorage
+    sessionStorage.removeItem('token');
     router.push(`/${slug}/login`);
   };
 

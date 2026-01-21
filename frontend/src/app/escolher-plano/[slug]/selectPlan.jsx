@@ -268,6 +268,13 @@ export default function EscolherPlano({ slug }) {
     <main className="min-h-screen flex justify-center items-center bg-gray-50 px-4 py-10">
       <div className="w-full max-w-7xl bg-white rounded-2xl shadow-lg p-10">
 
+<p
+  onClick={() => window.location.href = `/${slug}/login`}
+  className="fixed top-4 right-4 cursor-pointer text-sm font-medium text-gray-800 hover:underline z-50"
+>
+  Assinar depois
+</p>
+
         {/* HEADER */}
         <h1 className="text-3xl font-bold text-center mb-2" style={{ color: BRAND }}>
           Escolha seu plano

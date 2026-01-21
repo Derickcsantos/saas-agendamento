@@ -150,6 +150,13 @@ export default function GlobalLogin() {
         throw new Error(data.error || "Credenciais inválidas");
       }
 
+      // 🔥 Lê o token do header Authorization (fallback para iOS/Safari)
+      const authHeader = res.headers.get('Authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        sessionStorage.setItem('token', token);
+      }
+
       setSuccessMsg("Login realizado com sucesso!");
 
       setTimeout(() => {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import {
   FiHome,
   FiBarChart2,
@@ -31,15 +32,15 @@ export default function AdminDashboard() {
       method: "POST",
       credentials: "include",
     });
+    // 🔥 Limpa token do sessionStorage
+    sessionStorage.removeItem('token');
     router.push(`/login`);
   };
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/marcafy/check`, {
-          credentials: "include",
-        });
+        const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/marcafy/check`);
         const data = await res.json();
 
         if (!data.authenticated || data.user.tipo !== "master") {

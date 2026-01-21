@@ -4,6 +4,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "react-toastify";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import {
   BarChart3,
   Users,
@@ -94,6 +95,8 @@ export default function MarketingDashboard() {
       method: "POST",
       credentials: "include",
     });
+    // 🔥 Limpa token do sessionStorage
+    sessionStorage.removeItem('token');
     router.push(`/login`);
   };
 
@@ -115,13 +118,9 @@ export default function MarketingDashboard() {
     const loadData = async () => {
       try {
         // Verificar autenticação
-        const authRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/marcafy/check`, {
-          credentials: "include",
-        });
+        const authRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/marcafy/check`);
 
-        const instagramRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/marcafy-instagram`, {
-          credentials: "include",
-        });
+        const instagramRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/marcafy-instagram`);
 
         const authData = await authRes.json();
         const instagramData = await instagramRes.json();
