@@ -9,6 +9,8 @@ export default function ClientsTab({ org }) {
   const cacheTimestampRef = useRef(0);
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
+  const getAppointmentDate = (apt) => apt?.appointment_date || apt?.date || null;
+
   const [allAppointments, setAllAppointments] = useState([]);
   const [clientsData, setClientsData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +89,9 @@ export default function ClientsTab({ org }) {
         appointmentCount: client.appointments.length,
         topService: topService ? topService[0] : "-",
         topServiceCount: topService ? topService[1] : 0,
-        lastAppointment: client.appointments.sort((a, b) => new Date(b.date) - new Date(a.date))[0],
+        lastAppointment: client.appointments.sort(
+          (a, b) => new Date(getAppointmentDate(b)) - new Date(getAppointmentDate(a))
+        )[0],
       };
     });
 
@@ -321,11 +325,15 @@ export default function ClientsTab({ org }) {
                             </h4>
                             <div className="max-h-64 overflow-y-auto space-y-2">
                               {client.appointments
-                                .sort(
-                                  (a, b) =>
-                                    new Date(b.date) - new Date(a.date)
+                                .sort((a, b) =>
+                                  new Date(getAppointmentDate(b)) - new Date(getAppointmentDate(a))
                                 )
-                                .map((apt, idx) => (
+                                .map((apt, idx) => {
+                                  const dateValue = getAppointmentDate(apt);
+                                  const formattedDate = dateValue
+                                    ? new Date(dateValue).toLocaleDateString("pt-BR")
+                                    : "-";
+                                  return (
                                   <div
                                     key={idx}
                                     className="p-3 bg-white rounded-lg border border-gray-200"
@@ -336,8 +344,7 @@ export default function ClientsTab({ org }) {
                                           {apt.service_name}
                                         </p>
                                         <p className="text-sm text-gray-500">
-                                          {new Date(apt.date).toLocaleDateString()} às{" "}
-                                          {apt.start_time}
+                                          {formattedDate} às {apt.start_time}
                                         </p>
                                       </div>
                                       <div className="flex items-center gap-4">
@@ -362,7 +369,8 @@ export default function ClientsTab({ org }) {
                                       </div>
                                     </div>
                                   </div>
-                                ))}
+                                  );
+                                })}
                             </div>
                           </div>
                         </td>
