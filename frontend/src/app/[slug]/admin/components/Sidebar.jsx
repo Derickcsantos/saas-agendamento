@@ -33,6 +33,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
     { name: "Categorias", key: "categories", icon: "bi-tags" },
     { name: "Serviços", key: "services", icon: "bi-grid" },
     { name: "Funcionários", key: "employees", icon: "bi-people" },
+    { name: "Clientes", key: "clients", icon: "bi-person-lines-fill" },
     { name: "Agendamentos", key: "appointments", icon: "bi-calendar-check" },
     { name: "Períodos fechados", key: "closed-periods", icon: "bi-calendar-check" },
     { name: "Agendamento rápido", key: "faster-schedule", icon: "bi-lightning" },
