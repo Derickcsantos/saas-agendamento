@@ -141,6 +141,8 @@ export const createService = async (req, res) => {
     const { slug } = req.params;
     const { category_id, name, description, duration, price, is_online, durability_days } = req.body;
 
+    console.log('📝 Criando serviço:', { slug, name, has_file: !!req.file });
+
     const { data: orgData, error: orgError } = await supabase
       .from("organizations")
       .select("id")
@@ -153,7 +155,13 @@ export const createService = async (req, res) => {
 
     let imageUrl = null;
     if (req.file) {
-      imageUrl = await uploadServiceImage(req.file);
+      try {
+        imageUrl = await uploadServiceImage(req.file);
+        console.log('✅ Imagem enviada com sucesso:', imageUrl);
+      } catch (uploadError) {
+        console.error('❌ Erro ao fazer upload da imagem:', uploadError);
+        return res.status(400).json({ error: "Erro ao fazer upload da imagem" });
+      }
     }
 
     const payload = {
@@ -161,19 +169,20 @@ export const createService = async (req, res) => {
       category_id: category_id || null,
       name,
       description: description || null,
-      duration: toNumberOrNull(duration),          // ✅ numeric
-      price: toNumberOrNull(price),                // ✅ numeric (null se "")
-      durability_days: toNumberOrNull(durability_days) ?? 0, // ✅ numeric
-      is_online: toBoolean(is_online),             // ✅ boolean real
+      duration: toNumberOrNull(duration),
+      price: toNumberOrNull(price),
+      durability_days: toNumberOrNull(durability_days) ?? 0,
+      is_online: toBoolean(is_online),
       imagem_service: imageUrl,
     };
 
     const { data, error } = await supabase.from("services").insert([payload]).select();
 
     if (error) throw error;
+    console.log('✅ Serviço criado com sucesso:', data[0].id);
     return res.status(201).json(data[0]);
   } catch (error) {
-    console.error("Error creating service:", error);
+    console.error("❌ Erro ao criar serviço:", error);
     return res.status(500).json({ error: error.message || "Internal server error" });
   }
 };
@@ -183,7 +192,8 @@ export const updateService = async (req, res) => {
     const { slug, id } = req.params;
     const { category_id, name, description, duration, price, is_online, durability_days } = req.body;
 
-    // (Opcional, mas recomendo) garantir que o serviço pertence à org do slug
+    console.log('📝 Atualizando serviço:', { slug, id, name, has_file: !!req.file });
+
     const { data: orgData, error: orgError } = await supabase
       .from("organizations")
       .select("id")
@@ -192,11 +202,6 @@ export const updateService = async (req, res) => {
 
     if (orgError || !orgData) {
       return res.status(404).json({ error: "Organização não encontrada" });
-    }
-
-    let imageUrl = null;
-    if (req.file) {
-      imageUrl = await uploadServiceImage(req.file); // ✅ agora faz upload igual categorias
     }
 
     const updateData = {
@@ -207,22 +212,34 @@ export const updateService = async (req, res) => {
       price: toNumberOrNull(price),
       durability_days: toNumberOrNull(durability_days) ?? 0,
       is_online: toBoolean(is_online),
-      ...(imageUrl ? { imagem_service: imageUrl } : {}),
     };
+
+    // Apenas fazer upload se houver arquivo
+    if (req.file) {
+      try {
+        const imageUrl = await uploadServiceImage(req.file);
+        updateData.imagem_service = imageUrl;
+        console.log('✅ Imagem enviada com sucesso:', imageUrl);
+      } catch (uploadError) {
+        console.error('❌ Erro ao fazer upload da imagem:', uploadError);
+        return res.status(400).json({ error: "Erro ao fazer upload da imagem" });
+      }
+    }
 
     const { data, error } = await supabase
       .from("services")
       .update(updateData)
       .eq("id", id)
-      .eq("organization_id", orgData.id) // ✅ evita editar serviço de outra org
+      .eq("organization_id", orgData.id)
       .select();
 
     if (error) throw error;
     if (!data || data.length === 0) return res.status(404).json({ error: "Serviço não encontrado" });
 
+    console.log('✅ Serviço atualizado com sucesso:', id);
     return res.json(data[0]);
   } catch (error) {
-    console.error("Error updating service:", error);
+    console.error("❌ Erro ao atualizar serviço:", error);
     return res.status(500).json({ error: error.message || "Internal server error" });
   }
 };

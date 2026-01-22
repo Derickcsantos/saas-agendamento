@@ -1,9 +1,19 @@
 import fetch from "node-fetch";
+import { supabase } from "./supabase.js";
 
 const WASENDER_API_URL = "https://wasenderapi.com/api/send-message";
 const WASENDER_API_KEY = process.env.WASENDER_API_KEY;
 
-export async function sendWhatsAppMessage(phone, message) {
+/**
+ * Envia mensagem WhatsApp usando:
+ * 1. WhatsApp da organização (se conectado)
+ * 2. Fallback: WASENDER_API_KEY do .env
+ * 
+ * @param {string} phone - Telefone do destinatário
+ * @param {string} message - Mensagem a enviar
+ * @param {string|null} organizationId - ID da organização (opcional)
+ */
+export async function sendWhatsAppMessage(phone, message, organizationId = null) {
   if (!phone || !message) {
     throw new Error("Telefone e mensagem são obrigatórios");
   }
@@ -15,14 +25,38 @@ export async function sendWhatsAppMessage(phone, message) {
       ? `+${phone}` 
       : `+55${phone}`;
 
-  console.log("📤 Enviando WhatsApp");
+  let apiKey = WASENDER_API_KEY; // Fallback padrão
+  let source = "API_KEY_PADRAO";
+
+  // ✅ Verificar se organização tem WhatsApp conectado
+  if (organizationId) {
+    try {
+      const { data: orgWhatsapp, error } = await supabase
+        .from("whatsapp_organization")
+        .select("wasender_api_key")
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+
+      if (!error && orgWhatsapp?.wasender_api_key) {
+        apiKey = orgWhatsapp.wasender_api_key;
+        source = "WHATSAPP_ORGANIZACAO";
+        console.log("✅ Usando WhatsApp da organização:", organizationId);
+      } else {
+        console.log("⚠️ Organização sem WhatsApp conectado, usando API key padrão");
+      }
+    } catch (err) {
+      console.error("⚠️ Erro ao buscar WhatsApp da organização, usando fallback:", err.message);
+    }
+  }
+
+  console.log(`📤 Enviando WhatsApp via ${source}`);
   console.log("To:", to);
   console.log("Text:", message);
 
   const response = await fetch(WASENDER_API_URL, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${WASENDER_API_KEY}`,
+      "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({

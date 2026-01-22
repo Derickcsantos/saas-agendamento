@@ -1,7 +1,16 @@
 import { Router } from 'express';
 import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddleware.js';
 import multer from 'multer';
-const upload = multer(); 
+
+const upload = multer({
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === 'image') {
+      cb(null, true);
+    } else {
+      cb(new Error('Unexpected field: ' + file.fieldname));
+    }
+  }
+}); 
 import {
   getServices,
   getServicesBySlug,

@@ -97,7 +97,6 @@ export const createAppointment = async (req, res) => {
       return res.status(400).json({ error: "Slug não fornecido" });
     }
 
-    // ✅ Telefone agora é opcional (não entra nos obrigatórios)
     if (!client_name || !service_id || !employee_id || !date || !start_time || !end_time) {
       return res.status(400).json({ error: "Campos obrigatórios faltando." });
     }
@@ -129,11 +128,81 @@ export const createAppointment = async (req, res) => {
       typeof client_phone === "string" ? client_phone.trim() : client_phone;
     const normalizedClientPhone = safeClientPhone ? safeClientPhone : null;
 
+    // =====================================================
+    // ✅ BUSCAR OU CRIAR CLIENTE
+    // =====================================================
+    console.log("🔍 Buscando ou criando cliente...");
+    let clientId = null;
+
+    try {
+      // 1º: Buscar por email
+      if (client_email) {
+        const { data: clientByEmail, error: emailErr } = await supabase
+          .from("clients")
+          .select("client_id")
+          .eq("client_email", client_email)
+          .eq("organization_id", orgData.id)
+          .maybeSingle();
+
+        if (!emailErr && clientByEmail) {
+          clientId = clientByEmail.client_id;
+          console.log("✅ Cliente encontrado por email:", clientId);
+        }
+      }
+
+      // 2º: Buscar por telefone (se email não achou)
+      if (!clientId && normalizedClientPhone) {
+        const { data: clientByPhone, error: phoneErr } = await supabase
+          .from("clients")
+          .select("client_id")
+          .eq("client_phone", normalizedClientPhone)
+          .eq("organization_id", orgData.id)
+          .maybeSingle();
+
+        if (!phoneErr && clientByPhone) {
+          clientId = clientByPhone.client_id;
+          console.log("✅ Cliente encontrado por telefone:", clientId);
+        }
+      }
+
+      // 3º: Criar novo cliente
+      if (!clientId) {
+        console.log("➕ Criando novo cliente...");
+        const { data: newClient, error: createErr } = await supabase
+          .from("clients")
+          .insert([
+            {
+              organization_id: orgData.id,
+              client_name,
+              client_email: client_email || null,
+              client_phone: normalizedClientPhone,
+            },
+          ])
+          .select("client_id")
+          .single();
+
+        if (createErr) {
+          console.error("⚠️ Erro ao criar cliente:", createErr);
+          // Continua mesmo se falhar (cria agendamento sem client_id)
+        } else {
+          clientId = newClient.client_id;
+          console.log("✅ Cliente criado:", clientId);
+        }
+      }
+    } catch (clientErr) {
+      console.error("⚠️ Erro ao processar cliente:", clientErr);
+      // Continua sem cliente se falhar
+    }
+
+    // =====================================================
+    // ✅ CRIAR AGENDAMENTO
+    // =====================================================
     const { data: created, error: createError } = await supabase
       .from("appointments")
       .insert([
         {
           organization_id: orgData.id,
+          client_id: clientId, // ✅ Novo: client_id
           client_name,
           client_email,
           client_phone: normalizedClientPhone,
@@ -212,51 +281,83 @@ export const createAppointment = async (req, res) => {
             const eventStart = new Date(`${date}T${start_time}:00-03:00`).toISOString();
             const eventEnd = new Date(`${date}T${end_time}:00-03:00`).toISOString();
 
-            // Buscar cor do funcionário
-            const { data: employeeColor } = await supabase
-              .from('employee_calendar_color')
-              .select('calendar_color_id')
-              .eq('employee_id', employee_id)
-              .maybeSingle();
+            // ✅ Buscar cor do funcionário: employee_calendar_color -> google_calendar_colors
+            console.log("🎨 Buscando cor do funcionário ID:", employee_id);
+            
+            let googleColorId = "1"; // ✅ Cor padrão como fallback (Google Calendar aceita 1-11)
+            
+            try {
+              // 1º: Buscar calendar_color_id do funcionário
+              const { data: employeeColor, error: empColorErr } = await supabase
+                .from('employee_calendar_color')
+                .select('calendar_color_id')
+                .eq('employee_id', employee_id)
+                .maybeSingle();
 
-            // Buscar informações da cor do Google Calendar
-            let colorId = null;
-            if (employeeColor?.calendar_color_id) {
-              const { data: colorInfo } = await supabase
-                .from('google_calendar_colors')
-                .select('google_color_id')
-                .eq('id', employeeColor.calendar_color_id)
-                .single();
-              colorId = colorInfo?.google_color_id || null;
+              console.log("📌 employee_calendar_color:", { employeeColor, empColorErr });
+
+              if (employeeColor?.calendar_color_id) {
+                // 2º: Buscar google_color_id usando calendar_color_id
+                const { data: googleColor, error: googleColorErr } = await supabase
+                  .from('google_calendar_colors')
+                  .select('google_color_id')
+                  .eq('calendar_color_id', employeeColor.calendar_color_id)
+                  .single();
+
+                console.log("📌 google_calendar_colors:", { googleColor, googleColorErr });
+
+                if (googleColor?.google_color_id) {
+                  googleColorId = String(googleColor.google_color_id);
+                  console.log("✅ Cor do Google Calendar encontrada:", googleColorId);
+                } else {
+                  console.log("⚠️ google_color_id não encontrado, usando padrão (1)");
+                  googleColorId = "1";
+                }
+              } else {
+                console.log("⚠️ Funcionário sem cor atribuída, usando padrão (1)");
+                googleColorId = "1";
+              }
+            } catch (colorErr) {
+              console.error("⚠️ Erro ao buscar cor, usando padrão (1):", colorErr.message);
+              googleColorId = "1";
             }
 
-            const eventBody = {
-              summary: `Agendamento: ${client_name}`,
-              description: `Serviço: ${serviceInfo?.name}\nProfissional: ${employee?.name}\nPreço original: ${original_price}\nPreço final: ${final_price}\nCliente: ${client_name}\nTelefone: ${normalizedClientPhone}`,
-              start: { dateTime: eventStart, timeZone: "America/Sao_Paulo" },
-              end: { dateTime: eventEnd, timeZone: "America/Sao_Paulo" },
-              ...(colorId && { colorId }),
-              conferenceData: {
-                createRequest: {
-                  requestId: `${created?.id}-${Date.now()}`,
-                  conferenceSolutionKey: { type: "hangoutsMeet" },
-                },
-              },
-            };
-
-            console.log("📌 Enviando evento ao Google:", eventBody);
-
-            // Buscar serviço
-            const { data: serviceData } = await supabase
+            // Buscar dados do serviço para saber se é online
+            const { data: serviceData, error: serviceError } = await supabase
               .from("services")
               .select("is_online, name")
               .eq("id", service_id)
               .single();
 
-            // Só adiciona conferenceData se for online
-            if (!serviceData?.is_online) {
-              delete eventBody.conferenceData;
+            if (serviceError) {
+              console.warn("⚠️ Erro ao buscar dados do serviço:", serviceError);
             }
+
+            const eventBody = {
+              summary: `Agendamento: ${client_name}`,
+              description: `Serviço: ${serviceData?.name}\nProfissional: ${employee?.name}\nPreço original: ${original_price}\nPreço final: ${final_price}\nCliente: ${client_name}\nTelefone: ${normalizedClientPhone}`,
+              start: { dateTime: eventStart, timeZone: "America/Sao_Paulo" },
+              end: { dateTime: eventEnd, timeZone: "America/Sao_Paulo" },
+              colorId: googleColorId, // ✅ Sempre com valor (nunca null)
+            };
+
+            // Só adiciona conferenceData se for online
+            if (serviceData?.is_online) {
+              eventBody.conferenceData = {
+                createRequest: {
+                  requestId: `${created?.id}-${Date.now()}`,
+                  conferenceSolutionKey: { type: "hangoutsMeet" },
+                },
+              };
+            }
+
+            console.log("📌 Enviando evento ao Google Calendar:", {
+              summary: eventBody.summary,
+              colorId: eventBody.colorId,
+              isOnline: serviceData?.is_online,
+              eventStart,
+              eventEnd,
+            });
 
             try {
               const result = await calendar.events.insert({
@@ -283,9 +384,10 @@ export const createAppointment = async (req, res) => {
                 })
                 .eq("id", created.id);
 
-              console.log("📌 Evento criado no Google Calendar:", googleEvent.id);
+              console.log("✅ Evento criado no Google Calendar - ID:", googleEvent.id);
             } catch (googleErr) {
               console.error("❌ Erro ao criar evento no Google Calendar:", googleErr);
+              console.log("⚠️ Agendamento permanece no banco, mas evento do Google falhou");
             }
           }
         }
@@ -358,7 +460,7 @@ export const createAppointment = async (req, res) => {
     👉 https://marcafy.com.br/${slug}/login
           `.trim();
 
-          await sendWhatsAppMessage(user.phone, message);
+          await sendWhatsAppMessage(user.phone, message, orgData.id);
 
           console.log("📲 WhatsApp enviado ao representante:", user.username);
         }

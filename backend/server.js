@@ -42,6 +42,8 @@ import { marcafyMarketingRouter } from './routes/geminiMarcafyMarketingRoutes.js
 import { marcafyInstagramStatsRouter } from './routes/marcafyInstagramStatsRoutes.js';
 import { closedPeriodsRouter } from './routes/closedPeriodsRoutes.js';
 import { calendarColorsRouter } from './routes/calendarColorsRoutes.js';
+import { whatsappOrganizationRouter } from './routes/whatsappOrganizationRoutes.js';
+import { clientRouter } from './routes/clientRoutes.js';
 // import { sendWhatsappRouter } from "./routes/sendWhatsappRoutes.js";
 
 const app = express();
@@ -120,6 +122,8 @@ app.use('/api/marketing/instagram/marcafy', marcafyMarketingRouter)
 app.use('/api/marcafy-instagram', marcafyInstagramStatsRouter)
 app.use('/api/closed-periods', closedPeriodsRouter);
 app.use('/api/calendar-colors', calendarColorsRouter);
+app.use('/api/whatsapp-organization', whatsappOrganizationRouter);
+app.use('/api/clients', clientRouter)
 // app.use("/api/whatsapp-send", sendWhatsappRouter);
 
 app.listen(port, () => {
