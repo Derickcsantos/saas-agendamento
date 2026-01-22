@@ -174,12 +174,12 @@ export const getWhatsappStatus = async (req, res) => {
     const orgId = await getOrgIdBySlug(slug);
 
     const row = await getWhatsappRow(orgId);
-    if (!row?.wasender_api_key) {
+    if (!row?.whatsapp_api_key) {
       return res.json({ isConnected: false });
     }
 
     // Status é GET /api/status com Authorization Bearer SESSION_API_KEY :contentReference[oaicite:12]{index=12}
-    const api = wasenderSession(row.wasender_api_key);
+    const api = wasenderSession(row.whatsapp_api_key);
     const { data } = await api.get('/status');
 
     const status = String(data?.status || '').toLowerCase();
@@ -210,7 +210,7 @@ export const connectWhatsapp = async (req, res) => {
     let row = await getWhatsappRow(orgId);
 
     // Se não existe sessão, cria uma
-    if (!row?.wasender_session_id || !row?.wasender_api_key) {
+    if (!row?.wasender_session_id || !row?.whatsapp_api_key) {
       if (!phone_number) {
         return res.status(400).json({
           error: 'phone_number é obrigatório para criar a primeira sessão (formato E.164).',
@@ -230,7 +230,7 @@ export const connectWhatsapp = async (req, res) => {
 
       row = await upsertWhatsappRow(orgId, {
         wasender_session_id: created.id,
-        wasender_api_key: created.api_key,
+        whatsapp_api_key: created.api_key,
         webhook_secret: created.webhook_secret || null,
       });
     }
@@ -297,12 +297,12 @@ export const getContacts = async (req, res) => {
     const orgId = await getOrgIdBySlug(slug);
     const row = await getWhatsappRow(orgId);
 
-    if (!row?.wasender_api_key) {
+    if (!row?.whatsapp_api_key) {
       return res.status(400).json({ error: 'WhatsApp não conectado' });
     }
 
     // GET /api/contacts com Authorization Bearer API_KEY :contentReference[oaicite:16]{index=16}
-    const api = wasenderSession(row.wasender_api_key);
+    const api = wasenderSession(row.whatsapp_api_key);
 
     const params = {};
     if (paginated !== undefined) params.paginated = String(paginated) === 'true';
@@ -352,12 +352,12 @@ export const sendMessage = async (req, res) => {
     const orgId = await getOrgIdBySlug(slug);
     const row = await getWhatsappRow(orgId);
 
-    if (!row?.wasender_api_key) {
+    if (!row?.whatsapp_api_key) {
       return res.status(400).json({ error: 'WhatsApp não conectado' });
     }
 
     // POST /api/send-message com Authorization Bearer API_KEY :contentReference[oaicite:18]{index=18}
-    const api = wasenderSession(row.wasender_api_key);
+    const api = wasenderSession(row.whatsapp_api_key);
 
     const { data } = await api.post('/send-message', {
       to: normalizePhoneE164(number),
@@ -393,11 +393,11 @@ export const sendBulkMessages = async (req, res) => {
     const orgId = await getOrgIdBySlug(slug);
     const row = await getWhatsappRow(orgId);
 
-    if (!row?.wasender_api_key) {
+    if (!row?.whatsapp_api_key) {
       return res.status(400).json({ error: 'WhatsApp não conectado' });
     }
 
-    const api = wasenderSession(row.wasender_api_key);
+    const api = wasenderSession(row.whatsapp_api_key);
     const results = { success: 0, failed: 0, errors: [] };
 
     for (const n of numbers) {
@@ -438,11 +438,11 @@ export const getStatistics = async (req, res) => {
     const orgId = await getOrgIdBySlug(slug);
 
     const row = await getWhatsappRow(orgId);
-    if (!row?.wasender_api_key) {
+    if (!row?.whatsapp_api_key) {
       return res.json({ isConnected: false, totalContacts: 0, connectedSince: null });
     }
 
-    const api = wasenderSession(row.wasender_api_key);
+    const api = wasenderSession(row.whatsapp_api_key);
 
     // status: GET /api/status :contentReference[oaicite:19]{index=19}
     let status = 'unknown';

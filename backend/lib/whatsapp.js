@@ -33,12 +33,12 @@ export async function sendWhatsAppMessage(phone, message, organizationId = null)
     try {
       const { data: orgWhatsapp, error } = await supabase
         .from("whatsapp_organization")
-        .select("wasender_api_key")
+        .select("whatsapp_api_key")
         .eq("organization_id", organizationId)
         .maybeSingle();
 
-      if (!error && orgWhatsapp?.wasender_api_key) {
-        apiKey = orgWhatsapp.wasender_api_key;
+      if (!error && orgWhatsapp?.whatsapp_api_key) {
+        apiKey = orgWhatsapp.whatsapp_api_key;
         source = "WHATSAPP_ORGANIZACAO";
         console.log("✅ Usando WhatsApp da organização:", organizationId);
       } else {
