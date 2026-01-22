@@ -56,15 +56,16 @@ export default function ServicesTab({ org }) {
     try {
       const formData = new FormData();
 
-    for (const [key, value] of Object.entries(form)) {
-      if (key === "is_online") {
-        formData.append("is_online", value ? "1" : "0");
-      } else {
-        formData.append(key, value);
+      for (const [key, value] of Object.entries(form)) {
+        if (key === "id") {
+          continue; // Não enviar o ID no FormData
+        }
+        if (key === "is_online") {
+          formData.append("is_online", value ? "1" : "0");
+        } else {
+          formData.append(key, value);
+        }
       }
-    }
-
-    if (image) formData.append("image", image);
 
       if (image) formData.append("image", image);
 
@@ -151,73 +152,98 @@ export default function ServicesTab({ org }) {
 
         <div className="flex flex-col gap-4 md:flex-row md:flex-wrap">
 
-          <input
-            type="text"
-            placeholder="Nome do serviço"
-            className="w-full md:basis-[calc(50%-0.5rem)] border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 text-sm focus:ring focus:ring-purple-200 outline-none"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
+          <div className="w-full md:basis-[calc(50%-0.5rem)]">
+            <label className="text-gray-700 dark:text-gray-200 text-sm" htmlFor="name">Nome do Serviço</label>
+            <input
+              id="name"
+              type="text"
+              placeholder="Nome do serviço"
+              className="w-full border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 text-sm focus:ring focus:ring-purple-200 outline-none"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+            />
+          </div>
 
-          <select
-            className="w-full md:basis-[calc(50%-0.5rem)] bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3"
-            value={form.category_id}
-            onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-            required
-          >
-            <option value="">Selecione categoria</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          <div className="w-full md:basis-[calc(50%-0.5rem)]">
+            <label className="text-gray-700 dark:text-gray-200 text-sm" htmlFor="category">Categoria</label>
+            <select
+              id="category"
+              className="w-full bg-gray-50 dark:bg-gray-900 border dark:border-gray-600 rounded-lg p-3 text-sm focus:ring focus:ring-purple-200 outline-none"
+              value={form.category_id}
+              onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+              required
+            >
+              <option value="">Selecione categoria</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
 
-          <input
-            type="number"
-            placeholder="Duração (min)"
-            className="w-full md:basis-[calc(50%-0.5rem)] bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3"
-            value={form.duration}
-            onChange={(e) => setForm({ ...form, duration: e.target.value })}
-            required
-          />
+          <div className="w-full md:basis-[calc(50%-0.5rem)]">
+            <label className="text-gray-700 dark:text-gray-200 text-sm" htmlFor="duration">Duração (min)</label>
+            <input
+              id="duration"
+              type="number"
+              placeholder="Duração (min)"
+              className="w-full bg-gray-50 dark:bg-gray-900 border dark:border-gray-600 rounded-lg p-3 text-sm focus:ring focus:ring-purple-200 outline-none"
+              value={form.duration}
+              onChange={(e) => setForm({ ...form, duration: e.target.value })}
+              required
+            />
+          </div>
 
-          <input
-            type="number"
-            placeholder="Preço (R$)"
-            className="w-full md:basis-[calc(50%-0.5rem)] bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3"
-            value={form.price}
-            step="0.01"
-            onChange={(e) => setForm({ ...form, price: e.target.value })}
-          />
+          <div className="w-full md:basis-[calc(50%-0.5rem)]">
+            <label className="text-gray-700 dark:text-gray-200 text-sm" htmlFor="price">Preço (R$)</label>
+            <input
+              id="price"
+              type="number"
+              placeholder="Preço (R$)"
+              className="w-full bg-gray-50 dark:bg-gray-900 border dark:border-gray-600 rounded-lg p-3 text-sm focus:ring focus:ring-purple-200 outline-none"
+              value={form.price}
+              step="0.01"
+              onChange={(e) => setForm({ ...form, price: e.target.value })}
+            />
+          </div>
 
-          <textarea
-            placeholder="Descrição do serviço"
-            className="w-full bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3 md:col-span-2"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
+          <div className="w-full">
+            <label className="text-gray-700 dark:text-gray-200 text-sm" htmlFor="description">Descrição</label>
+            <textarea
+              id="description"
+              placeholder="Descrição do serviço"
+              className="w-full bg-gray-50 dark:bg-gray-900 border dark:border-gray-600 rounded-lg p-3 text-sm focus:ring focus:ring-purple-200 outline-none"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </div>
 
           <div>
-              <ImageDropzone
-                key={form.id || "new"}
-                valueFile={image}
-                previewUrl={preview}
-                paletteColor={palette?.strong_color}
-                onChangeFile={(file, url) => {
-                  setImage(file);
-                  setPreview(url);
-                }}
-              />
-            </div>
+            <label className="text-gray-700 dark:text-gray-200 text-sm block mb-2">Imagem do Serviço</label>
+            <ImageDropzone
+              key={form.id || "new"}
+              valueFile={image}
+              previewUrl={preview}
+              paletteColor={palette?.strong_color}
+              onChangeFile={(file, url) => {
+                setImage(file);
+                setPreview(url);
+              }}
+            />
+          </div>
 
-          <input
-            type="number"
-            placeholder="Durabilidade do serviço (em dias)"
-            className="w-full md:basis-[calc(50%-0.5rem)] bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg p-3"
-            value={form.durability_days}
-            step="0.01"
-            onChange={(e) => setForm({ ...form, durability_days: e.target.value })}
-          />
+          <div className="w-full md:basis-[calc(50%-0.5rem)]">
+            <label className="text-gray-700 dark:text-gray-200 text-sm" htmlFor="durability">Durabilidade (dias)</label>
+            <input
+              id="durability"
+              type="number"
+              placeholder="Durabilidade do serviço (em dias)"
+              className="w-full bg-gray-50 dark:bg-gray-900 border dark:border-gray-600 rounded-lg p-3 text-sm focus:ring focus:ring-purple-200 outline-none"
+              value={form.durability_days}
+              step="0.01"
+              onChange={(e) => setForm({ ...form, durability_days: e.target.value })}
+            />
+          </div>
 
           <label className="flex items-center gap-2 col-span-2">
             <input type="checkbox" checked={form.is_online}

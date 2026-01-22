@@ -24,6 +24,7 @@ import PersonalCalendarTab from "./components/PersonalCalendarTab";
 import GalleryTab from "./components/GalleryTab";
 import ClosedPeriodsTab from './components/ClosedPeriods';
 import RevenueAreaChartCard from "./components/RevenueAreaChartCard";
+import WhatsappTab from "./components/WhatsappTab";
 
 export default function AdminDashboard({ slug }) {
   const router = useRouter();
@@ -155,6 +156,8 @@ export default function AdminDashboard({ slug }) {
         return <FasterScheduleTab org={org} />;
       case "gallery":
         return <GalleryTab org={org} />;
+      case "whatsapp":
+        return <WhatsappTab org={org} />;
       case "site":
         return <SiteTab org={org} />;
       case "calendar-google":
