@@ -139,23 +139,47 @@ async function createWhatsappSession({ name, phone_number, webhook_url }) {
     webhook_events: ['messages.received', 'session.status', 'messages.update'],
   };
 
-  const { data } = await api.post('/whatsapp-sessions', payload);
-  if (!data?.success || !data?.data?.id || !data?.data?.api_key) {
-    throw new Error(`Resposta inesperada ao criar sessão: ${JSON.stringify(data)}`);
-  }
+  console.log('[Wasender] Criando sessão com payload:', JSON.stringify(payload, null, 2));
+  
+  try {
+    const { data } = await api.post('/whatsapp-sessions', payload);
+    console.log('[Wasender] Resposta da criação:', JSON.stringify(data, null, 2));
+    
+    if (!data?.success || !data?.data?.id || !data?.data?.api_key) {
+      throw new Error(`Resposta inesperada ao criar sessão: ${JSON.stringify(data)}`);
+    }
 
-  return data.data; // {id, api_key, webhook_secret, ...}
+    return data.data; // {id, api_key, webhook_secret, ...}
+  } catch (error) {
+    console.error('[Wasender] Erro ao criar sessão:', error.response?.data || error.message);
+    throw error;
+  }
 }
 
 async function connectSession(sessionId) {
   assertEnv();
   const api = wasenderPersonal();
-  const { data } = await api.post(`/whatsapp-sessions/${sessionId}/connect`);
-  // retorna {success:true, data:{status:"NEED_SCAN", qrCode:"..."}} :contentReference[oaicite:11]{index=11}
-  if (!data?.success || !data?.data) {
-    throw new Error(`Resposta inesperada ao conectar sessão: ${JSON.stringify(data)}`);
+  
+  console.log(`[Wasender] Conectando sessão ID: ${sessionId}`);
+  
+  try {
+    const { data } = await api.post(`/whatsapp-sessions/${sessionId}/connect`);
+    console.log('[Wasender] Resposta da conexão:', JSON.stringify(data, null, 2));
+    
+    // retorna {success:true, data:{status:"NEED_SCAN", qrCode:"..."}}
+    if (!data?.success) {
+      throw new Error(`Falha ao conectar sessão: ${JSON.stringify(data)}`);
+    }
+    
+    if (!data?.data) {
+      throw new Error(`Resposta sem dados ao conectar sessão: ${JSON.stringify(data)}`);
+    }
+    
+    return data.data;
+  } catch (error) {
+    console.error('[Wasender] Erro ao conectar sessão:', error.response?.data || error.message);
+    throw error;
   }
-  return data.data;
 }
 
 async function disconnectSession(sessionId) {
@@ -163,6 +187,28 @@ async function disconnectSession(sessionId) {
   const api = wasenderPersonal();
   const { data } = await api.post(`/whatsapp-sessions/${sessionId}/disconnect`);
   return data;
+}
+
+async function getSessionQRCode(sessionId) {
+  assertEnv();
+  const api = wasenderPersonal();
+  
+  console.log(`[Wasender] Obtendo QR Code para sessão ID: ${sessionId}`);
+  
+  try {
+    // Primeiro tenta conectar para gerar novo QR
+    const { data } = await api.post(`/whatsapp-sessions/${sessionId}/connect`);
+    console.log('[Wasender] Resposta ao obter QR Code:', JSON.stringify(data, null, 2));
+    
+    if (data?.success && data?.data) {
+      return data.data;
+    }
+    
+    throw new Error(`Falha ao obter QR Code: ${JSON.stringify(data)}`);
+  } catch (error) {
+    console.error('[Wasender] Erro ao obter QR Code:', error.response?.data || error.message);
+    throw error;
+  }
 }
 
 // ===== Controllers =====
@@ -204,10 +250,13 @@ export const getWhatsappStatus = async (req, res) => {
 export const connectWhatsapp = async (req, res) => {
   try {
     const { slug } = req.params;
-    const { phone_number, session_name } = req.body; // session_name agora é enviado pelo frontend
+    const { phone_number, session_name } = req.body;
     const orgId = await getOrgIdBySlug(slug);
 
+    console.log(`[WhatsApp] Iniciando conexão para organização ${slug} (ID: ${orgId})`);
+
     let row = await getWhatsappRow(orgId);
+    let isNewSession = false;
 
     // Se não existe sessão, cria uma
     if (!row?.wasender_session_id || !row?.whatsapp_api_key) {
@@ -217,9 +266,12 @@ export const connectWhatsapp = async (req, res) => {
         });
       }
 
+      console.log('[WhatsApp] Criando nova sessão...');
+      isNewSession = true;
+
       const phoneE164 = normalizePhoneE164(phone_number);
       const webhookUrl = `${BACKEND_URL}/api/whatsapp-webhook/${slug}`;
-      const finalSessionName = session_name || `org_${slug}`; // Usar nome do frontend ou padrão
+      const finalSessionName = session_name || `org_${slug}`;
 
       // Create: POST /api/whatsapp-sessions (Personal Access Token)
       const created = await createWhatsappSession({
@@ -228,31 +280,58 @@ export const connectWhatsapp = async (req, res) => {
         webhook_url: webhookUrl,
       });
 
+      console.log(`[WhatsApp] Sessão criada com ID: ${created.id}`);
+
+      // Salvar no banco de dados IMEDIATAMENTE
       row = await upsertWhatsappRow(orgId, {
         wasender_session_id: created.id,
         whatsapp_api_key: created.api_key,
         webhook_secret: created.webhook_secret || null,
       });
+
+      console.log('[WhatsApp] Dados salvos no banco de dados');
+
+      // Aguardar um pouco para garantir que a sessão foi criada no Wasender
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } else {
+      console.log(`[WhatsApp] Usando sessão existente: ${row.wasender_session_id}`);
     }
 
-    // Connect: POST /api/whatsapp-sessions/{id}/connect :contentReference[oaicite:14]{index=14}
+    // Connect: POST /api/whatsapp-sessions/{id}/connect
+    console.log('[WhatsApp] Iniciando conexão da sessão...');
     const connected = await connectSession(row.wasender_session_id);
 
-    return res.json({
+    const response = {
       success: true,
       sessionId: row.wasender_session_id,
+      apiKey: row.whatsapp_api_key,
       status: connected.status,
-      qrCode: connected.qrCode || null, // string do QR (use lib no front para render)
+      qrCode: connected.qrCode || connected.qr || null,
+      isNewSession,
       message:
-        connected.status === 'NEED_SCAN'
+        connected.status === 'NEED_SCAN' || connected.status === 'SCAN_QR_CODE'
           ? 'Escaneie o QR Code no seu WhatsApp'
-          : 'Sessão já inicializada',
-    });
+          : connected.status === 'CONNECTED'
+          ? 'WhatsApp já está conectado'
+          : 'Sessão inicializada',
+      data: connected, // Retornar dados completos para debug
+    };
+
+    console.log('[WhatsApp] Resposta final:', JSON.stringify(response, null, 2));
+
+    return res.json(response);
   } catch (error) {
-    console.error('Erro ao conectar WhatsApp:', error.response?.data || error.message);
+    console.error('[WhatsApp] Erro ao conectar WhatsApp:', {
+      message: error.message,
+      response: error.response?.data,
+      stack: error.stack,
+    });
+    
     return res.status(error.statusCode || 500).json({
+      success: false,
       error: 'Erro ao conectar WhatsApp',
       details: error.response?.data || error.message,
+      message: error.message,
     });
   }
 };
@@ -470,6 +549,49 @@ export const getStatistics = async (req, res) => {
     console.error('Erro ao buscar estatísticas:', error.response?.data || error.message);
     return res.status(500).json({
       error: 'Erro ao buscar estatísticas',
+      details: error.response?.data || error.message,
+    });
+  }
+};
+
+// 8) Obter QR Code da sessão (útil quando QR expira ou precisa re-gerar)
+export const getQRCode = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const orgId = await getOrgIdBySlug(slug);
+
+    const row = await getWhatsappRow(orgId);
+    
+    if (!row?.wasender_session_id) {
+      return res.status(404).json({
+        success: false,
+        error: 'Sessão não encontrada. Crie uma sessão primeiro.',
+      });
+    }
+
+    console.log(`[WhatsApp] Obtendo QR Code para organização ${slug}`);
+
+    const qrData = await getSessionQRCode(row.wasender_session_id);
+
+    return res.json({
+      success: true,
+      sessionId: row.wasender_session_id,
+      status: qrData.status,
+      qrCode: qrData.qrCode || qrData.qr || null,
+      message: qrData.status === 'NEED_SCAN' || qrData.status === 'SCAN_QR_CODE'
+        ? 'Escaneie o QR Code no seu WhatsApp'
+        : 'Sessão já conectada',
+      data: qrData,
+    });
+  } catch (error) {
+    console.error('[WhatsApp] Erro ao obter QR Code:', {
+      message: error.message,
+      response: error.response?.data,
+    });
+    
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      error: 'Erro ao obter QR Code',
       details: error.response?.data || error.message,
     });
   }

@@ -177,38 +177,54 @@ export default function WhatsappTab({ org }) {
       console.log("Connect Response:", { status: res.status, data });
 
       if (res.ok && data.success) {
-        if (data.qrCode) {
-          setQrCode(data.qrCode);
+        // Verificar se há QR code (pode vir como qrCode ou qr)
+        const qrCodeData = data.qrCode || data.data?.qrCode || data.data?.qr || null;
+        
+        if (qrCodeData) {
+          setQrCode(qrCodeData);
           setSessionId(data.sessionId);
           setShowPhoneModal(false);
           setPhoneInput("");
           setSessionNameInput("");
-          toast.success("Escaneie o QR Code com seu WhatsApp");
+          toast.success("QR Code gerado! Escaneie com seu WhatsApp");
 
           // Verificar status a cada 3 segundos
           const intervalId = setInterval(async () => {
-            const statusRes = await fetch(
-              `${API_BASE_URL}/api/whatsapp-organization/${slug}/status`,
-              { credentials: "include", cache: "no-store" }
-            );
-            const statusData = await statusRes.json();
+            try {
+              const statusRes = await fetch(
+                `${API_BASE_URL}/api/whatsapp-organization/${slug}/status`,
+                { credentials: "include", cache: "no-store" }
+              );
+              const statusData = await statusRes.json();
 
-            if (statusData.isConnected) {
-              clearInterval(intervalId);
-              setIsConnected(true);
-              setQrCode(null);
-              toast.success("WhatsApp conectado com sucesso!");
-              loadContacts();
-              loadStatistics();
+              if (statusData.isConnected) {
+                clearInterval(intervalId);
+                setIsConnected(true);
+                setQrCode(null);
+                toast.success("WhatsApp conectado com sucesso!");
+                loadContacts();
+                loadStatistics();
+              }
+            } catch (err) {
+              console.error("Erro ao verificar status:", err);
             }
           }, 3000);
 
           // Limpar verificação após 2 minutos
           setTimeout(() => clearInterval(intervalId), 120000);
-        } else if (data.status === "NEED_SCAN") {
-          toast.info(data.message || "Sessão precisa ser escaneada");
+        } else if (data.status === "NEED_SCAN" || data.status === "SCAN_QR_CODE") {
+          // Tentar conectar novamente para obter QR code
+          toast.warning("Gerando QR Code...");
+          setTimeout(() => handleConnect(), 2000);
+        } else if (data.status === "CONNECTED") {
+          setIsConnected(true);
+          setShowPhoneModal(false);
+          toast.success("WhatsApp já está conectado!");
+          loadContacts();
+          loadStatistics();
         } else {
-          toast.info(data.message || "Sessão já inicializada");
+          toast.info(data.message || "Sessão inicializada");
+          console.log("Status retornado:", data.status, data);
         }
       } else {
         // Mostrar detalhes do erro

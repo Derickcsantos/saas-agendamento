@@ -6,7 +6,8 @@ import {
   getContacts,
   sendMessage,
   sendBulkMessages,
-  getStatistics
+  getStatistics,
+  getQRCode
 } from '../controllers/whatsappOrganizationController.js';
 import { authenticateJWT } from '../middlewares/authMiddleware.js';
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
@@ -67,4 +68,12 @@ whatsappOrganizationRouter.get(
   authenticateJWT,
   requireAdminOfOrganization,
   getStatistics
+);
+
+// Obter QR Code (útil para re-gerar quando expira)
+whatsappOrganizationRouter.get(
+  '/:slug/qrcode',
+  authenticateJWT,
+  requireAdminOfOrganization,
+  getQRCode
 );
