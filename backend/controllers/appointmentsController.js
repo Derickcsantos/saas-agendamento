@@ -56,12 +56,18 @@ async function createPixCharge({ organizationId, appointmentId, amountInCents })
   // 2️⃣ Gera QR Code PIX via AbacatePay
   let abacateResponse;
   try {
+    console.log("🔄 Chamando AbacatePay API com:", {
+      url: `${process.env.ABACATEPAY_BASE_URL}/v1/pixQrCode/create`,
+      amount: amountInCents,
+      description: "Appointment payment"
+    });
+
     abacateResponse = await axios.post(
-      `${process.env.ABACATEPAY_BASE_URL}/pixQrcode/create`,
+      `${process.env.ABACATEPAY_BASE_URL}/v1/pixQrCode/create`,
       {
         amount: amountInCents,
         description: "Appointment payment",
-        expires_in: 1800,
+        expiresIn: 300,  // ✅ 5 minutos
       },
       {
         headers: {
@@ -70,6 +76,12 @@ async function createPixCharge({ organizationId, appointmentId, amountInCents })
         },
       }
     );
+
+    console.log("✅ Resposta AbacatePay:", {
+      status: abacateResponse.status,
+      hasData: !!abacateResponse.data,
+      dataKeys: Object.keys(abacateResponse.data || {})
+    });
   } catch (apiError) {
     // Marca transação como falha
     await supabase
@@ -77,26 +89,40 @@ async function createPixCharge({ organizationId, appointmentId, amountInCents })
       .update({ status: "failed" })
       .eq("id", transaction.id);
 
+    console.error("❌ Erro ao chamar AbacatePay:", {
+      message: apiError.message,
+      response: apiError.response?.data,
+      status: apiError.response?.status
+    });
+
     const details = apiError.response?.data || apiError.message;
     throw new Error(`Falha ao gerar PIX: ${JSON.stringify(details)}`);
   }
 
-  const pixData = abacateResponse.data;
+  // ✅ Corrigido: AbacatePay retorna 'data.brCode' e 'data.brCodeBase64'
+  const pixData = abacateResponse.data?.data || abacateResponse.data;
+
+  console.log("📦 Dados do PIX recebidos:", {
+    id: pixData.id,
+    brCode: pixData.brCode ? "✅ presente" : "❌ ausente",
+    brCodeBase64: pixData.brCodeBase64 ? "✅ presente" : "❌ ausente",
+    status: pixData.status
+  });
 
   // 3️⃣ Salva dados do PIX na transação
   await supabase
     .from("transactions_organizations")
     .update({
       external_id: pixData.id,
-      pix_qr_code: pixData.qr_code,
-      pix_copy_paste: pixData.copy_paste,
+      pix_qr_code: pixData.brCodeBase64,  // ✅ Corrigido de qr_code para brCodeBase64
+      pix_copy_paste: pixData.brCode,     // ✅ Corrigido de copy_paste para brCode
     })
     .eq("id", transaction.id);
 
   return {
     transactionId: transaction.id,
-    qrCode: pixData.qr_code,
-    copyPaste: pixData.copy_paste,
+    qrCode: pixData.brCodeBase64,  // ✅ Retorna base64 do QR
+    copyPaste: pixData.brCode,     // ✅ Retorna código copia e cola
     grossAmount: amountInCents,
     feeAmount,
     netAmount,

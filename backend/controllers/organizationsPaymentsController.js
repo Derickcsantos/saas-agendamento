@@ -186,12 +186,17 @@ export async function createPixPayment(req, res) {
     let abacateResponse;
 
     try {
+      console.log("🔄 Chamando AbacatePay API:", {
+        url: `${process.env.ABACATEPAY_BASE_URL}/v1/pixQrCode/create`,
+        amount: grossAmount
+      });
+
       abacateResponse = await axios.post(
-        `${process.env.ABACATEPAY_BASE_URL}/pixQrcode/create`,
+        `${process.env.ABACATEPAY_BASE_URL}/v1/pixQrCode/create`,
         {
           amount: grossAmount,
           description: "Appointment payment",
-          expires_in: 1800
+          expiresIn: 300  // ✅ 5 minutos
         },
         {
           headers: {
@@ -200,11 +205,15 @@ export async function createPixPayment(req, res) {
           }
         }
       );
+
+      console.log("✅ Resposta AbacatePay recebida");
     } catch (apiError) {
       await supabase
         .from("transactions_organizations")
         .update({ status: "failed" })
         .eq("id", transaction.id);
+
+      console.error("❌ Erro ao chamar AbacatePay:", apiError.response?.data || apiError.message);
 
       return res.status(502).json({
         error: "PIX generation failed",
@@ -212,22 +221,29 @@ export async function createPixPayment(req, res) {
       });
     }
 
-    const pixData = abacateResponse.data;
+    // ✅ Corrigido: AbacatePay retorna 'data.brCode' e 'data.brCodeBase64'
+    const pixData = abacateResponse.data?.data || abacateResponse.data;
+
+    console.log("📦 PIX gerado:", {
+      id: pixData.id,
+      brCode: pixData.brCode ? "✅" : "❌",
+      brCodeBase64: pixData.brCodeBase64 ? "✅" : "❌"
+    });
 
     // 4️⃣ Update transaction with PIX data
     await supabase
       .from("transactions_organizations")
       .update({
         external_id: pixData.id,
-        pix_qr_code: pixData.qr_code,
-        pix_copy_paste: pixData.copy_paste
+        pix_qr_code: pixData.brCodeBase64,  // ✅ Corrigido
+        pix_copy_paste: pixData.brCode       // ✅ Corrigido
       })
       .eq("id", transaction.id);
 
     return res.status(201).json({
       transaction_id: transaction.id,
-      qr_code: pixData.qr_code,
-      copy_paste: pixData.copy_paste
+      qr_code: pixData.brCodeBase64,  // ✅ Corrigido
+      copy_paste: pixData.brCode       // ✅ Corrigido
     });
   } catch (error) {
     console.error("PIX PAYMENT ERROR:", error);
