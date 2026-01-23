@@ -230,15 +230,18 @@ export const getWhatsappStatus = async (req, res) => {
 
     const row = await getWhatsappRow(orgId);
     if (!row?.whatsapp_api_key) {
+      console.log(`[WhatsApp] Sem API key para organização ${slug}`);
       return res.json({ isConnected: false });
     }
 
-    // Status é GET /api/status com Authorization Bearer SESSION_API_KEY :contentReference[oaicite:12]{index=12}
+    // Status é GET /api/status com Authorization Bearer SESSION_API_KEY
     const api = wasenderSession(row.whatsapp_api_key);
     const { data } = await api.get('/status');
 
     const status = String(data?.status || '').toLowerCase();
     const isConnected = status === 'connected';
+
+    console.log(`[WhatsApp] Status para ${slug}: ${status} (conectado: ${isConnected})`);
 
     return res.json({
       isConnected,
@@ -247,10 +250,15 @@ export const getWhatsappStatus = async (req, res) => {
       data,
     });
   } catch (error) {
-    console.error('Erro ao verificar status WhatsApp:', error.response?.data || error.message);
+    const errorMessage = error.message || 'Erro desconhecido';
+    console.error('[WhatsApp] Erro ao verificar status:', {
+      message: errorMessage,
+      details: error.response?.data,
+    });
+    
     return res.status(error.statusCode || 500).json({
       error: 'Erro ao verificar status',
-      details: error.response?.data || error.message,
+      details: errorMessage,
     });
   }
 };
@@ -392,22 +400,42 @@ export const getContacts = async (req, res) => {
 
     // Cache key específico para esta organização
     const cacheKey = `whatsapp_contacts:${orgId}`;
+    const cacheCountKey = `whatsapp_contacts_count:${orgId}`;
     const CACHE_TTL = 48 * 60 * 60; // 48 horas em segundos
+    const BATCH_SIZE = 800; // Limite seguro para queries do Supabase (< 1000)
 
     // Tenta buscar do cache primeiro
-    let cachedContacts = null;
     if (redis) {
       try {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          cachedContacts = typeof cached === 'string' ? JSON.parse(cached) : cached;
-          console.log(`[WhatsApp] Cache hit para organização ${slug} (${cachedContacts.length} contatos)`);
+        // Tenta obter do cache - se estiver lá, retorna
+        const cacheCountStr = await redis.get(cacheCountKey);
+        const cachedCount = parseInt(cacheCountStr || '0', 10);
+        
+        if (cachedCount > 0) {
+          console.log(`[WhatsApp] Cache hit para organização ${slug} (${cachedCount} contatos em cache)`);
           
+          // Buscar do cache com paginação
+          let allCachedContacts = [];
+          const cachePages = Math.ceil(cachedCount / BATCH_SIZE);
+          
+          for (let i = 0; i < cachePages; i++) {
+            try {
+              const cachePageKey = `${cacheKey}:page:${i}`;
+              const cachedPage = await redis.get(cachePageKey);
+              if (cachedPage) {
+                const pageContacts = typeof cachedPage === 'string' ? JSON.parse(cachedPage) : cachedPage;
+                allCachedContacts = allCachedContacts.concat(pageContacts);
+              }
+            } catch (pageErr) {
+              console.warn(`[WhatsApp] Erro ao buscar página ${i} do cache:`, pageErr.message);
+            }
+          }
+
           // Aplicar filtros em contatos cacheados
-          let filteredContacts = cachedContacts;
+          let filteredContacts = allCachedContacts;
           if (search) {
             const s = String(search).toLowerCase();
-            filteredContacts = cachedContacts.filter((c) => {
+            filteredContacts = allCachedContacts.filter((c) => {
               const name = (c?.name || '').toLowerCase();
               const jid = String(c?.jid || '');
               return name.includes(s) || jid.includes(String(search)) || String(c.phone_contact || '').includes(String(search));
@@ -419,10 +447,11 @@ export const getContacts = async (req, res) => {
             contacts: filteredContacts,
             total: filteredContacts.length,
             cached: true,
+            source: 'redis_cache',
           });
         }
       } catch (cacheErr) {
-        console.warn('[WhatsApp] Erro ao buscar cache Redis:', cacheErr.message);
+        console.warn('[WhatsApp] Erro ao buscar cache Redis:', cacheErr?.message || String(cacheErr));
       }
     }
 
@@ -458,75 +487,158 @@ export const getContacts = async (req, res) => {
       };
     }).filter((c) => !!c.phone_contact);
 
-    // Busca existentes no banco para mesclar e não sobrescrever observações/nome manual
-    const phones = mapped.map((c) => c.phone_contact);
-    const { data: existingRows, error: existingErr } = await supabase
-      .from('whatsapp_contacts')
-      .select('*')
-      .eq('organization_id', orgId)
-      .in('phone_contact', phones);
+    console.log(`[WhatsApp] Mapeados ${mapped.length} contatos com telefone válido`);
 
-    if (existingErr) throw existingErr;
-    const existingMap = Object.fromEntries((existingRows || []).map((r) => [r.phone_contact, r]));
-
+    // Salvar no banco de dados em LOTES COM PAGINAÇÃO
+    console.log(`[WhatsApp] Salvando ${mapped.length} contatos no banco de dados em lotes de ${BATCH_SIZE}...`);
+    
     const now = new Date().toISOString();
+    const totalBatches = Math.ceil(mapped.length / BATCH_SIZE);
+    
+    for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
+      const startIdx = batchIdx * BATCH_SIZE;
+      const endIdx = Math.min(startIdx + BATCH_SIZE, mapped.length);
+      const batchMapped = mapped.slice(startIdx, endIdx);
+      
+      console.log(`[WhatsApp] Processando lote ${batchIdx + 1}/${totalBatches} (${batchMapped.length} contatos)...`);
 
-    const upserts = mapped.map((c) => {
-      const prev = existingMap[c.phone_contact];
-      return {
-        organization_id: orgId,
-        phone_contact: c.phone_contact,
-        whatsapp_jid: c.jid || prev?.whatsapp_jid || null,
-        name_contact: c.name_api || prev?.name_contact || null,
-        image_contact: c.imgUrl || prev?.image_contact || null,
-        observation_contact: prev?.observation_contact || null,
-        is_business: prev?.is_business ?? null,
-        last_sync_at: now,
-        updated_at: now,
-      };
-    });
-
-    if (upserts.length > 0) {
-      const { error: upsertErr } = await supabase
-        .from('whatsapp_contacts')
-        .upsert(upserts, { onConflict: 'organization_id,phone_contact' });
-
-      if (upsertErr) throw upsertErr;
-    }
-
-    // Recarrega dados salvos para devolver enriquecido
-    const { data: refreshedRows, error: refreshErr } = await supabase
-      .from('whatsapp_contacts')
-      .select('*')
-      .eq('organization_id', orgId)
-      .in('phone_contact', phones);
-
-    if (refreshErr) throw refreshErr;
-    const refreshedMap = Object.fromEntries((refreshedRows || []).map((r) => [r.phone_contact, r]));
-
-    let contacts = mapped.map((c) => {
-      const db = refreshedMap[c.phone_contact];
-      const nameFinal = db?.name_contact || c.name_api || c.name || c.notify || c.verifiedName || 'Sem nome';
-      return {
-        ...c,
-        name: nameFinal,
-        phone: c.phone_contact,
-        image: db?.image_contact || c.imgUrl || null,
-        observation: db?.observation_contact || null,
-      };
-    });
-
-    // Salvar no cache Redis antes de filtrar
-    if (redis && contacts.length > 0) {
+      // Buscar existentes DESTE LOTE
+      const phonesInBatch = batchMapped.map((c) => c.phone_contact);
+      
+      let existingMap = {};
       try {
-        await redis.set(cacheKey, JSON.stringify(contacts), { ex: CACHE_TTL });
-        console.log(`[WhatsApp] Cache salvo para ${slug} (${contacts.length} contatos, TTL: 48h)`);
-      } catch (cacheErr) {
-        console.warn('[WhatsApp] Erro ao salvar cache Redis:', cacheErr.message);
+        const { data: existingRows, error: existingErr } = await supabase
+          .from('whatsapp_contacts')
+          .select('*')
+          .eq('organization_id', orgId)
+          .in('phone_contact', phonesInBatch);
+
+        if (existingErr) {
+          console.error(`[WhatsApp] Erro ao buscar existentes (lote ${batchIdx + 1}):`, {
+            message: existingErr.message,
+            code: existingErr.code,
+            details: existingErr.details,
+          });
+          throw existingErr;
+        }
+
+        existingMap = Object.fromEntries((existingRows || []).map((r) => [r.phone_contact, r]));
+        console.log(`[WhatsApp] Encontrados ${Object.keys(existingMap).length} contatos existentes neste lote`);
+      } catch (existingErr) {
+        console.warn(`[WhatsApp] Erro ao buscar existentes (lote ${batchIdx + 1}), prosseguindo com dados da API:`, existingErr?.message || String(existingErr));
+      }
+
+      // Preparar upserts para este lote
+      const upserts = batchMapped.map((c) => {
+        const prev = existingMap[c.phone_contact];
+        return {
+          organization_id: orgId,
+          phone_contact: c.phone_contact,
+          whatsapp_jid: c.jid || prev?.whatsapp_jid || null,
+          name_contact: c.name_api || prev?.name_contact || null,
+          image_contact: c.imgUrl || prev?.image_contact || null,
+          observation_contact: prev?.observation_contact || null,
+          is_business: prev?.is_business ?? null,
+          last_sync_at: now,
+          updated_at: now,
+        };
+      });
+
+      // Fazer upsert
+      try {
+        console.log(`[WhatsApp] Fazendo upsert de ${upserts.length} contatos (lote ${batchIdx + 1})...`);
+        const { error: upsertErr } = await supabase
+          .from('whatsapp_contacts')
+          .upsert(upserts, { onConflict: 'organization_id,phone_contact' });
+
+        if (upsertErr) {
+          console.error(`[WhatsApp] Erro no upsert (lote ${batchIdx + 1}):`, {
+            message: upsertErr.message,
+            code: upsertErr.code,
+            details: upsertErr.details,
+          });
+          throw upsertErr;
+        }
+        console.log(`[WhatsApp] Upsert concluído para lote ${batchIdx + 1}`);
+      } catch (upsertErr) {
+        console.error(`[WhatsApp] Falha no upsert (lote ${batchIdx + 1}):`, upsertErr?.message || String(upsertErr));
       }
     }
 
-    // Aplicar filtro de busca após salvar cache
+    // Recarregar contatos do banco em LOTES COM PAGINAÇÃO
+    console.log(`[WhatsApp] Recarregando ${mapped.length} contatos do banco em lotes de ${BATCH_SIZE}...`);
+    let contacts = [];
+    const totalBatchesForReload = Math.ceil(mapped.length / BATCH_SIZE);
+
+    for (let batchIdx = 0; batchIdx < totalBatchesForReload; batchIdx++) {
+      const startIdx = batchIdx * BATCH_SIZE;
+      const endIdx = Math.min(startIdx + BATCH_SIZE, mapped.length);
+      const phonesInBatch = mapped.slice(startIdx, endIdx).map((c) => c.phone_contact);
+
+      try {
+        const { data: refreshedRows, error: refreshErr } = await supabase
+          .from('whatsapp_contacts')
+          .select('*')
+          .eq('organization_id', orgId)
+          .in('phone_contact', phonesInBatch);
+
+        if (refreshErr) {
+          console.error(`[WhatsApp] Erro ao recarregar lote ${batchIdx + 1}:`, {
+            message: refreshErr.message,
+            code: refreshErr.code,
+            details: refreshErr.details,
+          });
+          throw refreshErr;
+        }
+
+        const refreshedMap = Object.fromEntries((refreshedRows || []).map((r) => [r.phone_contact, r]));
+
+        const batchContacts = mapped.slice(startIdx, endIdx).map((c) => {
+          const db = refreshedMap[c.phone_contact];
+          const nameFinal = db?.name_contact || c.name_api || c.name || c.notify || c.verifiedName || 'Sem nome';
+          return {
+            ...c,
+            name: nameFinal,
+            phone: c.phone_contact,
+            image: db?.image_contact || c.imgUrl || null,
+            observation: db?.observation_contact || null,
+          };
+        });
+
+        contacts = contacts.concat(batchContacts);
+        console.log(`[WhatsApp] Recarregados ${batchContacts.length} contatos (lote ${batchIdx + 1}/${totalBatchesForReload})`);
+      } catch (reloadErr) {
+        console.error(`[WhatsApp] Erro ao recarregar lote ${batchIdx + 1}:`, reloadErr?.message || String(reloadErr));
+      }
+    }
+
+    console.log(`[WhatsApp] Total de contatos sincronizados: ${contacts.length}`);
+
+    // Salvar no Redis em LOTES COM PAGINAÇÃO
+    if (redis && contacts.length > 0) {
+      try {
+        console.log(`[WhatsApp] Salvando ${contacts.length} contatos no Redis em lotes de ${BATCH_SIZE}...`);
+        
+        const totalCachePages = Math.ceil(contacts.length / BATCH_SIZE);
+        for (let pageIdx = 0; pageIdx < totalCachePages; pageIdx++) {
+          const startIdx = pageIdx * BATCH_SIZE;
+          const endIdx = Math.min(startIdx + BATCH_SIZE, contacts.length);
+          const pageContacts = contacts.slice(startIdx, endIdx);
+
+          const cachePageKey = `${cacheKey}:page:${pageIdx}`;
+          await redis.set(cachePageKey, JSON.stringify(pageContacts), { ex: CACHE_TTL });
+          console.log(`[WhatsApp] Página ${pageIdx + 1}/${totalCachePages} salva no Redis (${pageContacts.length} contatos)`);
+        }
+
+        // Salvar contagem total
+        await redis.set(cacheCountKey, String(contacts.length), { ex: CACHE_TTL });
+        console.log(`[WhatsApp] Cache concluído para ${slug} (${contacts.length} contatos em ${totalCachePages} páginas, TTL: 48h)`);
+      } catch (cacheErr) {
+        console.warn('[WhatsApp] Erro ao salvar cache Redis:', cacheErr?.message || String(cacheErr));
+      }
+    }
+
+    // Aplicar filtro de busca
     if (search) {
       const s = String(search).toLowerCase();
       contacts = contacts.filter((c) => {
@@ -541,24 +653,25 @@ export const getContacts = async (req, res) => {
       contacts,
       total: contacts.length,
       cached: false,
-      raw: data,
+      source: 'api_with_db_sync',
+      batchSize: BATCH_SIZE,
     });
   } catch (error) {
     const errorMessage = error.message || 'Erro desconhecido';
-    const errorDetails = error.response?.data || error.stack || errorMessage;
+    const errorStack = error.stack || '';
+    const errorDetails = error.response?.data || error.details || errorMessage;
     
     console.error('[WhatsApp] Erro ao buscar contatos:', {
       message: errorMessage,
       details: errorDetails,
-      apiKey: error.config?.headers?.Authorization ? '***' : 'não definido',
-      url: error.config?.url,
-      status: error.response?.status,
+      code: error.code,
+      stack: errorStack.split('\n').slice(0, 3).join(' | '),
     });
     
     return res.status(500).json({
       error: 'Erro ao buscar contatos',
       details: errorMessage,
-      apiError: error.response?.data,
+      errorCode: error.code,
     });
   }
 };
@@ -578,37 +691,65 @@ export const getContactInfo = async (req, res) => {
     const targetJid = decodeURIComponent(jid);
     const phone = extractPhoneFromJid(targetJid);
 
+    console.log(`[WhatsApp] Buscando informações detalhadas do contato ${phone}...`);
+
     const { data } = await api.get(`/contacts/${encodeURIComponent(targetJid)}`);
     const apiContact = data?.data || data || {};
 
-    // Mescla/garante persistência no banco
-    const { data: existing, error: existingErr } = await supabase
-      .from('whatsapp_contacts')
-      .select('*')
-      .eq('organization_id', orgId)
-      .eq('phone_contact', phone)
-      .maybeSingle();
+    console.log(`[WhatsApp] Recebido contato da API:`, { phone, name: apiContact.name });
 
-    if (existingErr) throw existingErr;
+    // Tenta mesclar com banco de dados
+    let upserted = null;
+    try {
+      // Mescla/garante persistência no banco
+      const { data: existing, error: existingErr } = await supabase
+        .from('whatsapp_contacts')
+        .select('*')
+        .eq('organization_id', orgId)
+        .eq('phone_contact', phone)
+        .maybeSingle();
 
-    const merged = {
-      organization_id: orgId,
-      phone_contact: phone,
-      whatsapp_jid: apiContact.jid || apiContact.id || targetJid,
-      name_contact: apiContact.name || apiContact.notify || apiContact.verifiedName || existing?.name_contact || null,
-      image_contact: apiContact.imgUrl || existing?.image_contact || null,
-      observation_contact: existing?.observation_contact || null,
-      updated_at: new Date().toISOString(),
-      last_sync_at: new Date().toISOString(),
-    };
+      if (existingErr) {
+        console.error('[WhatsApp] Erro ao buscar contato existente:', existingErr);
+        throw existingErr;
+      }
 
-    const { data: upserted, error: upsertErr } = await supabase
-      .from('whatsapp_contacts')
-      .upsert(merged, { onConflict: 'organization_id,phone_contact' })
-      .select('*')
-      .single();
+      console.log(`[WhatsApp] Contato existente no banco:`, { 
+        exists: !!existing,
+        name: existing?.name_contact,
+        observation: existing?.observation_contact,
+      });
 
-    if (upsertErr) throw upsertErr;
+      const merged = {
+        organization_id: orgId,
+        phone_contact: phone,
+        whatsapp_jid: apiContact.jid || apiContact.id || targetJid,
+        name_contact: apiContact.name || apiContact.notify || apiContact.verifiedName || existing?.name_contact || null,
+        image_contact: apiContact.imgUrl || existing?.image_contact || null,
+        observation_contact: existing?.observation_contact || null,
+        updated_at: new Date().toISOString(),
+        last_sync_at: new Date().toISOString(),
+      };
+
+      console.log(`[WhatsApp] Fazendo upsert do contato ${phone}...`);
+
+      const { data: upsertData, error: upsertErr } = await supabase
+        .from('whatsapp_contacts')
+        .upsert(merged, { onConflict: 'organization_id,phone_contact' })
+        .select('*')
+        .single();
+
+      if (upsertErr) {
+        console.error('[WhatsApp] Erro no upsert:', upsertErr);
+        throw upsertErr;
+      }
+
+      upserted = upsertData;
+      console.log(`[WhatsApp] Contato ${phone} upsertado com sucesso`);
+    } catch (dbErr) {
+      console.warn('[WhatsApp] Erro ao sincronizar com banco, usando dados da API:', dbErr.message);
+      upserted = null; // Usar dados da API
+    }
 
     const responseContact = {
       ...apiContact,
@@ -625,10 +766,16 @@ export const getContactInfo = async (req, res) => {
       raw: data,
     });
   } catch (error) {
-    console.error('Erro ao buscar contato:', error.response?.data || error.message);
+    const errorMessage = error.message || 'Erro desconhecido';
+    console.error('[WhatsApp] Erro ao buscar contato:', {
+      message: errorMessage,
+      details: error.response?.data,
+      stack: error.stack?.split('\n').slice(0, 3).join(' | '),
+    });
+    
     return res.status(error.statusCode || 500).json({
       error: 'Erro ao buscar contato',
-      details: error.response?.data || error.message,
+      details: errorMessage,
     });
   }
 };
@@ -638,6 +785,8 @@ export const updateContactInfo = async (req, res) => {
   try {
     const { slug, jid } = req.params;
     const { name, observation, image } = req.body || {};
+
+    console.log(`[WhatsApp] Atualizando contato ${jid} com:`, { name, observation, image: image ? '***' : null });
 
     const orgId = await getOrgIdBySlug(slug);
     const phone = extractPhoneFromJid(decodeURIComponent(jid));
@@ -667,31 +816,58 @@ export const updateContactInfo = async (req, res) => {
       ...updates,
     };
 
+    console.log(`[WhatsApp] Fazendo upsert do contato ${phone}...`);
+
     const { data: upserted, error } = await supabase
       .from('whatsapp_contacts')
       .upsert(payload, { onConflict: 'organization_id,phone_contact' })
       .select('*')
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[WhatsApp] Erro no upsert:', error);
+      throw error;
+    }
 
-    // Invalida cache de contatos ao atualizar
+    console.log(`[WhatsApp] Contato ${phone} atualizado com sucesso`);
+
+    // Invalida cache de contatos ao atualizar (remove todas as páginas)
     if (redis) {
       try {
-        const cacheKey = `whatsapp_contacts:${orgId}`;
-        await redis.del(cacheKey);
-        console.log(`[WhatsApp] Cache invalidado para organização ${orgId}`);
+        const cacheCountKey = `whatsapp_contacts_count:${orgId}`;
+        const cachedCountStr = await redis.get(cacheCountKey);
+        const cachedCount = parseInt(cachedCountStr || '0', 10);
+        
+        // Remover todas as páginas cacheadas
+        const BATCH_SIZE = 800;
+        const totalPages = Math.ceil(cachedCount / BATCH_SIZE);
+        
+        for (let i = 0; i < totalPages; i++) {
+          const cachePageKey = `${cacheKey}:page:${i}`;
+          await redis.del(cachePageKey);
+        }
+        
+        // Remover contador
+        await redis.del(cacheCountKey);
+        
+        console.log(`[WhatsApp] Cache invalidado para organização ${orgId} (${totalPages} páginas removidas)`);
       } catch (cacheErr) {
-        console.warn('[WhatsApp] Erro ao invalidar cache:', cacheErr.message);
+        console.warn('[WhatsApp] Erro ao invalidar cache:', cacheErr?.message || String(cacheErr));
       }
     }
 
     return res.json({ success: true, contact: upserted });
   } catch (error) {
-    console.error('Erro ao atualizar contato:', error.response?.data || error.message);
+    const errorMessage = error.message || 'Erro desconhecido';
+    console.error('[WhatsApp] Erro ao atualizar contato:', {
+      message: errorMessage,
+      details: error.response?.data,
+      stack: error.stack?.split('\n').slice(0, 3).join(' | '),
+    });
+    
     return res.status(error.statusCode || 500).json({
       error: 'Erro ao atualizar contato',
-      details: error.response?.data || error.message,
+      details: errorMessage,
     });
   }
 };
@@ -713,7 +889,7 @@ export const sendMessage = async (req, res) => {
       return res.status(400).json({ error: 'WhatsApp não conectado' });
     }
 
-    // POST /api/send-message com Authorization Bearer API_KEY :contentReference[oaicite:18]{index=18}
+    // POST /api/send-message com Authorization Bearer API_KEY
     const api = wasenderSession(row.whatsapp_api_key);
 
     const { data } = await api.post('/send-message', {
@@ -723,10 +899,15 @@ export const sendMessage = async (req, res) => {
 
     return res.json({ success: true, data });
   } catch (error) {
-    console.error('Erro ao enviar mensagem:', error.response?.data || error.message);
+    const errorMessage = error.message || 'Erro desconhecido';
+    console.error('[WhatsApp] Erro ao enviar mensagem:', {
+      message: errorMessage,
+      details: error.response?.data,
+    });
+    
     return res.status(500).json({
       error: 'Erro ao enviar mensagem',
-      details: error.response?.data || error.message,
+      details: errorMessage,
     });
   }
 };
@@ -780,10 +961,15 @@ export const sendBulkMessages = async (req, res) => {
       message: `${results.success} mensagens enviadas, ${results.failed} falharam`,
     });
   } catch (error) {
-    console.error('Erro ao enviar mensagens em lote:', error.response?.data || error.message);
+    const errorMessage = error.message || 'Erro desconhecido';
+    console.error('[WhatsApp] Erro ao enviar mensagens em lote:', {
+      message: errorMessage,
+      details: error.response?.data,
+    });
+    
     return res.status(500).json({
       error: 'Erro ao enviar mensagens em lote',
-      details: error.response?.data || error.message,
+      details: errorMessage,
     });
   }
 };
@@ -801,12 +987,14 @@ export const getStatistics = async (req, res) => {
 
     const api = wasenderSession(row.whatsapp_api_key);
 
-    // status: GET /api/status :contentReference[oaicite:19]{index=19}
+    // status: GET /api/status
     let status = 'unknown';
     try {
       const { data } = await api.get('/status');
       status = String(data?.status || '').toLowerCase();
-    } catch {}
+    } catch (e) {
+      console.warn('[WhatsApp] Erro ao buscar status:', e?.message);
+    }
 
     // contacts: GET /api/contacts
     let totalContacts = 0;
@@ -819,7 +1007,9 @@ export const getStatistics = async (req, res) => {
         contacts = data.data.items;
       }
       totalContacts = contacts.length;
-    } catch {}
+    } catch (e) {
+      console.warn('[WhatsApp] Erro ao buscar contatos para estatísticas:', e?.message);
+    }
 
     return res.json({
       isConnected: status === 'connected',
@@ -829,10 +1019,15 @@ export const getStatistics = async (req, res) => {
       sessionId: row.wasender_session_id,
     });
   } catch (error) {
-    console.error('Erro ao buscar estatísticas:', error.response?.data || error.message);
+    const errorMessage = error.message || 'Erro desconhecido';
+    console.error('[WhatsApp] Erro ao buscar estatísticas:', {
+      message: errorMessage,
+      details: error.response?.data,
+    });
+    
     return res.status(500).json({
       error: 'Erro ao buscar estatísticas',
-      details: error.response?.data || error.message,
+      details: errorMessage,
     });
   }
 };
