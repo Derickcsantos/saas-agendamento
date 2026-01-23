@@ -1,6 +1,118 @@
 import axios from "axios";
 import { supabase } from "../lib/supabase.js";
 
+// Retorna histórico de entradas (agendamentos confirmados e transações bem-sucedidas)
+export async function getIncomeHistory(req, res) {
+  const { slug } = req.params;
+  const limit = Math.min(parseInt(req.query.limit || "20"), 100); // máximo 100
+
+  try {
+    const { data: org, error: orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    // 1️⃣ Buscar transações confirmadas (PIX recebido)
+    const { data: transactions, error: txErr } = await supabase
+      .from("transactions_organizations")
+      .select("id, net_amount, type, status, confirmed_at, appointment_id, created_at")
+      .eq("organization_id", org.id)
+      .eq("status", "confirmed")
+      .eq("type", "pix_in")
+      .order("confirmed_at", { ascending: false })
+      .limit(limit);
+
+    if (txErr) throw txErr;
+
+    // 2️⃣ Buscar agendamentos confirmados com detalhes
+    const { data: appointments, error: apptErr } = await supabase
+      .from("appointments")
+      .select(`
+        id, 
+        final_price, 
+        status, 
+        created_at, 
+        appointment_date,
+        client_name,
+        services (name)
+      `)
+      .eq("organization_id", org.id)
+      .eq("status", "confirmed")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (apptErr) throw apptErr;
+
+    // 3️⃣ Mesclar e ordenar por data
+    const history = [
+      ...transactions.map(t => ({
+        type: "transacao",
+        amount: t.net_amount,
+        created_at: t.confirmed_at || t.created_at,
+        description: "Transferência PIX recebida",
+        status: "confirmed",
+      })),
+      ...appointments.map(a => ({
+        type: "appointment",
+        amount: Math.round((a.final_price || 0) * 100),
+        appointment_date: a.appointment_date,
+        created_at: a.created_at,
+        client_name: a.client_name,
+        service_name: a.services?.[0]?.name || "Serviço",
+        status: "completed",
+      })),
+    ]
+      .sort((a, b) => new Date(b.created_at || b.appointment_date) - new Date(a.created_at || a.appointment_date))
+      .slice(0, limit);
+
+    return res.status(200).json({
+      history,
+      total_items: history.length,
+    });
+  } catch (error) {
+    console.error("GET INCOME HISTORY ERROR:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+// Retorna saldo disponível em centavos para a organização
+export async function getAvailableBalance(req, res) {
+  const { slug } = req.params;
+
+  try {
+    const { data: org, error: orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    const { data: balance, error: balError } = await supabase
+      .from("organization_withdrawals_balance")
+      .select("available_balance")
+      .eq("organization_id", org.id)
+      .maybeSingle();
+
+    if (balError) throw balError;
+
+    return res.status(200).json({
+      available_balance: balance?.available_balance ?? 0,
+      available_balance_brl: ((balance?.available_balance ?? 0) / 100),
+    });
+  } catch (error) {
+    console.error("GET BALANCE ERROR:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
 /**
  * Ensures the organization balance row exists
  */
@@ -240,10 +352,46 @@ export async function requestWithdrawal(req, res) {
       .single();
 
     if (!balance || balance.available_balance < withdrawAmount) {
-      return res.status(400).json({ error: "Insufficient balance" });
+      return res.status(400).json({ 
+        error: "Insufficient balance",
+        available: balance?.available_balance ?? 0,
+        requested: withdrawAmount
+      });
     }
 
-    // 3️⃣ Register withdrawal transaction
+    // 2.1️⃣ Buscar chave PIX configurada nas policies se não enviada
+    let effectivePixKey = pix_key;
+    let effectivePixKeyType = pix_key_type;
+
+    if (!effectivePixKey || !effectivePixKeyType) {
+      const { data: policy } = await supabase
+        .from("organization_policies")
+        .select("pix_key")
+        .eq("organization_id", org.id)
+        .maybeSingle();
+
+      if (!effectivePixKey && policy?.pix_key) {
+        effectivePixKey = policy.pix_key;
+      }
+
+      if (!effectivePixKeyType) {
+        effectivePixKeyType = "random"; // fallback seguro
+      }
+    }
+
+    if (!effectivePixKey) {
+      return res.status(400).json({ error: "PIX key not configured" });
+    }
+
+    // 3️⃣ Aplicar taxa de transação (padrão 1 real = 100 centavos)
+    const transactionRate = 100; // R$1 em centavos
+    const netAmount = Math.max(0, withdrawAmount - transactionRate);
+
+    if (netAmount <= 0) {
+      return res.status(400).json({ error: "Amount too small after fees" });
+    }
+
+    // 4️⃣ Register withdrawal transaction
     const { data: transaction, error } = await supabase
       .from("transactions_organizations")
       .insert({
@@ -251,17 +399,18 @@ export async function requestWithdrawal(req, res) {
         type: "pix_out",
         status: "pending",
         gross_amount: withdrawAmount,
-        fee_amount: 0,
-        net_amount: withdrawAmount,
-        pix_key,
-        pix_key_type
+        fee_amount: transactionRate,
+        net_amount: netAmount,
+        transaction_rate: 1.00, // em reais
+        pix_key: effectivePixKey,
+        pix_key_type: effectivePixKeyType
       })
       .select()
       .single();
 
     if (error) throw error;
 
-    // 4️⃣ Debit balance atomically (DB function)
+    // 5️⃣ Debit balance atomically (DB function)
     const { error: debitError } = await supabase.rpc(
       "debit_organization_balance",
       {
@@ -277,7 +426,10 @@ export async function requestWithdrawal(req, res) {
 
     return res.status(201).json({
       message: "Withdrawal request registered",
-      transaction_id: transaction.id
+      transaction_id: transaction.id,
+      gross_amount: withdrawAmount / 100,
+      fee_amount: transactionRate / 100,
+      net_amount: netAmount / 100
     });
   } catch (error) {
     console.error("WITHDRAW ERROR:", error);

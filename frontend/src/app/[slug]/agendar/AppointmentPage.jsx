@@ -367,9 +367,18 @@ const sendWhatsappConfirmation = async () => {
 
       const data = await res.json();
 
+      console.log("📦 Resposta do backend:", {
+        ok: res.ok,
+        status: res.status,
+        payment_required: data?.payment_required,
+        has_payment: !!data?.payment,
+        has_qr_code: !!data?.payment?.qr_code,
+        error: data?.error
+      });
+
       if (!res.ok) {
-        console.error("Erro ao criar agendamento:", data);
-        toast.error("Erro ao confirmar o agendamento.");
+        console.error("❌ Erro ao criar agendamento:", data);
+        toast.error(data?.error || "Erro ao confirmar o agendamento.");
         return;
       }
 
@@ -401,17 +410,35 @@ const sendWhatsappConfirmation = async () => {
       });
       setCouponInput("");
 
-      if (data?.payment_required) {
-        setPaymentData({
+      // ✅ Verificação explícita de pagamento obrigatório
+      if (data?.payment_required === true) {
+        console.log("💳 Pagamento obrigatório detectado");
+        
+        const paymentInfo = {
           qrCode: data?.payment?.qr_code || null,
           copyPaste: data?.payment?.copy_paste || "",
-          amount: validatedFinal,
+          amount: data?.payment?.amount || validatedFinal,
           status: data?.appointment?.status || "pending",
           error: data?.error || null,
+        };
+
+        console.log("💳 Dados do pagamento:", {
+          hasQrCode: !!paymentInfo.qrCode,
+          hasCopyPaste: !!paymentInfo.copyPaste,
+          amount: paymentInfo.amount,
+          error: paymentInfo.error
         });
+
+        setPaymentData(paymentInfo);
         setShowPaymentModal(true);
-        toast.info("Finalize o pagamento via PIX para confirmar seu agendamento.");
+        
+        if (paymentInfo.error) {
+          toast.error(paymentInfo.error);
+        } else {
+          toast.info("Finalize o pagamento via PIX para confirmar seu agendamento.");
+        }
       } else {
+        console.log("✅ Agendamento confirmado sem pagamento");
         toast.success("Agendamento confirmado!");
         setShowModal(true);
       }

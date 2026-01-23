@@ -2,7 +2,9 @@ import express from "express";
 import {
   abacatePayPixWebhook,
   createPixPayment,
-  requestWithdrawal
+  requestWithdrawal,
+  getAvailableBalance,
+  getIncomeHistory,
 } from "../controllers/organizationsPaymentsController.js";
 
 export const organizationsPaymentsRouter = express.Router();
@@ -38,6 +40,17 @@ organizationsPaymentsRouter.post(
   createPixPayment
 );
 
+// Saldo disponível
+organizationsPaymentsRouter.get(
+  "/:slug/balance",
+  getAvailableBalance
+);
+
+// Histórico de entradas
+organizationsPaymentsRouter.get(
+  "/:slug/history",
+  getIncomeHistory
+);
 
 organizationsPaymentsRouter.post(
   "/webhooks/abacatepay/pix",

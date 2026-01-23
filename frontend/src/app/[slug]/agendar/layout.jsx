@@ -16,7 +16,7 @@ function normalizeOgImage(imageUrl) {
 }
 
 export async function generateMetadata({ params }) {
-  const { slug } = params;
+  const { slug } = await params;
 
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/api/landing-page/${slug}`,

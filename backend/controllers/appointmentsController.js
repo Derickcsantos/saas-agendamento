@@ -328,7 +328,7 @@ export const createAppointment = async (req, res) => {
 
     const { data: policy, error: policyError } = await supabase
       .from("organization_policies")
-      .select("sync_google_calendar, appointment_prepayment")
+      .select("sync_google_calendar, appointment_prepayment, prepayment_type, prepayment_value, pix_key")
       .eq("organization_id", orgData.id)
       .maybeSingle();
 
@@ -339,7 +339,30 @@ export const createAppointment = async (req, res) => {
     }
 
     const requiresPrepayment = policy?.appointment_prepayment === true && !isAdminUser;
-    console.log(`💳 Pré-pagamento obrigatório? ${requiresPrepayment ? 'SIM' : 'NÃO'} (admin isento: ${isAdminUser ? 'sim' : 'não'})`);
+    console.log(`💳 Pré-pagamento obrigatório? ${requiresPrepayment ? 'SIM' : 'NÃO'}`);
+    console.log(`   - appointment_prepayment: ${policy?.appointment_prepayment}`);
+    console.log(`   - isAdminUser: ${isAdminUser}`);
+    console.log(`   - prepayment_type: ${policy?.prepayment_type}`);
+    console.log(`   - prepayment_value: ${policy?.prepayment_value}`);
+    console.log(`   - pix_key: ${policy?.pix_key ? '✅ configurada' : '❌ NÃO configurada'}`);
+
+    let prepaymentAmount = finalPriceToUse; // padrão: total
+    if (requiresPrepayment) {
+      const rawValue = policy?.prepayment_value ? Number(policy.prepayment_value) : null;
+      if (policy?.prepayment_type === 'percent') {
+        const pct = rawValue && rawValue > 0 ? rawValue : 0;
+        prepaymentAmount = Math.max(0, (finalPriceToUse * pct) / 100);
+        console.log(`💳 Tipo: Percentual (${pct}%) = R$ ${prepaymentAmount.toFixed(2)}`);
+      } else if (policy?.prepayment_type === 'value') {
+        prepaymentAmount = rawValue && rawValue > 0 ? rawValue : finalPriceToUse;
+        console.log(`💳 Tipo: Valor fixo = R$ ${prepaymentAmount.toFixed(2)}`);
+      } else {
+        console.log(`💳 Tipo: Total (sem configuração) = R$ ${prepaymentAmount.toFixed(2)}`);
+      }
+      // Nunca cobra acima do valor final
+      prepaymentAmount = Math.min(prepaymentAmount, finalPriceToUse);
+      console.log(`💳 Valor de pré-pagamento calculado: R$ ${prepaymentAmount.toFixed(2)} (${policy?.prepayment_type || 'full'})`);
+    }
 
     // ✅ Telefone opcional: envia null ao invés de string vazia/undefined
     const safeClientPhone =
@@ -448,7 +471,7 @@ export const createAppointment = async (req, res) => {
         const pixCharge = await createPixCharge({
           organizationId: orgData.id,
           appointmentId: created.id,
-          amountInCents: Math.round(finalPriceToUse * 100),
+          amountInCents: Math.round(prepaymentAmount * 100),
         });
 
         console.log("💳 PIX gerado para pré-pagamento:", {
@@ -463,7 +486,7 @@ export const createAppointment = async (req, res) => {
             transaction_id: pixCharge.transactionId,
             qr_code: pixCharge.qrCode,
             copy_paste: pixCharge.copyPaste,
-            amount: finalPriceToUse,
+            amount: prepaymentAmount,
           },
           validated_prices: {
             final: finalPriceToUse,

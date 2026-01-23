@@ -53,6 +53,10 @@ export default function SettingsTab({ org }) {
     max_schedule_days: 30,
     allow_same_day: true,
     min_hours_before_booking: 0,
+    appointment_prepayment: false,
+    prepayment_type: "percent",
+    prepayment_value: "",
+    pix_key: "",
   });
 
   const strongColor = palette?.strong_color || "#5E3BEE";
@@ -82,7 +86,10 @@ export default function SettingsTab({ org }) {
           timezone: detailsData.timezone || "America/Sao_Paulo",
           logo_organization: detailsData.logo_organization,
         });
-        setPolicies(policiesData);
+        setPolicies({
+          ...policies,
+          ...policiesData,
+        });
 
       } catch (e) {
         toast.error("Erro ao carregar configurações");
@@ -377,6 +384,91 @@ export default function SettingsTab({ org }) {
             <option value="false">Não</option>
           </select>
 
+          <div className="border rounded-xl p-4 shadow-sm bg-white space-y-3">
+            <h4 className="text-base font-semibold text-gray-800">Pagamento antecipado</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-sm text-gray-600">Exigir pré-pagamento?</label>
+                <select
+                  value={policies.appointment_prepayment ? "true" : "false"}
+                  onChange={(e) => handlePolicyChange("appointment_prepayment")(e.target.value === "true")}
+                  onBlur={() =>
+                    updateField(
+                      "appointment_prepayment",
+                      policies.appointment_prepayment,
+                      `${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`
+                    )
+                  }
+                  className="w-full rounded-md border px-3 py-2"
+                >
+                  <option value="false">Não</option>
+                  <option value="true">Sim</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm text-gray-600">Tipo</label>
+                <select
+                  value={policies.prepayment_type || "percent"}
+                  onChange={(e) => handlePolicyChange("prepayment_type")(e.target.value)}
+                  onBlur={() =>
+                    updateField(
+                      "prepayment_type",
+                      policies.prepayment_type,
+                      `${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`
+                    )
+                  }
+                  className="w-full rounded-md border px-3 py-2"
+                  disabled={!policies.appointment_prepayment}
+                >
+                  <option value="percent">Percentual do serviço</option>
+                  <option value="value">Valor fixo (R$)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-sm text-gray-600">Valor / Percentual</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={policies.prepayment_value ?? ""}
+                  onChange={(e) => handlePolicyChange("prepayment_value")(e.target.value)}
+                  onBlur={() =>
+                    updateField(
+                      "prepayment_value",
+                      Number(policies.prepayment_value || 0),
+                      `${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`
+                    )
+                  }
+                  className="w-full rounded-md border px-3 py-2"
+                  disabled={!policies.appointment_prepayment}
+                />
+                <p className="text-xs text-gray-500">Ex: 50.00 para valor fixo ou 30 para 30%.</p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm text-gray-600">Chave PIX para recebimentos</label>
+                <input
+                  type="text"
+                  value={policies.pix_key ?? ""}
+                  onChange={(e) => handlePolicyChange("pix_key")(e.target.value)}
+                  onBlur={() =>
+                    updateField(
+                      "pix_key",
+                      policies.pix_key,
+                      `${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`
+                    )
+                  }
+                  className="w-full rounded-md border px-3 py-2"
+                  placeholder="email, CPF, telefone ou chave aleatória"
+                />
+                <p className="text-xs text-gray-500">Usada para saques e identificação de recebimentos.</p>
+              </div>
+            </div>
+          </div>
 
           {/* PLAN CARD */}
           <div className="p-6 border rounded-xl shadow-sm bg-gradient-to-br from-white to-gray-50">
