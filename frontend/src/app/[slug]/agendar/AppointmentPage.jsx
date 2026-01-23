@@ -51,6 +51,8 @@ export default function AppointmentPage({ slug }) {
   const [appointmentResult, setAppointmentResult] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [appointmentData, setAppointmentData] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentData, setPaymentData] = useState(null);
 
   const servicePrice = Number(selected?.service?.price ?? 0);
   const hasService = Number.isFinite(servicePrice) && selected?.service;
@@ -371,6 +373,10 @@ const sendWhatsappConfirmation = async () => {
         return;
       }
 
+      const validatedFinal = data?.validated_prices?.final ?? finalPrice;
+      const validatedOriginal = data?.validated_prices?.original ?? originalPrice;
+      const usedCoupon = selected.coupon;
+
       setAppointmentData({
         category: selected.category,
         service: selected.service,
@@ -379,9 +385,9 @@ const sendWhatsappConfirmation = async () => {
         time: selected.time,
         client: clientData,
         prices: {
-          original: originalPrice,
-          final: finalPrice,
-          coupon: selected.coupon,
+          original: validatedOriginal,
+          final: validatedFinal,
+          coupon: usedCoupon,
         }
       });
 
@@ -395,8 +401,20 @@ const sendWhatsappConfirmation = async () => {
       });
       setCouponInput("");
 
-      toast.success("Agendamento confirmado!");
-      setShowModal(true);
+      if (data?.payment_required) {
+        setPaymentData({
+          qrCode: data?.payment?.qr_code || null,
+          copyPaste: data?.payment?.copy_paste || "",
+          amount: validatedFinal,
+          status: data?.appointment?.status || "pending",
+          error: data?.error || null,
+        });
+        setShowPaymentModal(true);
+        toast.info("Finalize o pagamento via PIX para confirmar seu agendamento.");
+      } else {
+        toast.success("Agendamento confirmado!");
+        setShowModal(true);
+      }
     } catch (err) {
       console.error("Erro ao confirmar agendamento:", err);
       toast.error("Erro interno. Tente novamente mais tarde.");
@@ -438,6 +456,16 @@ const sendWhatsappConfirmation = async () => {
 
   const formattedPrice = (value) =>
   value?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const handleCopyPix = async (text) => {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Código PIX copiado!");
+    } catch (err) {
+      toast.error("Não foi possível copiar o código");
+    }
+  };
 
   const ModalConfirm = () => {
     if (!showModal || !appointmentData) return null;
@@ -507,6 +535,89 @@ const sendWhatsappConfirmation = async () => {
           >
             Fechar
           </button>
+        </div>
+      </div>
+    );
+  };
+
+  const PaymentModal = () => {
+    if (!showPaymentModal || !appointmentData) return null;
+
+    const a = appointmentData;
+    const amount = paymentData?.amount ?? a.prices?.final;
+
+    return (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-gradient-to-b from-white to-gray-50 rounded-2xl shadow-2xl w-full max-w-2xl p-6 border border-gray-100 relative">
+          <div className="absolute inset-x-0 -top-1 h-1 bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-amber-500 rounded-t-2xl"></div>
+
+          <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">Pagamento PIX</h2>
+          <p className="text-center text-gray-600 mb-6">
+            Use o QR Code ou o código copia e cola abaixo para concluir o pagamento e confirmar seu agendamento.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <div className="flex flex-col items-center gap-3">
+              {paymentData?.qrCode ? (
+                <div className="bg-white rounded-xl border shadow-sm p-4 w-full flex items-center justify-center">
+                  <img
+                    src={paymentData.qrCode}
+                    alt="QR Code PIX"
+                    className="w-48 h-48 object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-56 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 text-sm">
+                  QR Code não disponível no momento
+                </div>
+              )}
+              <div className="text-center">
+                <p className="text-sm text-gray-500">Valor a pagar</p>
+                <p className="text-2xl font-bold text-gray-900">{formattedPrice(amount)}</p>
+                <p className="text-xs text-gray-400 mt-1">Pagamento via PIX instantâneo</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-gray-900 text-white rounded-xl p-4 shadow-inner">
+                <p className="text-sm text-gray-200 mb-2">Código copia e cola</p>
+                <div className="bg-gray-800 rounded-lg p-3 text-sm break-all max-h-44 overflow-auto">
+                  {paymentData?.copyPaste || "Código indisponível"}
+                </div>
+                <button
+                  onClick={() => handleCopyPix(paymentData?.copyPaste)}
+                  className="mt-3 w-full bg-white text-gray-900 font-semibold py-2 rounded-lg hover:bg-gray-100 transition"
+                >
+                  Copiar código
+                </button>
+              </div>
+
+              {paymentData?.error && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg p-3">
+                  {paymentData.error}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-amber-400"></span>
+                  Status do agendamento: <strong className="text-gray-800">Aguardando pagamento</strong>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Assim que o pagamento for identificado, seu agendamento será confirmado automaticamente.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowPaymentModal(false);
+                }}
+                className="w-full bg-gray-100 text-gray-800 font-semibold py-3 rounded-lg hover:bg-gray-200 transition"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -952,6 +1063,7 @@ const sendWhatsappConfirmation = async () => {
           )}
         </div>
         <ModalConfirm />
+        <PaymentModal />
       </main>
     </div>
   );
