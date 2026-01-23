@@ -3,10 +3,12 @@ import multer from 'multer';
 import {
   getImagesBySlug,
   uploadImageBySlug,
-  deleteImageBySlug
+  deleteImageBySlug,
+  deleteImagesBatchBySlug
 } from '../controllers/galleryController.js';
 
-const upload = multer();
+const storage = multer.memoryStorage();
+const upload = multer({storage})
 export const galleryRouter = Router();
 
 /**
@@ -96,6 +98,39 @@ galleryRouter.get('/:slug', getImagesBySlug);
  *         description: Erro no upload
  */
 galleryRouter.post('/:slug/upload', upload.array('imagens[]', 10), uploadImageBySlug);
+
+
+/**
+ * @swagger
+ * /api/galeria/{slug}/batch:
+ *   delete:
+ *     summary: Exclusão em lote de imagens
+ *     tags: [Galeria]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *     responses:
+ *       200:
+ *         description: Imagens removidas com sucesso
+ */
+galleryRouter.delete(
+  '/:slug/batch',
+  deleteImagesBatchBySlug
+);
 
 /**
  * @swagger
