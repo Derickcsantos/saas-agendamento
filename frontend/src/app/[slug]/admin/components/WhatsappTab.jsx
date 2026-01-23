@@ -23,6 +23,8 @@ export default function WhatsappTab({ org }) {
   const [qrCode, setQrCode] = useState(null);
   const [sessionId, setSessionId] = useState(null);
   const [connecting, setConnecting] = useState(false);
+  const [qrSize, setQrSize] = useState(240);
+  const qrContainerRef = useRef(null);
 
   // Contatos
   const [contacts, setContacts] = useState([]);
@@ -80,6 +82,23 @@ export default function WhatsappTab({ org }) {
     setCurrentPage(1);
   }, [searchQuery, contacts]);
 
+  // Ajusta o tamanho do QR de forma responsiva
+  useEffect(() => {
+    const updateQrSize = () => {
+      if (!qrContainerRef.current) return;
+      const width = qrContainerRef.current.offsetWidth;
+      const nextSize = Math.max(180, Math.min(width - 48, 320));
+      setQrSize(nextSize);
+    };
+
+    updateQrSize();
+
+    const observer = new ResizeObserver(updateQrSize);
+    if (qrContainerRef.current) observer.observe(qrContainerRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
   async function checkConnectionStatus() {
     setLoading(true);
     try {
@@ -122,14 +141,14 @@ export default function WhatsappTab({ org }) {
 
       if (res.ok) {
         // Mapear contatos para formato interno
-        const mappedContacts = (data.contacts || []).map(c => ({
+        const mappedContacts = (data.contacts || []).map((c) => ({
           jid: c.jid,
-          name: c.name || c.notify || "Sem nome",
-          number: c.jid?.split('@')[0] || c.jid,
+          name: c.name || c.verifiedName || c.notify || "Sem nome",
+          number: c.number || c.jid?.split('@')[0] || c.jid,
           notify: c.notify,
           verifiedName: c.verifiedName,
           imgUrl: c.imgUrl,
-          status: c.status
+          status: c.status,
         }));
         setContacts(mappedContacts);
       }
@@ -486,12 +505,19 @@ export default function WhatsappTab({ org }) {
       {/* QR CODE */}
       {qrCode && !isConnected && (
         <div className="bg-white p-10 rounded-lg shadow-sm border text-center">
-          <div className="max-w-md mx-auto">
+          <div className="max-w-lg mx-auto space-y-4">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
               Escaneie o QR Code
             </h2>
-            <div className="bg-white p-6 rounded-lg inline-block mb-4">
-              <QRCodeCanvas value={qrCode} size={256} />
+            <div
+              ref={qrContainerRef}
+              className="bg-white p-6 rounded-lg inline-block mb-4 w-full sm:w-auto shadow-inner"
+            >
+              <QRCodeCanvas
+                value={qrCode}
+                size={qrSize}
+                style={{ width: "100%", height: "auto", maxWidth: 360 }}
+              />
             </div>
             <p className="text-gray-600 mb-2">
               1. Abra o WhatsApp no seu celular
@@ -597,8 +623,7 @@ export default function WhatsappTab({ org }) {
                           className="w-4 h-4"
                         />
                       </th>
-                      <th className="px-6 py-3 text-left font-semibold text-gray-700">Nome</th>
-                      <th className="px-6 py-3 text-left font-semibold text-gray-700">Número</th>
+                      <th className="px-6 py-3 text-left font-semibold text-gray-700">Contato</th>
                       <th className="px-6 py-3 text-left font-semibold text-gray-700">Ação</th>
                     </tr>
                   </thead>
@@ -616,9 +641,11 @@ export default function WhatsappTab({ org }) {
                             />
                           </td>
                           <td className="px-6 py-4 font-medium text-gray-900">
-                            {contact.name || "Sem nome"}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                              <span>{contact.name || "Sem nome"}</span>
+                              <span className="text-sm text-gray-600">({contact.number})</span>
+                            </div>
                           </td>
-                          <td className="px-6 py-4 text-gray-700">{contact.number}</td>
                           <td className="px-6 py-4">
                             <button
                               onClick={() => {
