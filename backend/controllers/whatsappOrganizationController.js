@@ -392,8 +392,14 @@ export const getContacts = async (req, res) => {
     const { data } = await api.get('/contacts', { params });
 
     // A doc pode retornar data = array (não paginado) ou data.items (paginado) :contentReference[oaicite:17]{index=17}
-    let contacts = Array.isArray(data?.data) ? data.data : (data?.data?.items || []);
-    const total = Array.isArray(contacts) ? contacts.length : 0;
+    const payload = data?.data;
+    let contacts = [];
+    if (Array.isArray(payload?.items)) {
+      contacts = payload.items;
+    } else if (Array.isArray(payload)) {
+      contacts = payload;
+    }
+    const total = contacts.length;
 
     if (search) {
       const s = String(search).toLowerCase();
