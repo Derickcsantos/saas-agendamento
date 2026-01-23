@@ -285,6 +285,7 @@ export const connectWhatsapp = async (req, res) => {
       // Salvar no banco de dados IMEDIATAMENTE
       row = await upsertWhatsappRow(orgId, {
         wasender_session_id: created.id,
+        phone_organization: phone_number,
         whatsapp_api_key: created.api_key,
         webhook_secret: created.webhook_secret || null,
       });
