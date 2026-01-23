@@ -4,6 +4,8 @@ import {
   connectWhatsapp,
   disconnectWhatsapp,
   getContacts,
+  getContactInfo,
+  updateContactInfo,
   sendMessage,
   sendBulkMessages,
   getStatistics,
@@ -44,6 +46,22 @@ whatsappOrganizationRouter.get(
   authenticateJWT,
   requireAdminOfOrganization,
   getContacts
+);
+
+// Buscar informações de um contato específico
+whatsappOrganizationRouter.get(
+  '/:slug/contacts/:jid',
+  authenticateJWT,
+  requireAdminOfOrganization,
+  getContactInfo
+);
+
+// Atualizar informações locais do contato (nome/observação/imagem)
+whatsappOrganizationRouter.patch(
+  '/:slug/contacts/:jid',
+  authenticateJWT,
+  requireAdminOfOrganization,
+  updateContactInfo
 );
 
 // Enviar mensagem individual

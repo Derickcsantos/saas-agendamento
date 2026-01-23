@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase.js';
 import axios from 'axios';
+import { redis } from '../lib/redis.js';
 
 /**
  * ENV esperadas:
@@ -40,6 +41,14 @@ function normalizePhoneE164(phone) {
   if (trimmed.startsWith('+')) return trimmed;
   if (/^\d+$/.test(trimmed)) return `+${trimmed}`;
   return trimmed; // se vier formatado, deixa como está
+}
+
+function extractPhoneFromJid(jid) {
+  if (!jid) return null;
+  const base = String(jid).split('@')[0] || '';
+  // mantém apenas dígitos
+  const digits = base.replace(/\D/g, '');
+  return digits || base;
 }
 
 async function getOrgIdBySlug(slug) {
@@ -381,7 +390,43 @@ export const getContacts = async (req, res) => {
       return res.status(400).json({ error: 'WhatsApp não conectado' });
     }
 
-    // GET /api/contacts com Authorization Bearer API_KEY :contentReference[oaicite:16]{index=16}
+    // Cache key específico para esta organização
+    const cacheKey = `whatsapp_contacts:${orgId}`;
+    const CACHE_TTL = 48 * 60 * 60; // 48 horas em segundos
+
+    // Tenta buscar do cache primeiro
+    let cachedContacts = null;
+    if (redis) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          cachedContacts = typeof cached === 'string' ? JSON.parse(cached) : cached;
+          console.log(`[WhatsApp] Cache hit para organização ${slug} (${cachedContacts.length} contatos)`);
+          
+          // Aplicar filtros em contatos cacheados
+          let filteredContacts = cachedContacts;
+          if (search) {
+            const s = String(search).toLowerCase();
+            filteredContacts = cachedContacts.filter((c) => {
+              const name = (c?.name || '').toLowerCase();
+              const jid = String(c?.jid || '');
+              return name.includes(s) || jid.includes(String(search)) || String(c.phone_contact || '').includes(String(search));
+            });
+          }
+          
+          return res.json({
+            success: true,
+            contacts: filteredContacts,
+            total: filteredContacts.length,
+            cached: true,
+          });
+        }
+      } catch (cacheErr) {
+        console.warn('[WhatsApp] Erro ao buscar cache Redis:', cacheErr.message);
+      }
+    }
+
+    // GET /api/contacts com Authorization Bearer API_KEY
     const api = wasenderSession(row.whatsapp_api_key);
 
     const params = {};
@@ -389,24 +434,105 @@ export const getContacts = async (req, res) => {
     if (page) params.page = Number(page);
     if (limit) params.limit = Number(limit);
 
+    console.log(`[WhatsApp] Buscando contatos da API Wasender para ${slug}...`);
     const { data } = await api.get('/contacts', { params });
 
-    // A doc pode retornar data = array (não paginado) ou data.items (paginado) :contentReference[oaicite:17]{index=17}
-    const payload = data?.data;
-    let contacts = [];
-    if (Array.isArray(payload?.items)) {
-      contacts = payload.items;
-    } else if (Array.isArray(payload)) {
-      contacts = payload;
+    // Wasender API: { success: true, data: [...] } ou { success: true, data: { items: [...] } }
+    let contactsApi = [];
+    if (Array.isArray(data?.data)) {
+      contactsApi = data.data;
+    } else if (Array.isArray(data?.data?.items)) {
+      contactsApi = data.data.items;
     }
-    const total = contacts.length;
 
+    console.log(`[WhatsApp] Recebidos ${contactsApi.length} contatos da API`);
+
+    // Mapeia dados básicos + telefone
+    const mapped = contactsApi.map((c) => {
+      const phone = extractPhoneFromJid(c.jid || c.id);
+      return {
+        ...c,
+        jid: c.jid || c.id,
+        phone_contact: phone,
+        name_api: c.name || c.notify || c.verifiedName || null,
+      };
+    }).filter((c) => !!c.phone_contact);
+
+    // Busca existentes no banco para mesclar e não sobrescrever observações/nome manual
+    const phones = mapped.map((c) => c.phone_contact);
+    const { data: existingRows, error: existingErr } = await supabase
+      .from('whatsapp_contacts')
+      .select('*')
+      .eq('organization_id', orgId)
+      .in('phone_contact', phones);
+
+    if (existingErr) throw existingErr;
+    const existingMap = Object.fromEntries((existingRows || []).map((r) => [r.phone_contact, r]));
+
+    const now = new Date().toISOString();
+
+    const upserts = mapped.map((c) => {
+      const prev = existingMap[c.phone_contact];
+      return {
+        organization_id: orgId,
+        phone_contact: c.phone_contact,
+        whatsapp_jid: c.jid || prev?.whatsapp_jid || null,
+        name_contact: c.name_api || prev?.name_contact || null,
+        image_contact: c.imgUrl || prev?.image_contact || null,
+        observation_contact: prev?.observation_contact || null,
+        is_business: prev?.is_business ?? null,
+        last_sync_at: now,
+        updated_at: now,
+      };
+    });
+
+    if (upserts.length > 0) {
+      const { error: upsertErr } = await supabase
+        .from('whatsapp_contacts')
+        .upsert(upserts, { onConflict: 'organization_id,phone_contact' });
+
+      if (upsertErr) throw upsertErr;
+    }
+
+    // Recarrega dados salvos para devolver enriquecido
+    const { data: refreshedRows, error: refreshErr } = await supabase
+      .from('whatsapp_contacts')
+      .select('*')
+      .eq('organization_id', orgId)
+      .in('phone_contact', phones);
+
+    if (refreshErr) throw refreshErr;
+    const refreshedMap = Object.fromEntries((refreshedRows || []).map((r) => [r.phone_contact, r]));
+
+    let contacts = mapped.map((c) => {
+      const db = refreshedMap[c.phone_contact];
+      const nameFinal = db?.name_contact || c.name_api || c.name || c.notify || c.verifiedName || 'Sem nome';
+      return {
+        ...c,
+        name: nameFinal,
+        phone: c.phone_contact,
+        image: db?.image_contact || c.imgUrl || null,
+        observation: db?.observation_contact || null,
+      };
+    });
+
+    // Salvar no cache Redis antes de filtrar
+    if (redis && contacts.length > 0) {
+      try {
+        await redis.set(cacheKey, JSON.stringify(contacts), { ex: CACHE_TTL });
+        console.log(`[WhatsApp] Cache salvo para ${slug} (${contacts.length} contatos, TTL: 48h)`);
+      } catch (cacheErr) {
+        console.warn('[WhatsApp] Erro ao salvar cache Redis:', cacheErr.message);
+      }
+    }
+
+    // Aplicar filtro de busca após salvar cache
     if (search) {
       const s = String(search).toLowerCase();
       contacts = contacts.filter((c) => {
-        const name = (c?.name || c?.notify || '').toLowerCase();
+        const name = (c?.name || '').toLowerCase();
         const jid = String(c?.jid || '');
-        return name.includes(s) || jid.includes(String(search));
+        return name.includes(s) || jid.includes(String(search)) || String(c.phone_contact || '').includes(String(search));
       });
     }
 
@@ -414,12 +540,157 @@ export const getContacts = async (req, res) => {
       success: true,
       contacts,
       total: contacts.length,
+      cached: false,
       raw: data,
     });
   } catch (error) {
-    console.error('Erro ao buscar contatos:', error.response?.data || error.message);
+    const errorMessage = error.message || 'Erro desconhecido';
+    const errorDetails = error.response?.data || error.stack || errorMessage;
+    
+    console.error('[WhatsApp] Erro ao buscar contatos:', {
+      message: errorMessage,
+      details: errorDetails,
+      apiKey: error.config?.headers?.Authorization ? '***' : 'não definido',
+      url: error.config?.url,
+      status: error.response?.status,
+    });
+    
     return res.status(500).json({
       error: 'Erro ao buscar contatos',
+      details: errorMessage,
+      apiError: error.response?.data,
+    });
+  }
+};
+
+// 4.1) Informações detalhadas de um contato
+export const getContactInfo = async (req, res) => {
+  try {
+    const { slug, jid } = req.params;
+    const orgId = await getOrgIdBySlug(slug);
+    const row = await getWhatsappRow(orgId);
+
+    if (!row?.whatsapp_api_key) {
+      return res.status(400).json({ error: 'WhatsApp não conectado' });
+    }
+
+    const api = wasenderSession(row.whatsapp_api_key);
+    const targetJid = decodeURIComponent(jid);
+    const phone = extractPhoneFromJid(targetJid);
+
+    const { data } = await api.get(`/contacts/${encodeURIComponent(targetJid)}`);
+    const apiContact = data?.data || data || {};
+
+    // Mescla/garante persistência no banco
+    const { data: existing, error: existingErr } = await supabase
+      .from('whatsapp_contacts')
+      .select('*')
+      .eq('organization_id', orgId)
+      .eq('phone_contact', phone)
+      .maybeSingle();
+
+    if (existingErr) throw existingErr;
+
+    const merged = {
+      organization_id: orgId,
+      phone_contact: phone,
+      whatsapp_jid: apiContact.jid || apiContact.id || targetJid,
+      name_contact: apiContact.name || apiContact.notify || apiContact.verifiedName || existing?.name_contact || null,
+      image_contact: apiContact.imgUrl || existing?.image_contact || null,
+      observation_contact: existing?.observation_contact || null,
+      updated_at: new Date().toISOString(),
+      last_sync_at: new Date().toISOString(),
+    };
+
+    const { data: upserted, error: upsertErr } = await supabase
+      .from('whatsapp_contacts')
+      .upsert(merged, { onConflict: 'organization_id,phone_contact' })
+      .select('*')
+      .single();
+
+    if (upsertErr) throw upsertErr;
+
+    const responseContact = {
+      ...apiContact,
+      jid: apiContact.jid || apiContact.id || targetJid,
+      phone_contact: phone,
+      name: upserted?.name_contact || apiContact.name || apiContact.notify || apiContact.verifiedName,
+      observation: upserted?.observation_contact || null,
+      image: upserted?.image_contact || apiContact.imgUrl || null,
+    };
+
+    return res.json({
+      success: true,
+      contact: responseContact,
+      raw: data,
+    });
+  } catch (error) {
+    console.error('Erro ao buscar contato:', error.response?.data || error.message);
+    return res.status(error.statusCode || 500).json({
+      error: 'Erro ao buscar contato',
+      details: error.response?.data || error.message,
+    });
+  }
+};
+
+// 4.2) Atualizar dados locais (nome/observação/imagem) de um contato
+export const updateContactInfo = async (req, res) => {
+  try {
+    const { slug, jid } = req.params;
+    const { name, observation, image } = req.body || {};
+
+    const orgId = await getOrgIdBySlug(slug);
+    const phone = extractPhoneFromJid(decodeURIComponent(jid));
+
+    if (!phone) {
+      return res.status(400).json({ error: 'jid inválido' });
+    }
+
+    const updates = {
+      name_contact: name?.trim() ? name.trim() : undefined,
+      observation_contact: observation?.trim() ? observation.trim() : undefined,
+      image_contact: image || undefined,
+      updated_at: new Date().toISOString(),
+    };
+
+    // remove undefined
+    Object.keys(updates).forEach((k) => updates[k] === undefined && delete updates[k]);
+
+    if (Object.keys(updates).length === 1 && updates.updated_at) {
+      return res.status(400).json({ error: 'Nada para atualizar' });
+    }
+
+    const payload = {
+      organization_id: orgId,
+      phone_contact: phone,
+      whatsapp_jid: decodeURIComponent(jid),
+      ...updates,
+    };
+
+    const { data: upserted, error } = await supabase
+      .from('whatsapp_contacts')
+      .upsert(payload, { onConflict: 'organization_id,phone_contact' })
+      .select('*')
+      .single();
+
+    if (error) throw error;
+
+    // Invalida cache de contatos ao atualizar
+    if (redis) {
+      try {
+        const cacheKey = `whatsapp_contacts:${orgId}`;
+        await redis.del(cacheKey);
+        console.log(`[WhatsApp] Cache invalidado para organização ${orgId}`);
+      } catch (cacheErr) {
+        console.warn('[WhatsApp] Erro ao invalidar cache:', cacheErr.message);
+      }
+    }
+
+    return res.json({ success: true, contact: upserted });
+  } catch (error) {
+    console.error('Erro ao atualizar contato:', error.response?.data || error.message);
+    return res.status(error.statusCode || 500).json({
+      error: 'Erro ao atualizar contato',
       details: error.response?.data || error.message,
     });
   }
@@ -537,11 +808,16 @@ export const getStatistics = async (req, res) => {
       status = String(data?.status || '').toLowerCase();
     } catch {}
 
-    // contacts: GET /api/contacts :contentReference[oaicite:20]{index=20}
+    // contacts: GET /api/contacts
     let totalContacts = 0;
     try {
       const { data } = await api.get('/contacts');
-      const contacts = Array.isArray(data?.data) ? data.data : [];
+      let contacts = [];
+      if (Array.isArray(data?.data)) {
+        contacts = data.data;
+      } else if (Array.isArray(data?.data?.items)) {
+        contacts = data.data.items;
+      }
       totalContacts = contacts.length;
     } catch {}
 

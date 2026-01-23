@@ -52,6 +52,11 @@ export default function WhatsappTab({ org }) {
     connectedSince: null
   });
 
+  // Modal de info de contato
+  const [contactInfoModal, setContactInfoModal] = useState({ open: false, loading: false, data: null });
+  const [contactEdit, setContactEdit] = useState({ name: '', observation: '', image: '' });
+  const [savingContact, setSavingContact] = useState(false);
+
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
   const slug = org.slug_organization;
 
@@ -141,15 +146,19 @@ export default function WhatsappTab({ org }) {
 
       if (res.ok) {
         // Mapear contatos para formato interno
-        const mappedContacts = (data.contacts || []).map((c) => ({
-          jid: c.jid,
-          name: c.name || c.verifiedName || c.notify || "Sem nome",
-          number: c.number || c.jid?.split('@')[0] || c.jid,
-          notify: c.notify,
-          verifiedName: c.verifiedName,
-          imgUrl: c.imgUrl,
-          status: c.status,
-        }));
+        const mappedContacts = (data.contacts || []).map((c) => {
+          const numberFromJid = c.jid?.split('@')[0] || c.phone || c.phone_contact || '';
+          return {
+            jid: c.jid,
+            name: c.name || c.verifiedName || c.notify || "Sem nome",
+            number: numberFromJid,
+            notify: c.notify,
+            verifiedName: c.verifiedName,
+            imgUrl: c.image || c.imgUrl,
+            status: c.status,
+            observation: c.observation || null,
+          };
+        });
         setContacts(mappedContacts);
       }
     } catch (error) {
@@ -409,6 +418,84 @@ export default function WhatsappTab({ org }) {
     setSelectedContacts([]);
   }
 
+  async function openContactInfo(jid) {
+    setContactInfoModal({ open: true, loading: true, data: null });
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/whatsapp-organization/${slug}/contacts/${encodeURIComponent(jid)}`,
+        { credentials: "include", cache: "no-store" }
+      );
+      const data = await res.json();
+
+      if (res.ok && data?.contact) {
+        const contactData = data.contact;
+        setContactInfoModal({ open: true, loading: false, data: contactData });
+        setContactEdit({
+          name: contactData.name || '',
+          observation: contactData.observation || '',
+          image: contactData.image || '',
+        });
+      } else {
+        toast.error(data.error || "Não foi possível carregar o contato");
+        setContactInfoModal({ open: false, loading: false, data: null });
+      }
+    } catch (error) {
+      console.error("Erro ao carregar contato:", error);
+      toast.error("Erro ao carregar contato");
+      setContactInfoModal({ open: false, loading: false, data: null });
+    }
+  }
+
+  async function saveContactInfo() {
+    if (!contactInfoModal.data?.jid) return;
+    setSavingContact(true);
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/whatsapp-organization/${slug}/contacts/${encodeURIComponent(contactInfoModal.data.jid)}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: contactEdit.name,
+            observation: contactEdit.observation,
+            image: contactEdit.image,
+          }),
+        }
+      );
+
+      const data = await res.json();
+      if (res.ok && data?.contact) {
+        setContacts((prev) => prev.map((c) =>
+          c.jid === contactInfoModal.data.jid
+            ? {
+                ...c,
+                name: contactEdit.name || c.name,
+                observation: contactEdit.observation,
+                imgUrl: contactEdit.image || c.imgUrl,
+              }
+            : c
+        ));
+
+        setContactInfoModal((prev) => ({ ...prev, data: {
+          ...prev.data,
+          name: contactEdit.name,
+          observation: contactEdit.observation,
+          image: contactEdit.image || prev.data.image,
+        } }));
+
+        toast.success("Contato atualizado");
+      } else {
+        toast.error(data.error || "Erro ao atualizar contato");
+      }
+    } catch (err) {
+      console.error("Erro ao salvar contato:", err);
+      toast.error("Erro ao salvar contato");
+    } finally {
+      setSavingContact(false);
+    }
+  }
+
   // Paginação
   const paginatedContacts = filteredContacts.slice(
     (currentPage - 1) * itemsPerPage,
@@ -641,10 +728,22 @@ export default function WhatsappTab({ org }) {
                             />
                           </td>
                           <td className="px-6 py-4 font-medium text-gray-900">
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                              <span>{contact.name || "Sem nome"}</span>
-                              <span className="text-sm text-gray-600">({contact.number})</span>
-                            </div>
+                            <button
+                              onClick={() => openContactInfo(contact.jid)}
+                              className="text-left w-full flex items-center gap-3 hover:text-blue-600"
+                            >
+                              <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-sm font-semibold text-gray-600">
+                                {contact.imgUrl ? (
+                                  <img src={contact.imgUrl} alt={contact.name || "Contato"} className="w-full h-full object-cover" />
+                                ) : (
+                                  (contact.name || 'C').slice(0, 2).toUpperCase()
+                                )}
+                              </div>
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                <span>{contact.name || "Sem nome"}</span>
+                                <span className="text-sm text-gray-600">({contact.number})</span>
+                              </div>
+                            </button>
                           </td>
                           <td className="px-6 py-4">
                             <button
@@ -695,6 +794,91 @@ export default function WhatsappTab({ org }) {
             )}
           </div>
         </>
+      )}
+
+      {/* MODAL INFO CONTATO */}
+      {contactInfoModal.open && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
+            <button
+              onClick={() => setContactInfoModal({ open: false, loading: false, data: null })}
+              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+            >
+              <XCircle size={20} />
+            </button>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Informações do Contato</h3>
+
+            {contactInfoModal.loading && (
+              <div className="flex items-center gap-3 text-gray-600">
+                <Loader className="animate-spin" size={20} />
+                <span>Carregando...</span>
+              </div>
+            )}
+
+            {!contactInfoModal.loading && contactInfoModal.data && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-sm font-semibold text-gray-600">
+                    {contactInfoModal.data.image ? (
+                      <img src={contactInfoModal.data.image} alt="Foto do contato" className="w-full h-full object-cover" />
+                    ) : (
+                      (contactEdit.name || contactInfoModal.data.name || 'C').slice(0, 2).toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-500">Número</p>
+                    <p className="text-base text-gray-900">{(contactInfoModal.data.id || contactInfoModal.data.jid || '').split('@')[0]}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-500">Nome</label>
+                  <input
+                    type="text"
+                    className="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2"
+                    value={contactEdit.name}
+                    onChange={(e) => setContactEdit((p) => ({ ...p, name: e.target.value }))}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-500">Observação</label>
+                  <textarea
+                    className="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2"
+                    rows={3}
+                    value={contactEdit.observation}
+                    onChange={(e) => setContactEdit((p) => ({ ...p, observation: e.target.value }))}
+                  />
+                </div>
+
+                {contactInfoModal.data.status && (
+                  <div>
+                    <p className="text-sm text-gray-500">Status</p>
+                    <p className="text-base text-gray-900">{contactInfoModal.data.status}</p>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => setContactInfoModal({ open: false, loading: false, data: null })}
+                    className="px-4 py-2 border rounded-lg hover:bg-gray-50 transition"
+                    disabled={savingContact}
+                  >
+                    Fechar
+                  </button>
+                  <button
+                    onClick={saveContactInfo}
+                    disabled={savingContact}
+                    className="px-5 py-2 text-white rounded-lg font-medium transition disabled:opacity-50"
+                    style={{ backgroundColor: strong }}
+                  >
+                    {savingContact ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* MODAL DE TELEFONE PARA CONECTAR */}
