@@ -3,6 +3,63 @@ import express from 'express';
 import generateAccessToken from '../utils/jwt.js';
 import jwt from 'jsonwebtoken';
 
+/**
+ * Extrai o token do httpOnly cookie ou do header Authorization
+ * Retorna null se não encontrar (sem bloquear a requisição)
+ */
+export function extractTokenSafely(req) {
+  try {
+    // Prioriza cookie (first-party). Se indisponível, cai para header.
+    let token = req.cookies?.token;
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
+    }
+    return token || null;
+  } catch (err) {
+    console.error('❌ Erro ao extrair token:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Extrai as informações do usuário do token de forma segura
+ * Retorna { user, isValid } ou { user: null, isValid: false } se inválido
+ */
+export function getUserFromTokenSafely(req) {
+  try {
+    const token = extractTokenSafely(req);
+    if (!token) {
+      return { user: null, isValid: false };
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return { user: decoded, isValid: true };
+  } catch (err) {
+    console.error('❌ Erro ao decodificar token:', err.message);
+    return { user: null, isValid: false };
+  }
+}
+
+/**
+ * Verifica se o usuário é admin
+ * Retorna true apenas se token é válido E role é 'admin'
+ */
+export function isUserAdmin(req) {
+  try {
+    const { user, isValid } = getUserFromTokenSafely(req);
+    if (!isValid || !user) {
+      return false;
+    }
+    return user.role === 'admin';
+  } catch (err) {
+    console.error('❌ Erro ao verificar admin status:', err.message);
+    return false;
+  }
+}
+
 export function authenticateJWT(req, res, next) {
   // Prioriza cookie (first-party). Se indisponível (p.ex. bloqueio de third-party), cai para header.
   let token = req.cookies.token;

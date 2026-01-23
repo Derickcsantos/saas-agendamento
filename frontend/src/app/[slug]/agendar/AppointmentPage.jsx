@@ -51,6 +51,10 @@ export default function AppointmentPage({ slug }) {
   const [appointmentResult, setAppointmentResult] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [appointmentData, setAppointmentData] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentData, setPaymentData] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(300); // 5 minutos em segundos
+  const [refreshingPix, setRefreshingPix] = useState(false);
 
   const servicePrice = Number(selected?.service?.price ?? 0);
   const hasService = Number.isFinite(servicePrice) && selected?.service;
@@ -74,6 +78,23 @@ export default function AppointmentPage({ slug }) {
     };
     checkAuth();
   }, []);
+
+  // ✅ Contador de tempo para o PIX
+  useEffect(() => {
+    if (!showPaymentModal || timeLeft <= 0) return;
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [showPaymentModal, timeLeft]);
 
   const formatDateBR = (iso) => {
     if (!iso) return "";
@@ -320,6 +341,54 @@ const sendWhatsappConfirmation = async () => {
   }
 };
 
+  // ✅ Função para atualizar/regenerar o QR Code PIX
+  const handleRefreshPix = async () => {
+    if (!appointmentData || !paymentData) return;
+
+    try {
+      setRefreshingPix(true);
+      
+      const amount = paymentData.amount || appointmentData.prices.final;
+      
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/payments/${slug}/pix`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: amount,
+            appointment_id: appointmentData.id || null,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao gerar novo PIX");
+      }
+
+      // Atualiza os dados do pagamento com novo QR Code
+      setPaymentData({
+        qrCode: data.qr_code || null,
+        copyPaste: data.copy_paste || "",
+        amount: amount,
+        status: "pending",
+        error: null,
+      });
+
+      // Reinicia o contador
+      setTimeLeft(300); // 5 minutos
+
+      toast.success("QR Code atualizado com sucesso!");
+    } catch (err) {
+      console.error("Erro ao atualizar PIX:", err);
+      toast.error(err.message || "Falha ao atualizar QR Code");
+    } finally {
+      setRefreshingPix(false);
+    }
+  };
 
   const handleConfirmAppointment = async (clientData) => {
     if (!selected.service || !selected.employee || !selected.time || !selected.date) {
@@ -365,11 +434,24 @@ const sendWhatsappConfirmation = async () => {
 
       const data = await res.json();
 
+      console.log("📦 Resposta do backend:", {
+        ok: res.ok,
+        status: res.status,
+        payment_required: data?.payment_required,
+        has_payment: !!data?.payment,
+        has_qr_code: !!data?.payment?.qr_code,
+        error: data?.error
+      });
+
       if (!res.ok) {
-        console.error("Erro ao criar agendamento:", data);
-        toast.error("Erro ao confirmar o agendamento.");
+        console.error("❌ Erro ao criar agendamento:", data);
+        toast.error(data?.error || "Erro ao confirmar o agendamento.");
         return;
       }
+
+      const validatedFinal = data?.validated_prices?.final ?? finalPrice;
+      const validatedOriginal = data?.validated_prices?.original ?? originalPrice;
+      const usedCoupon = selected.coupon;
 
       setAppointmentData({
         category: selected.category,
@@ -379,9 +461,9 @@ const sendWhatsappConfirmation = async () => {
         time: selected.time,
         client: clientData,
         prices: {
-          original: originalPrice,
-          final: finalPrice,
-          coupon: selected.coupon,
+          original: validatedOriginal,
+          final: validatedFinal,
+          coupon: usedCoupon,
         }
       });
 
@@ -395,8 +477,38 @@ const sendWhatsappConfirmation = async () => {
       });
       setCouponInput("");
 
-      toast.success("Agendamento confirmado!");
-      setShowModal(true);
+      // ✅ Verificação explícita de pagamento obrigatório
+      if (data?.payment_required === true) {
+        console.log("💳 Pagamento obrigatório detectado");
+        
+        const paymentInfo = {
+          qrCode: data?.payment?.qr_code || null,
+          copyPaste: data?.payment?.copy_paste || "",
+          amount: data?.payment?.amount || validatedFinal,
+          status: data?.appointment?.status || "pending",
+          error: data?.error || null,
+        };
+
+        console.log("💳 Dados do pagamento:", {
+          hasQrCode: !!paymentInfo.qrCode,
+          hasCopyPaste: !!paymentInfo.copyPaste,
+          amount: paymentInfo.amount,
+          error: paymentInfo.error
+        });
+
+        setPaymentData(paymentInfo);
+        setShowPaymentModal(true);
+        
+        if (paymentInfo.error) {
+          toast.error(paymentInfo.error);
+        } else {
+          toast.info("Finalize o pagamento via PIX para confirmar seu agendamento.");
+        }
+      } else {
+        console.log("✅ Agendamento confirmado sem pagamento");
+        toast.success("Agendamento confirmado!");
+        setShowModal(true);
+      }
     } catch (err) {
       console.error("Erro ao confirmar agendamento:", err);
       toast.error("Erro interno. Tente novamente mais tarde.");
@@ -438,6 +550,16 @@ const sendWhatsappConfirmation = async () => {
 
   const formattedPrice = (value) =>
   value?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const handleCopyPix = async (text) => {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Código PIX copiado!");
+    } catch (err) {
+      toast.error("Não foi possível copiar o código");
+    }
+  };
 
   const ModalConfirm = () => {
     if (!showModal || !appointmentData) return null;
@@ -507,6 +629,145 @@ const sendWhatsappConfirmation = async () => {
           >
             Fechar
           </button>
+        </div>
+      </div>
+    );
+  };
+
+  const PaymentModal = () => {
+    if (!showPaymentModal || !appointmentData) return null;
+
+    const a = appointmentData;
+    const amount = paymentData?.amount ?? a.prices?.final;
+
+    // Formatar tempo restante (mm:ss)
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    const timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+    return (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-gradient-to-b from-white to-gray-50 rounded-2xl shadow-2xl w-full max-w-2xl p-6 border border-gray-100 relative">
+          <div className="absolute inset-x-0 -top-1 h-1 bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-amber-500 rounded-t-2xl"></div>
+
+          <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">Pagamento PIX</h2>
+          <p className="text-center text-gray-600 mb-2">
+            Use o QR Code ou o código copia e cola abaixo para concluir o pagamento e confirmar seu agendamento.
+          </p>
+
+          {/* ✅ Contador de Tempo */}
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <span className={`inline-flex items-center gap-1 text-sm font-semibold px-3 py-1 rounded-full ${
+              timeLeft <= 60 
+                ? 'bg-red-100 text-red-700' 
+                : timeLeft <= 180 
+                ? 'bg-yellow-100 text-yellow-700' 
+                : 'bg-green-100 text-green-700'
+            }`}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {timeLeft > 0 ? timeDisplay : "Expirado"}
+            </span>
+            {timeLeft === 0 && (
+              <span className="text-xs text-red-600">QR Code expirado. Clique em "Atualizar QR Code"</span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <div className="flex flex-col items-center gap-3">
+              {paymentData?.qrCode ? (
+                <div className="bg-white rounded-xl border shadow-sm p-4 w-full flex items-center justify-center relative">
+                  <img
+                    src={paymentData.qrCode}
+                    alt="QR Code PIX"
+                    className={`w-48 h-48 object-contain ${timeLeft === 0 ? 'opacity-30 grayscale' : ''}`}
+                  />
+                  {timeLeft === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                        Expirado
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full h-56 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 text-sm">
+                  QR Code não disponível no momento
+                </div>
+              )}
+              <div className="text-center">
+                <p className="text-sm text-gray-500">Valor a pagar</p>
+                <p className="text-2xl font-bold text-gray-900">{formattedPrice(amount)}</p>
+                <p className="text-xs text-gray-400 mt-1">Pagamento via PIX instantâneo</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-gray-900 text-white rounded-xl p-4 shadow-inner">
+                <p className="text-sm text-gray-200 mb-2">Código copia e cola</p>
+                <div className={`bg-gray-800 rounded-lg p-3 text-sm break-all max-h-44 overflow-auto ${timeLeft === 0 ? 'opacity-50' : ''}`}>
+                  {paymentData?.copyPaste || "Código indisponível"}
+                </div>
+                <button
+                  onClick={() => handleCopyPix(paymentData?.copyPaste)}
+                  disabled={timeLeft === 0}
+                  className="mt-3 w-full bg-white text-gray-900 font-semibold py-2 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Copiar código
+                </button>
+              </div>
+
+              {/* ✅ Botão Atualizar QR Code */}
+              <button
+                onClick={handleRefreshPix}
+                disabled={refreshingPix}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {refreshingPix ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Atualizando...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Atualizar QR Code
+                  </>
+                )}
+              </button>
+
+              {paymentData?.error && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg p-3">
+                  {paymentData.error}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-amber-400"></span>
+                  Status do agendamento: <strong className="text-gray-800">Aguardando pagamento</strong>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Assim que o pagamento for identificado, seu agendamento será confirmado automaticamente.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowPaymentModal(false);
+                }}
+                className="w-full bg-gray-100 text-gray-800 font-semibold py-3 rounded-lg hover:bg-gray-200 transition"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -952,6 +1213,7 @@ const sendWhatsappConfirmation = async () => {
           )}
         </div>
         <ModalConfirm />
+        <PaymentModal />
       </main>
     </div>
   );

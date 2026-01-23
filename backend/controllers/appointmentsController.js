@@ -1,6 +1,133 @@
 import { supabase } from '../lib/supabase.js';
 import { google } from "googleapis";
+import axios from "axios";
 import { sendWhatsAppMessage } from "../lib/whatsapp.js";
+import { isUserAdmin } from '../middlewares/authMiddleware.js';
+
+// Garante que a linha de saldo exista para a organização
+async function ensureOrganizationBalance(organizationId) {
+  const { data } = await supabase
+    .from("organization_withdrawals_balance")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .single();
+
+  if (!data) {
+    await supabase
+      .from("organization_withdrawals_balance")
+      .insert({ organization_id: organizationId });
+  }
+}
+
+// Cria cobrança PIX via AbacatePay e retorna dados para pagamento
+async function createPixCharge({ organizationId, appointmentId, amountInCents }) {
+  if (!amountInCents || amountInCents <= 0) {
+    throw new Error("Valor inválido para cobrança PIX");
+  }
+
+  await ensureOrganizationBalance(organizationId);
+
+  const feeAmount = 100; // R$1 taxa da plataforma em centavos
+  const netAmount = amountInCents - feeAmount;
+
+  if (netAmount <= 0) {
+    throw new Error("Valor líquido inválido para cobrança PIX");
+  }
+
+  // 1️⃣ Cria transação pendente
+  const { data: transaction, error: txError } = await supabase
+    .from("transactions_organizations")
+    .insert({
+      organization_id: organizationId,
+      appointment_id: appointmentId,
+      type: "pix_in",
+      status: "pending",
+      gross_amount: amountInCents,
+      fee_amount: feeAmount,
+      net_amount: netAmount
+    })
+    .select()
+    .single();
+
+  if (txError) {
+    throw txError;
+  }
+
+  // 2️⃣ Gera QR Code PIX via AbacatePay
+  let abacateResponse;
+  try {
+    console.log("🔄 Chamando AbacatePay API com:", {
+      url: `${process.env.ABACATEPAY_BASE_URL}/v1/pixQrCode/create`,
+      amount: amountInCents,
+      description: "Appointment payment"
+    });
+
+    abacateResponse = await axios.post(
+      `${process.env.ABACATEPAY_BASE_URL}/v1/pixQrCode/create`,
+      {
+        amount: amountInCents,
+        description: "Appointment payment",
+        expiresIn: 300,  // ✅ 5 minutos
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.ABACATEPAY_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("✅ Resposta AbacatePay:", {
+      status: abacateResponse.status,
+      hasData: !!abacateResponse.data,
+      dataKeys: Object.keys(abacateResponse.data || {})
+    });
+  } catch (apiError) {
+    // Marca transação como falha
+    await supabase
+      .from("transactions_organizations")
+      .update({ status: "failed" })
+      .eq("id", transaction.id);
+
+    console.error("❌ Erro ao chamar AbacatePay:", {
+      message: apiError.message,
+      response: apiError.response?.data,
+      status: apiError.response?.status
+    });
+
+    const details = apiError.response?.data || apiError.message;
+    throw new Error(`Falha ao gerar PIX: ${JSON.stringify(details)}`);
+  }
+
+  // ✅ Corrigido: AbacatePay retorna 'data.brCode' e 'data.brCodeBase64'
+  const pixData = abacateResponse.data?.data || abacateResponse.data;
+
+  console.log("📦 Dados do PIX recebidos:", {
+    id: pixData.id,
+    brCode: pixData.brCode ? "✅ presente" : "❌ ausente",
+    brCodeBase64: pixData.brCodeBase64 ? "✅ presente" : "❌ ausente",
+    status: pixData.status
+  });
+
+  // 3️⃣ Salva dados do PIX na transação
+  await supabase
+    .from("transactions_organizations")
+    .update({
+      external_id: pixData.id,
+      pix_qr_code: pixData.brCodeBase64,  // ✅ Corrigido de qr_code para brCodeBase64
+      pix_copy_paste: pixData.brCode,     // ✅ Corrigido de copy_paste para brCode
+    })
+    .eq("id", transaction.id);
+
+  return {
+    transactionId: transaction.id,
+    qrCode: pixData.brCodeBase64,  // ✅ Retorna base64 do QR
+    copyPaste: pixData.brCode,     // ✅ Retorna código copia e cola
+    grossAmount: amountInCents,
+    feeAmount,
+    netAmount,
+  };
+}
 
 export const getAppointmentsByEmployee = async (req, res) => {
   try {
@@ -111,9 +238,123 @@ export const createAppointment = async (req, res) => {
       return res.status(404).json({ error: "Organização não encontrada" });
     }
 
+    // =====================================================
+    // ✅ VALIDAÇÃO INTELIGENTE DE PREÇO
+    // =====================================================
+    console.log("💰 Iniciando validação inteligente de preço...");
+    
+    let finalPriceToUse = final_price;
+    let originalPriceToUse = original_price;
+    let isAdminUser = false;
+
+    try {
+      // Verificar se o usuário autenticado é admin
+      isAdminUser = isUserAdmin(req);
+      console.log(`👤 Usuário é admin? ${isAdminUser ? 'SIM' : 'NÃO'}`);
+
+      if (isAdminUser) {
+        // Admin: aceita valores do frontend
+        console.log("✅ Admin autenticado - usando valores do frontend");
+        console.log(`   Frontend final: R$ ${final_price}, Original: R$ ${original_price}`);
+      } else {
+        // Não-admin ou não autenticado: valida com o backend
+        console.log("🔍 Usuário não-admin ou não autenticado - validando com backend");
+        
+        // Buscar preço original do serviço
+        const { data: service, error: serviceError } = await supabase
+          .from('services')
+          .select('id, name, price, organization_id')
+          .eq('id', service_id)
+          .single();
+
+        if (serviceError || !service) {
+          console.error('❌ Serviço não encontrado:', serviceError);
+          // Continua com valor do frontend como fallback
+          console.log("⚠️ Serviço não encontrado - usando frontend como fallback");
+        } else if (service.organization_id !== orgData.id) {
+          console.error('❌ Serviço não pertence à organização');
+          // Continua com valor do frontend como fallback
+          console.log("⚠️ Serviço não pertence à org - usando frontend como fallback");
+        } else {
+          const backendOriginalPrice = parseFloat(service.price);
+          let backendFinalPrice = backendOriginalPrice;
+          let discountApplied = false;
+
+          console.log(`✅ Serviço encontrado: "${service.name}" - R$ ${backendOriginalPrice.toFixed(2)}`);
+
+          // Se houver cupom, calcular desconto
+          if (coupon_code && coupon_code.trim() !== '') {
+            console.log(`🎟️ Validando cupom: ${coupon_code}`);
+
+            const { data: coupon, error: couponError } = await supabase
+              .from('coupons')
+              .select('*')
+              .eq('code', coupon_code.trim().toUpperCase())
+              .single();
+
+            if (!couponError && coupon) {
+              // Validar vigência do cupom
+              const now = new Date();
+              let isValidCoupon = true;
+
+              if (coupon.valid_from) {
+                const validFrom = new Date(coupon.valid_from);
+                if (now < validFrom) {
+                  console.warn('⚠️ Cupom ainda não está válido');
+                  isValidCoupon = false;
+                }
+              }
+
+              if (coupon.valid_until) {
+                const validUntil = new Date(coupon.valid_until);
+                if (now > validUntil) {
+                  console.warn('⚠️ Cupom expirado');
+                  isValidCoupon = false;
+                }
+              }
+
+              if (isValidCoupon) {
+                const discountValue = parseFloat(coupon.discount_value);
+
+                if (coupon.discount_type === 'percentage' || coupon.discount_type === 'porcentagem') {
+                  if (discountValue <= 100 && discountValue >= 0) {
+                    const discountAmount = (backendOriginalPrice * discountValue) / 100;
+                    backendFinalPrice = backendOriginalPrice - discountAmount;
+                    if (backendFinalPrice < 0) backendFinalPrice = 0;
+                    console.log(`✅ Desconto ${discountValue}% aplicado: R$ ${backendFinalPrice.toFixed(2)}`);
+                    discountApplied = true;
+                  } else {
+                    console.warn('⚠️ Desconto percentual inválido');
+                  }
+                } else if (coupon.discount_type === 'fixed' || coupon.discount_type === 'fixo') {
+                  backendFinalPrice = backendOriginalPrice - discountValue;
+                  if (backendFinalPrice < 0) backendFinalPrice = 0;
+                  console.log(`✅ Desconto fixo R$ ${discountValue.toFixed(2)} aplicado: R$ ${backendFinalPrice.toFixed(2)}`);
+                  discountApplied = true;
+                }
+              }
+            } else {
+              console.warn(`⚠️ Cupom não encontrado: ${coupon_code}`);
+            }
+          }
+
+          // Usar preço validado do backend
+          finalPriceToUse = backendFinalPrice;
+          originalPriceToUse = backendOriginalPrice;
+          console.log(`✅ Preços calculados pelo backend: Original R$ ${originalPriceToUse.toFixed(2)} → Final R$ ${finalPriceToUse.toFixed(2)}`);
+        }
+      }
+    } catch (priceValidationErr) {
+      console.error('❌ Erro na validação de preço:', priceValidationErr.message);
+      console.log('⚠️ Continuando com valores do frontend como fallback');
+      // Continua com os valores do frontend
+    }
+
+    console.log(`📝 Preços finais para salvar: Original: R$ ${originalPriceToUse}, Final: R$ ${finalPriceToUse}`);
+
     const { data: policy, error: policyError } = await supabase
       .from("organization_policies")
-      .select("sync_google_calendar")
+      .select("sync_google_calendar, appointment_prepayment, prepayment_type, prepayment_value, pix_key")
       .eq("organization_id", orgData.id)
       .maybeSingle();
 
@@ -121,6 +362,32 @@ export const createAppointment = async (req, res) => {
 
     if (policyError) {
       console.error("Erro buscando políticas:", policyError);
+    }
+
+    const requiresPrepayment = policy?.appointment_prepayment === true && !isAdminUser;
+    console.log(`💳 Pré-pagamento obrigatório? ${requiresPrepayment ? 'SIM' : 'NÃO'}`);
+    console.log(`   - appointment_prepayment: ${policy?.appointment_prepayment}`);
+    console.log(`   - isAdminUser: ${isAdminUser}`);
+    console.log(`   - prepayment_type: ${policy?.prepayment_type}`);
+    console.log(`   - prepayment_value: ${policy?.prepayment_value}`);
+    console.log(`   - pix_key: ${policy?.pix_key ? '✅ configurada' : '❌ NÃO configurada'}`);
+
+    let prepaymentAmount = finalPriceToUse; // padrão: total
+    if (requiresPrepayment) {
+      const rawValue = policy?.prepayment_value ? Number(policy.prepayment_value) : null;
+      if (policy?.prepayment_type === 'percent') {
+        const pct = rawValue && rawValue > 0 ? rawValue : 0;
+        prepaymentAmount = Math.max(0, (finalPriceToUse * pct) / 100);
+        console.log(`💳 Tipo: Percentual (${pct}%) = R$ ${prepaymentAmount.toFixed(2)}`);
+      } else if (policy?.prepayment_type === 'value') {
+        prepaymentAmount = rawValue && rawValue > 0 ? rawValue : finalPriceToUse;
+        console.log(`💳 Tipo: Valor fixo = R$ ${prepaymentAmount.toFixed(2)}`);
+      } else {
+        console.log(`💳 Tipo: Total (sem configuração) = R$ ${prepaymentAmount.toFixed(2)}`);
+      }
+      // Nunca cobra acima do valor final
+      prepaymentAmount = Math.min(prepaymentAmount, finalPriceToUse);
+      console.log(`💳 Valor de pré-pagamento calculado: R$ ${prepaymentAmount.toFixed(2)} (${policy?.prepayment_type || 'full'})`);
     }
 
     // ✅ Telefone opcional: envia null ao invés de string vazia/undefined
@@ -167,7 +434,7 @@ export const createAppointment = async (req, res) => {
 
       // 3º: Criar novo cliente
       if (!clientId) {
-        console.log("➕ Criando novo cliente...");
+        console.log("Criando novo cliente...");
         const { data: newClient, error: createErr } = await supabase
           .from("clients")
           .insert([
@@ -211,10 +478,10 @@ export const createAppointment = async (req, res) => {
           appointment_date: date,
           start_time,
           end_time,
-          final_price,
+          final_price: finalPriceToUse, // ✅ Usando preço validado
           coupon_code,
-          original_price,
-          status: "confirmed",
+          original_price: originalPriceToUse, // ✅ Usando preço validado
+          status: requiresPrepayment ? "pending" : "confirmed",
         },
       ])
       .select()
@@ -223,6 +490,52 @@ export const createAppointment = async (req, res) => {
     if (createError) throw createError;
 
     console.log("✅ Agendamento criado:", created);
+
+    // Se exigir pré-pagamento (e não for admin), gerar cobrança PIX e retornar
+    if (requiresPrepayment) {
+      try {
+        const pixCharge = await createPixCharge({
+          organizationId: orgData.id,
+          appointmentId: created.id,
+          amountInCents: Math.round(prepaymentAmount * 100),
+        });
+
+        console.log("💳 PIX gerado para pré-pagamento:", {
+          transactionId: pixCharge.transactionId,
+          amount: pixCharge.grossAmount,
+        });
+
+        return res.status(201).json({
+          appointment: { ...created, status: "pending" },
+          payment_required: true,
+          payment: {
+            transaction_id: pixCharge.transactionId,
+            qr_code: pixCharge.qrCode,
+            copy_paste: pixCharge.copyPaste,
+            amount: prepaymentAmount,
+          },
+          validated_prices: {
+            final: finalPriceToUse,
+            original: originalPriceToUse,
+            is_admin: isAdminUser,
+          },
+        });
+      } catch (pixErr) {
+        console.error("❌ Erro ao gerar PIX de pré-pagamento:", pixErr.message);
+        // Mesmo com erro de cobrança, retorna agendamento pendente (para não quebrar fluxo)
+        return res.status(201).json({
+          appointment: { ...created, status: "pending" },
+          payment_required: true,
+          payment: null,
+          error: "Falha ao gerar PIX. Tente novamente ou contate o suporte.",
+          validated_prices: {
+            final: finalPriceToUse,
+            original: originalPriceToUse,
+            is_admin: isAdminUser,
+          },
+        });
+      }
+    }
 
     // ✅ meetingUrl precisa existir para o return final mesmo se não sincronizar
     let meetingUrl = null;
@@ -335,7 +648,7 @@ export const createAppointment = async (req, res) => {
 
             const eventBody = {
               summary: `Agendamento: ${client_name}`,
-              description: `Serviço: ${serviceData?.name}\nProfissional: ${employee?.name}\nPreço original: ${original_price}\nPreço final: ${final_price}\nCliente: ${client_name}\nTelefone: ${normalizedClientPhone}`,
+              description: `Serviço: ${serviceData?.name}\nProfissional: ${employee?.name}\nPreço original: R$ ${originalPriceToUse?.toFixed(2) || original_price}\nPreço final: R$ ${finalPriceToUse?.toFixed(2) || final_price}\nCliente: ${client_name}\nTelefone: ${normalizedClientPhone}`,
               start: { dateTime: eventStart, timeZone: "America/Sao_Paulo" },
               end: { dateTime: eventEnd, timeZone: "America/Sao_Paulo" },
               colorId: googleColorId, // ✅ Sempre com valor (nunca null)
@@ -448,8 +761,8 @@ export const createAppointment = async (req, res) => {
     ⏰ Horário: ${start_time} - ${end_time}
 
     💰 Valor final: ${
-      final_price
-        ? final_price.toLocaleString("pt-BR", {
+      finalPriceToUse
+        ? finalPriceToUse.toLocaleString("pt-BR", {
             style: "currency",
             currency: "BRL",
           })
@@ -472,6 +785,12 @@ export const createAppointment = async (req, res) => {
     return res.status(201).json({
       ...created,
       meeting_url: meetingUrl,
+      payment_required: false,
+      validated_prices: {
+        final: finalPriceToUse,
+        original: originalPriceToUse,
+        is_admin: isAdminUser,
+      },
     });
   } catch (error) {
     console.error("Error creating appointment:", error);
