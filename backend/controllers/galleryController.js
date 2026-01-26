@@ -194,3 +194,73 @@ export const deleteImageBySlug = async (req, res) => {
     return res.status(500).json({ error: 'Erro ao excluir imagem' });
   }
 };
+
+/**
+ * =====================================================
+ * DELETE EM LOTE
+ * =====================================================
+ */
+export const deleteImagesBatchBySlug = async (req, res) => {
+  const { slug } = req.params;
+  const { ids } = req.body;
+  const parseIds = ids.map(id => Number(id)).filter(Boolean);
+
+  try {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'IDs inválidos' });
+    }
+
+    // 1️⃣ Organização
+    const { data: org, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
+    // 2️⃣ Busca imagens
+    const { data: images, error: imagesError } = await supabase
+      .from('galeria')
+      .select('imagem_id, imagem_url')
+      .in('imagem_id', parseIds)
+      .eq('organization_id', org.id);
+
+    if (imagesError) throw imagesError;
+
+    if (!images || images.length === 0) {
+      return res.status(404).json({ error: 'Nenhuma imagem encontrada' });
+    }
+
+    // 3️⃣ Remove do Storage
+    const paths = images
+      .map((img) => img.imagem_url.split('/gallery-images/')[1])
+      .filter(Boolean);
+
+    if (paths.length > 0) {
+      await supabase
+        .storage
+        .from('gallery-images')
+        .remove(paths);
+    }
+
+    // 4️⃣ Remove do banco
+    const { error: deleteError } = await supabase
+      .from('galeria')
+      .delete()
+      .in('imagem_id', parseIds)
+      .eq('organization_id', org.id);
+
+    if (deleteError) throw deleteError;
+
+    return res.json({
+      success: true,
+      deleted: parseIds.length
+    });
+  } catch (error) {
+    console.error('Erro exclusão em lote:', error);
+    return res.status(500).json({ error: 'Erro ao excluir imagens' });
+  }
+};
