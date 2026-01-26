@@ -13,17 +13,23 @@ export default function CategoriesTab({ org }) {
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(""); // 🔍 Search state
   const formRef = useRef(null);
   const { palette } = useOrganizationColors(org.slug_organization);
 
-  const loadCategories = async () => {
+  const loadCategories = async (search = "") => {
     try {
       setLoading(true);
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/categories/${org.slug_organization}`,
-        { credentials: "include" }
+      const url = new URL(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/categories/${org.slug_organization}`
       );
+      
+      // Adiciona parâmetro de search se fornecido
+      if (search) {
+        url.searchParams.append("search", search);
+      }
 
+      const res = await fetch(url.toString(), { credentials: "include" });
       const data = await res.json();
       setCategories(data);
     } catch (err) {
@@ -36,6 +42,15 @@ export default function CategoriesTab({ org }) {
   useEffect(() => {
     loadCategories();
   }, []);
+
+  // 🔍 Efeito para buscar ao digitar (com delay)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadCategories(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,7 +81,7 @@ export default function CategoriesTab({ org }) {
       setImage(null);
       setPreview("");
 
-      loadCategories();
+      loadCategories(searchQuery); // 🔍 Mantém a busca após salvar
     } catch {
       toast.error("Erro ao salvar categoria.");
     }
@@ -96,7 +111,7 @@ export default function CategoriesTab({ org }) {
       { method: "DELETE", credentials: "include" }
     );
 
-    loadCategories();
+    loadCategories(searchQuery); // 🔍 Mantém a busca após deletar
   };
 
   return (
@@ -168,8 +183,27 @@ export default function CategoriesTab({ org }) {
       <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700">
         <h4 className="text-lg font-bold text-gray-700 dark:text-gray-200 mb-4">Categorias</h4>
 
+        {/* 🔍 Search Input */}
+        <div className="mb-4 flex gap-2">
+          <input
+            type="text"
+            placeholder="Buscar por nome..."
+            className="flex-1 border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 text-sm focus:ring focus:ring-purple-200 outline-none"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm hover:bg-gray-300 dark:hover:bg-gray-600"
+            >
+              Limpar
+            </button>
+          )}
+        </div>
+
         {loading ? (
-          <p>Carregando...</p>
+          <p className="text-gray-500">Carregando...</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
             <table className="w-full text-sm bg-white dark:bg-gray-800 rounded-lg">
