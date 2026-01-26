@@ -23,6 +23,16 @@ export default function PersonalCalendarTab({ org }) {
   const [calendarView, setCalendarView] = useState("timeGridWeek");
   const { palette } = useOrganizationColors(org.slug_organization);
 
+  // 🆕 Estados para o modal de criação de evento
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [eventForm, setEventForm] = useState({
+    title: "",
+    description: "",
+    location: "",
+  });
+  const [creatingEvent, setCreatingEvent] = useState(false);
+
   const calendarRef = useRef(null);
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -167,10 +177,139 @@ export default function PersonalCalendarTab({ org }) {
     }
   }
 
+  // 🆕 Handler para quando o usuário seleciona um período no calendário
+  function handleDateSelect(selectInfo) {
+    setSelectedSlot({
+      start: selectInfo.start,
+      end: selectInfo.end,
+      startStr: selectInfo.startStr,
+      endStr: selectInfo.endStr,
+    });
+    setEventForm({
+      title: "",
+      description: "",
+      location: "",
+    });
+    setShowEventModal(true);
+
+    // Limpa a seleção visual
+    selectInfo.view.calendar.unselect();
+  }
+
+  // 🆕 Criar evento no Google Calendar
+  async function handleCreateEvent() {
+    if (!eventForm.title.trim()) {
+      return toast.error("O título do evento é obrigatório");
+    }
+
+    if (!selectedSlot) {
+      return toast.error("Nenhum horário selecionado");
+    }
+
+    setCreatingEvent(true);
+
+    try {
+      const payload = {
+        userId,
+        summary: eventForm.title,
+        description: eventForm.description || undefined,
+        location: eventForm.location || undefined,
+        start: selectedSlot.start.toISOString(),
+        end: selectedSlot.end.toISOString(),
+      };
+
+      const res = await fetch(`${API_BASE_URL}/api/google-calendar/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao criar evento");
+      }
+
+      toast.success("Evento criado com sucesso!");
+
+      // Adiciona o evento à lista local
+      const newEvent = {
+        id: data.id,
+        title: eventForm.title,
+        start: normalizeDate(selectedSlot.startStr),
+        end: normalizeDate(selectedSlot.endStr),
+      };
+
+      setCalendarEvents((prev) => [...prev, newEvent]);
+
+      // Fecha o modal e limpa o formulário
+      setShowEventModal(false);
+      setSelectedSlot(null);
+      setEventForm({ title: "", description: "", location: "" });
+    } catch (error) {
+      console.error("Erro ao criar evento:", error);
+      toast.error(error.message || "Erro ao criar evento");
+    } finally {
+      setCreatingEvent(false);
+    }
+  }
+
+  // 🆕 Fechar modal
+  function handleCloseModal() {
+    setShowEventModal(false);
+    setSelectedSlot(null);
+    setEventForm({ title: "", description: "", location: "" });
+  }
+
+  // 🆕 Formatar data/hora para exibição
+  function formatDateTime(date) {
+    if (!date) return "";
+    return new Intl.DateTimeFormat("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(date));
+  }
+
 
   return (
     <div className="space-y-8 bg-white dark:bg-gray-900 p-6 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 min-h-[600px]">
       <style>{calendarStyles}</style>
+      <style>{`
+        /* Estilos para seleção de horário */
+        .fc-highlight {
+          background: ${palette?.strong_color || '#6366f1'} !important;
+          opacity: 0.3;
+        }
+        
+        .fc-timegrid-slot:hover {
+          background-color: ${palette?.strong_color || '#6366f1'}10;
+        }
+
+        /* Animação do modal */
+        @keyframes modalFadeIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        .modal-content {
+          animation: modalFadeIn 0.2s ease-out;
+        }
+
+        /* Focus ring customizado */
+        input:focus, textarea:focus {
+          ring-color: ${palette?.strong_color || '#6366f1'};
+        }
+      `}</style>
 
       <div className="flex justify-between flex-col items-center">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
@@ -215,6 +354,9 @@ export default function PersonalCalendarTab({ org }) {
           slotMaxTime="23:00:00"
           nowIndicator={true}
           expandRows={true}
+          selectable={true}
+          selectMirror={true}
+          select={handleDateSelect}
           views={{
             timeGridThreeDays: {
               type: "timeGrid",
@@ -242,6 +384,150 @@ export default function PersonalCalendarTab({ org }) {
           <></>
         )}
       </div>
+
+      {/* 🆕 MODAL DE CRIAÇÃO DE EVENTO */}
+      {showEventModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="modal-content bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            {/* Header do Modal */}
+            <div 
+              className="p-6 pb-4 border-b border-gray-200 dark:border-gray-700"
+              style={{ 
+                background: `linear-gradient(135deg, ${palette?.strong_color || '#6366f1'} 0%, ${palette?.strong_color || '#6366f1'}dd 100%)` 
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Criar Evento
+                </h2>
+                <button
+                  onClick={handleCloseModal}
+                  className="text-white hover:bg-white/20 rounded-full p-2 transition"
+                  type="button"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Informação do horário selecionado */}
+              <div className="mt-3 bg-white/20 rounded-lg p-3 text-white text-sm">
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="font-medium">Início:</span>
+                  <span>{formatDateTime(selectedSlot?.start)}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="font-medium">Fim:</span>
+                  <span>{formatDateTime(selectedSlot?.end)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Body do Modal */}
+            <div className="p-6 space-y-4">
+              {/* Título */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Título do Evento *
+                </label>
+                <input
+                  type="text"
+                  value={eventForm.title}
+                  onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
+                  placeholder="Ex: Reunião com cliente"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-offset-2 outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition"
+                  style={{ 
+                    focusRingColor: palette?.strong_color || '#6366f1',
+                  }}
+                  autoFocus
+                  disabled={creatingEvent}
+                />
+              </div>
+
+              {/* Descrição */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Descrição
+                </label>
+                <textarea
+                  value={eventForm.description}
+                  onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
+                  placeholder="Detalhes do evento..."
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-offset-2 outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition resize-none"
+                  style={{ 
+                    focusRingColor: palette?.strong_color || '#6366f1',
+                  }}
+                  disabled={creatingEvent}
+                />
+              </div>
+
+              {/* Localização */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Localização
+                </label>
+                <input
+                  type="text"
+                  value={eventForm.location}
+                  onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
+                  placeholder="Ex: Sala 3, Escritório"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-offset-2 outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition"
+                  style={{ 
+                    focusRingColor: palette?.strong_color || '#6366f1',
+                  }}
+                  disabled={creatingEvent}
+                />
+              </div>
+            </div>
+
+            {/* Footer do Modal */}
+            <div className="p-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+              <button
+                onClick={handleCloseModal}
+                className="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                disabled={creatingEvent}
+                type="button"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateEvent}
+                disabled={creatingEvent || !eventForm.title.trim()}
+                className="flex-1 px-4 py-3 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ 
+                  backgroundColor: palette?.strong_color || '#6366f1',
+                }}
+                type="button"
+              >
+                {creatingEvent ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                    Criando...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Criar Evento
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

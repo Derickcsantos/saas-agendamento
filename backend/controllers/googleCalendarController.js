@@ -301,6 +301,107 @@ export async function getCalendarEvents(req, res) {
   }
 }
 
+// =====================================================
+// 🆕 CREATE EVENT – cria um novo evento no Google Calendar
+// =====================================================
+export async function createCalendarEvent(req, res) {
+  try {
+    const { userId, summary, description, location, start, end, colorId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId é obrigatório" });
+    }
+
+    if (!summary || !start || !end) {
+      return res.status(400).json({ error: "summary, start e end são obrigatórios" });
+    }
+
+    // Buscar integração do usuário
+    const { data: integration, error } = await supabase
+      .from("organization_google_calendar")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!integration) {
+      return res.status(401).json({ error: "Google Calendar não está conectado" });
+    }
+
+    // Configurar OAuth client
+    const oauth2Client = createOAuthClient();
+    oauth2Client.setCredentials({
+      access_token: integration.access_token,
+      refresh_token: integration.refresh_token,
+      token_type: integration.token_type,
+      scope: integration.scope,
+      expiry_date: integration.expiry_date,
+    });
+
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+    // Criar evento
+    const eventBody = {
+      summary,
+      description: description || undefined,
+      location: location || undefined,
+      start: {
+        dateTime: start,
+        timeZone: "America/Sao_Paulo",
+      },
+      end: {
+        dateTime: end,
+        timeZone: "America/Sao_Paulo",
+      },
+      colorId: colorId || undefined,
+    };
+
+    console.log("📅 Criando evento no Google Calendar:", {
+      userId,
+      summary,
+      start,
+      end,
+    });
+
+    const { data: createdEvent } = await calendar.events.insert({
+      calendarId: "primary",
+      requestBody: eventBody,
+    });
+
+    console.log("✅ Evento criado com sucesso:", createdEvent.id);
+
+    // Atualiza token se Google renovou
+    const newCreds = oauth2Client.credentials;
+    if (newCreds.access_token && newCreds.access_token !== integration.access_token) {
+      await supabase
+        .from("organization_google_calendar")
+        .update({
+          access_token: newCreds.access_token,
+          expiry_date: newCreds.expiry_date,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId);
+
+      console.log("🔄 Token atualizado automaticamente");
+    }
+
+    return res.status(201).json({
+      id: createdEvent.id,
+      summary: createdEvent.summary,
+      start: createdEvent.start,
+      end: createdEvent.end,
+      htmlLink: createdEvent.htmlLink,
+    });
+  } catch (err) {
+    console.error("❌ Erro ao criar evento:", err);
+    return res.status(500).json({
+      error: "Erro ao criar evento",
+      details: err.message,
+    });
+  }
+}
+
 export async function patchCalendarEvent(req, res) {
   try {
     const userId = Number(req.query.userId);
