@@ -5,6 +5,10 @@
  * 3. Funciona para TODAS as requisições, autenticadas ou não
  */
 export async function fetchWithAuth(url, options = {}) {
+  if (!url) {
+    throw new Error('fetchWithAuth: url é obrigatório');
+  }
+
   const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
 
   const headers = {
@@ -16,6 +20,13 @@ export async function fetchWithAuth(url, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  // Resolve URL relativa para evitar erros de origem / mixed content
+  const base =
+    process.env.NEXT_PUBLIC_API_URL ||
+    (typeof window !== 'undefined' && window.location?.origin) ||
+    '';
+  const resolvedUrl = url.startsWith('http') ? url : `${base}${url}`;
+
   // Sempre tenta incluir credenciais (cookies) para outros navegadores
   const config = {
     ...options,
@@ -23,7 +34,12 @@ export async function fetchWithAuth(url, options = {}) {
     credentials: options.credentials || 'include',
   };
 
-  return fetch(url, config);
+  try {
+    return await fetch(resolvedUrl, config);
+  } catch (error) {
+    console.error('fetchWithAuth: falha na requisição', { resolvedUrl, error });
+    throw error;
+  }
 }
 
 /**
@@ -33,7 +49,7 @@ export async function fetchWithAuth(url, options = {}) {
 if (typeof window !== 'undefined' && !window.__fetchAuthPatched) {
   const originalFetch = window.fetch;
 
-  window.fetch = function(...args) {
+  window.fetch = async function(...args) {
     const url = args[0];
     const options = args[1] || {};
 
@@ -60,7 +76,12 @@ if (typeof window !== 'undefined' && !window.__fetchAuthPatched) {
       __fetchAuthApplied: true,
     };
 
-    return originalFetch.apply(this, [url, newOptions]);
+    try {
+      return await originalFetch.apply(this, [url, newOptions]);
+    } catch (error) {
+      console.error('fetch (patched) falhou', { url, error });
+      throw error;
+    }
   };
 
   window.__fetchAuthPatched = true;

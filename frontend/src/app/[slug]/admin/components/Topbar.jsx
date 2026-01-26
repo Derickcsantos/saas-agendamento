@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from "next/navigation";
+import PWAInstallButton from '@/components/PWAInstallButton';
 import { SEARCH_ACTIONS } from '../../../utils/searchAdminActions'
 
 // Adicionada a prop setActiveTab para controlar o estado do Sidebar
-export default function Topbar({ org, slug, setActiveTab }) {
-  const [palette, setPalette] = useState(null);
+export default function Topbar({ org, slug, setActiveTab, user, appInstalled, onAppInstalled, palette: paletteFromProps }) {
+  const [palette, setPalette] = useState(paletteFromProps || null);
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState([]);
   const [isFocused, setIsFocused] = useState(false);
@@ -110,6 +111,15 @@ export default function Topbar({ org, slug, setActiveTab }) {
           </div>
         )}
       </div>
+
+      {/* ✅ Botão PWA Install */}
+      {!appInstalled && user && (
+        <PWAInstallButton 
+          userId={user.id} 
+          palette={palette}
+          onInstallSuccess={onAppInstalled}
+        />
+      )}
 
       <button onClick={logout} className="hover:opacity-80 transition-opacity p-2">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

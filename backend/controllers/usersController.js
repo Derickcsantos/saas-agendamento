@@ -24,6 +24,7 @@ export const getUsers = async (req, res) => {
         email, 
         tipo, 
         id_employee,
+        app_installed,
         created_at,
         updated_at
         `)
@@ -42,6 +43,8 @@ export const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
 
+    console.log('chegou id:', id)
+
     const { data, error } = await supabase
       .from('users')
       .select(`
@@ -50,11 +53,11 @@ export const getUserById = async (req, res) => {
         email, 
         tipo, 
         id_employee,
+        app_installed,
         created_at,
         updated_at
         `)
       .eq('id', id)
-      .eq('organization_id', org.id)  
       // .single();
 
     if (error) throw error;
@@ -234,6 +237,42 @@ export const deleteUser = async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Erro ao excluir usuário:', err);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
+
+/**
+ * PATCH para atualizar campos do usuário (ex: app_installed)
+ */
+export const updateUserField = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    if (!id) {
+      return res.status(400).json({ error: 'ID do usuário é obrigatório' });
+    }
+
+    // ✅ Atualiza apenas os campos fornecidos
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+
+    if (!data) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('Erro ao atualizar usuário:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 };

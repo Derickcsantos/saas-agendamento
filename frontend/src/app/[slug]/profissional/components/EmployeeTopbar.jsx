@@ -1,6 +1,8 @@
 "use client";
 
-export default function EmployeeTopbar({ user, palette }) {
+import PWAInstallButton from "@/components/PWAInstallButton";
+
+export default function EmployeeTopbar({ user, palette, appInstalled, onAppInstalled }) {
   return (
     <header className="bg-white border-b shadow-sm px-6 py-4 sticky top-0 z-30">
       <div className="flex items-center justify-between">
@@ -14,6 +16,15 @@ export default function EmployeeTopbar({ user, palette }) {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* ✅ Botão PWA Install */}
+          {!appInstalled && user && (
+            <PWAInstallButton 
+              userId={user.id} 
+              palette={palette}
+              onInstallSuccess={onAppInstalled}
+            />
+          )}
+
           <div className="hidden md:flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-lg">
             <div 
               className="w-3 h-3 rounded-full animate-pulse"
