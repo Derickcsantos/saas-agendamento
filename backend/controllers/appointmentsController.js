@@ -708,6 +708,77 @@ export const createAppointment = async (req, res) => {
     }
 
     // ===============================
+    // 🔔 NOTIFICAR CLIENTE
+    // ===============================
+    try {
+      if (normalizedClientPhone) {
+        // Buscar dados auxiliares
+        const { data: service } = await supabase
+          .from("services")
+          .select("name")
+          .eq("id", service_id)
+          .single();
+
+        const { data: employeeInfo } = await supabase
+          .from("employees")
+          .select("name")
+          .eq("id", employee_id)
+          .single();
+
+        // Formatar data dd/mm/yyyy
+        const formattedDate = date.split("-").reverse().join("/");
+
+        const paymentInfo = requiresPrepayment 
+          ? `💳 *Atenção:* Este agendamento requer pré-pagamento de R$ ${prepaymentAmount.toFixed(2)}.`
+          : `✅ *Agendamento confirmado!*`;
+
+        const message = `
+*${paymentInfo}*
+
+Olá, *${client_name}* 👋  
+Seu agendamento foi realizado com sucesso em *${orgData?.name}*.
+
+💇 Serviço: ${service?.name || "-"}
+🧑‍💼 Profissional: ${employeeInfo?.name || "-"}
+📅 Data: ${formattedDate}
+⏰ Horário: ${start_time} - ${end_time}
+💰 Valor: ${
+          finalPriceToUse
+            ? finalPriceToUse.toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })
+            : "-"
+        }
+
+${
+  requiresPrepayment
+    ? `
+📌 *Próximos passos:*
+1. Escaneie o código QR enviado
+2. Realize o pagamento de R$ ${prepaymentAmount.toFixed(2)}
+3. Seu agendamento será confirmado após o pagamento
+
+Dúvidas? Entre em contato conosco! 💬
+`
+    : `
+Obrigado por agendar conosco! 🙌
+Qualquer dúvida, entre em contato conosco! 💬
+`
+}
+        `.trim();
+
+        await sendWhatsAppMessage(normalizedClientPhone, message, orgData.id);
+
+        console.log("📲 WhatsApp enviado ao cliente:", client_name);
+      } else {
+        console.log("🔕 Cliente sem telefone cadastrado - mensagem não enviada");
+      }
+    } catch (clientNotifyErr) {
+      console.error("❌ Erro ao notificar cliente:", clientNotifyErr);
+    }
+
+    // ===============================
     // 🔔 NOTIFICAR REPRESENTANTE DA ORGANIZAÇÃO
     // ===============================
     try {

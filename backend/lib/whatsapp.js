@@ -15,6 +15,7 @@ const WASENDER_API_KEY = process.env.WASENDER_API_KEY;
  */
 export async function sendWhatsAppMessage(phone, message, organizationId = null) {
   if (!phone || !message) {
+    console.error("❌ Telefone e mensagem são obrigatórios");
     throw new Error("Telefone e mensagem são obrigatórios");
   }
 
@@ -31,53 +32,88 @@ export async function sendWhatsAppMessage(phone, message, organizationId = null)
   // ✅ Verificar se organização tem WhatsApp conectado
   if (organizationId) {
     try {
+      console.log(`🔍 Buscando WhatsApp da organização: ${organizationId}`);
+      
       const { data: orgWhatsapp, error } = await supabase
         .from("whatsapp_organization")
         .select("whatsapp_api_key")
         .eq("organization_id", organizationId)
         .maybeSingle();
 
+      if (error) {
+        console.warn("⚠️ Erro ao buscar WhatsApp da organização:", error.message);
+      }
+
       if (!error && orgWhatsapp?.whatsapp_api_key) {
         apiKey = orgWhatsapp.whatsapp_api_key;
         source = "WHATSAPP_ORGANIZACAO";
         console.log("✅ Usando WhatsApp da organização:", organizationId);
-      } else {
-        console.log("⚠️ Organização sem WhatsApp conectado, usando API key padrão");
+      } else if (!orgWhatsapp) {
+        console.log("ℹ️ Organização sem WhatsApp conectado, usando API key padrão");
       }
     } catch (err) {
       console.error("⚠️ Erro ao buscar WhatsApp da organização, usando fallback:", err.message);
     }
+  } else {
+    console.log("ℹ️ organizationId não fornecido, usando API key padrão");
+  }
+
+  if (!apiKey) {
+    console.error("❌ Nenhuma API key disponível (organização ou .env)");
+    throw new Error("Nenhuma API key de WhatsApp configurada");
   }
 
   console.log(`📤 Enviando WhatsApp via ${source}`);
   console.log("To:", to);
-  console.log("Text:", message);
+  console.log("Message preview:", message.substring(0, 100) + "...");
 
-  const response = await fetch(WASENDER_API_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      to,
-      text: message,
-    }),
-  });
-
-  const rawText = await response.text();
-  console.log("📩 Resposta Wasender:", rawText);
-
-  let data;
   try {
-    data = JSON.parse(rawText);
-  } catch {
-    throw new Error("Resposta inválida da Wasender (não é JSON)");
-  }
+    const response = await fetch(WASENDER_API_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to,
+        text: message,
+      }),
+    });
 
-  if (!response.ok) {
-    throw new Error(data?.message || "Erro ao enviar WhatsApp");
-  }
+    const rawText = await response.text();
+    console.log("📩 Status Wasender:", response.status);
+    console.log("📩 Resposta Wasender:", rawText.substring(0, 200));
 
-  return data;
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      console.error("❌ Resposta inválida da Wasender (não é JSON):", rawText);
+      throw new Error("Resposta inválida da Wasender (não é JSON)");
+    }
+
+    if (!response.ok) {
+      console.error("❌ Erro ao enviar WhatsApp:", {
+        status: response.status,
+        message: data?.message || "Erro desconhecido",
+        data
+      });
+      throw new Error(data?.message || `Erro HTTP ${response.status}`);
+    }
+
+    console.log("✅ WhatsApp enviado com sucesso:", {
+      to,
+      messageId: data?.id || data?.message_id || "N/A",
+      status: data?.status || "sent"
+    });
+
+    return data;
+  } catch (err) {
+    console.error("❌ Erro ao enviar WhatsApp:", {
+      phone: to,
+      source,
+      error: err.message
+    });
+    throw err;
+  }
 }
