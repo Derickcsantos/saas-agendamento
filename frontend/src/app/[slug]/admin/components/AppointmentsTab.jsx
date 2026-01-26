@@ -113,6 +113,8 @@ export default function AppointmentsTab({ org }) {
   const { palette } = useOrganizationColors(org.slug_organization);
   const [isMobile, setIsMobile] = useState(false);
   const calendarRef = useRef(null);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
   const [editData, setEditData] = useState({
     employee: null,
     date: "",
@@ -357,6 +359,55 @@ export default function AppointmentsTab({ org }) {
       console.error("Erro ao salvar alterações:", err);
     }
   };
+
+  // 🆕 Handlers para swipe horizontal no mobile
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!calendarRef.current) return;
+    
+    const swipeDistance = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50; // mínimo de 50px para considerar um swipe
+
+    const api = calendarRef.current.getApi();
+
+    // Swipe para a esquerda (próximo dia)
+    if (swipeDistance > minSwipeDistance) {
+      api.next();
+    }
+    // Swipe para a direita (dia anterior)
+    else if (swipeDistance < -minSwipeDistance) {
+      api.prev();
+    }
+
+    // Reset
+    touchStartX.current = 0;
+    touchEndX.current = 0;
+  };
+
+  // Adicionar event listeners quando o calendário for montado
+  useEffect(() => {
+    if (!calendarRef.current) return;
+
+    const calendarEl = calendarRef.current.elRef.current;
+    if (!calendarEl) return;
+
+    calendarEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+    calendarEl.addEventListener('touchmove', handleTouchMove, { passive: true });
+    calendarEl.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      calendarEl.removeEventListener('touchstart', handleTouchStart);
+      calendarEl.removeEventListener('touchmove', handleTouchMove);
+      calendarEl.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [calendarRef.current]);
 
   const EditModal = () => {
     if (!showEditModal || !editingAppointment) return null;
