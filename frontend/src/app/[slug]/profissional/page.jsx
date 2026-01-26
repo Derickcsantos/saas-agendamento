@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { CalendarCheck, Clock, CheckCircle, XCircle, TrendingUp, User } from "lucide-react";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import PWAInstallButton from "@/components/PWAInstallButton";
 import EmployeeSidebar from "./components/EmployeeSidebar";
 import EmployeeTopbar from "./components/EmployeeTopbar";
 import StatCard from "./components/StatCard";
@@ -29,6 +30,7 @@ export default function EmployeePanel() {
   const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState("overview");
   const [topClient, setTopClient] = useState(null);
+  const [appInstalled, setAppInstalled] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     confirmed: 0,
@@ -56,7 +58,13 @@ export default function EmployeePanel() {
           return;
         }
 
-        setUser(data.user); 
+        setUser(data.user);
+
+        // ✅ Busca dados do usuário para verificar app_installed
+        const userRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${data.user.id}`);
+        const userData = await userRes.json();
+        setAppInstalled(userData?.app_installed || false);
+
       } catch (error) {
         console.error("Erro ao verificar autenticação:", error);
         router.push(`/${slug}/login`);
@@ -517,7 +525,12 @@ export default function EmployeePanel() {
 
       {/* CONTEÚDO */}
       <div className="flex-1 flex flex-col max-w-full overflow-hidden">
-        <EmployeeTopbar user={user} palette={palette} />
+        <EmployeeTopbar 
+          user={user} 
+          palette={palette}
+          appInstalled={appInstalled}
+          onAppInstalled={() => setAppInstalled(true)}
+        />
 
         <main className="flex-1 p-6 space-y-6 overflow-y-auto max-w-full">
           {renderContent()}

@@ -210,6 +210,33 @@ export async function createOrganization(req, res) {
 
       console.log("Landing Organization criada:", landingOrganizationResult);
 
+      // 💾 Criar registro em organization_policies com valores padrão
+      try {
+        const { error: policiesError } = await supabase
+          .from("organization_policies")
+          .insert({
+            organization_id: data[0].id,
+            require_deposit: false,
+            deposit_percentage: 50,
+            max_schedule_days: 30,
+            require_client_registration: false,
+            allow_service_cancellation: true,
+            cancellation_hours: 24,
+            auto_confirm_appointments: false,
+            working_days: [1, 2, 3, 4, 5, 6],
+            pix_key: null,
+            pix_key_type: null
+          });
+
+        if (policiesError) {
+          console.error("⚠ Erro ao criar organization_policies:", policiesError);
+        } else {
+          console.log("✅ organization_policies criada com sucesso");
+        }
+      } catch (policiesErr) {
+        console.error("❌ Erro crítico ao criar organization_policies:", policiesErr);
+      }
+
       try{
         await brevo.sendTransacEmail({
           to: [{email, name}],

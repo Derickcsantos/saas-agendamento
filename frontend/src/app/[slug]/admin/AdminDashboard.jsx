@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Briefcase, Users, Layers, CalendarCheck } from "lucide-react";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import PWAInstallButton from "@/components/PWAInstallButton";
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import Card from "./components/Card";
@@ -33,6 +34,8 @@ export default function AdminDashboard({ slug }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [appInstalled, setAppInstalled] = useState(false);
+  const [palette, setPalette] = useState(null);
 
   // ======================
   // Autenticação
@@ -59,6 +62,11 @@ export default function AdminDashboard({ slug }) {
         }
 
         setUser(data.user);
+
+        // ✅ Busca dados do usuário para verificar app_installed
+        const userRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${data.user.id}`);
+        const userData = await userRes.json();
+        setAppInstalled(userData?.app_installed || false);
 
       } catch {
         router.push(`/${slug}/login`);
@@ -93,18 +101,23 @@ export default function AdminDashboard({ slug }) {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [orgRes, statsRes] = await Promise.all([
+        const [orgRes, statsRes, colorRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${slug}`),
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard/${slug}`, {
+            credentials: "include",
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`, {
             credentials: "include",
           }),
         ]);
 
         const orgData = await orgRes.json();
         const statsData = await statsRes.json();
+        const colorData = await colorRes.json();
 
         setOrg(orgData);
         setStats(statsData);
+        setPalette(colorData);
 
       } catch (err) {
         console.error(err);
@@ -239,6 +252,10 @@ export default function AdminDashboard({ slug }) {
           slug={slug}
           setActiveTab={setActiveTab}
           activeTab={activeTab}
+          user={user}
+          appInstalled={appInstalled}
+          onAppInstalled={() => setAppInstalled(true)}
+          palette={palette}
         />
 
         <main className="flex-1 p-6 space-y-6 overflow-y-auto max-w-full overflow-x-hidden">

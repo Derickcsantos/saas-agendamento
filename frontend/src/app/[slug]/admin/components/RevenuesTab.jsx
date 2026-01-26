@@ -248,21 +248,21 @@ export default function RevenueTab({ org }) {
 
       {/* SALDO DISPONÍVEL */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 text-white p-6 rounded-2xl shadow-xl lg:col-span-2">
+        <div className="bg-white text-gray-800 p-6 rounded-2xl shadow-xl lg:col-span-2">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm uppercase tracking-wide text-gray-300">Saldo disponível para saque</p>
+            <p className="text-sm uppercase tracking-wide text-gray-800">Saldo disponível para saque</p>
             <span className="text-xs bg-white/10 px-3 py-1 rounded-full border border-white/10">PIX</span>
           </div>
           <div className="flex items-baseline gap-3 mb-4">
             <h3 className="text-4xl font-bold">
               {loadingBalance ? "--" : formatCurrency((balance?.available_balance || 0) / 100)}
             </h3>
-            <p className="text-gray-300 text-sm">Atualize suas políticas para alterar a chave PIX.</p>
+            <p className="text-gray-800 text-sm">Atualize suas políticas para alterar a chave PIX.</p>
           </div>
-          <p className="text-xs text-gray-400 mb-4">O saque será enviado para a chave PIX cadastrada nas Configurações. Uma taxa de R$ 1,00 será descontada do valor solicitado.</p>
+          <p className="text-xs text-gray-500 mb-4">O saque será enviado para a chave PIX cadastrada nas Configurações. Uma taxa de R$ 1,00 será descontada do valor solicitado.</p>
           
           <div className="bg-white/10 rounded-xl p-4 mb-4 border border-white/10">
-            <label className="block text-sm text-gray-200 mb-2">Informe o valor do saque (R$)</label>
+            <label className="block text-sm text-gray-800 mb-2">Informe o valor do saque (R$)</label>
             <div className="flex gap-2">
               <input
                 type="number"
@@ -271,19 +271,19 @@ export default function RevenueTab({ org }) {
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
                 placeholder="0.00"
-                className="flex-1 bg-white/10 text-white placeholder-gray-400 rounded-lg px-3 py-2 border border-white/20 focus:border-white/40 outline-none"
+                className="flex-1 bg-white/10 text-gray-800 placeholder-gray-600 rounded-lg px-3 py-2 border border-white/20 focus:border-white/40 outline-none"
               />
               <button
                 onClick={() => {
                   const maxAmount = (balance?.available_balance || 0) / 100;
                   setWithdrawAmount(Math.max(0, maxAmount).toFixed(2));
                 }}
-                className="px-3 py-2 bg-white/20 text-white text-sm rounded-lg hover:bg-white/30 transition border border-white/20"
+                className="px-3 py-2 bg-white/20 text-gray-800 text-sm rounded-lg hover:bg-white/30 transition border border-white/20"
               >
                 Máx
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-1">Valor que será recebido após taxa: <strong>{withdrawAmount ? formatCurrency(Math.max(0, withdrawAmount - 1)) : "--"}</strong></p>
+            <p className="text-xs text-gray-600 mt-1">Valor que será recebido após taxa: <strong>{withdrawAmount ? formatCurrency(Math.max(0, withdrawAmount - 1)) : "--"}</strong></p>
           </div>
 
           <div className="flex flex-wrap gap-3">
