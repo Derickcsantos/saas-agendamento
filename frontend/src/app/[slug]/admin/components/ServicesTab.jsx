@@ -22,6 +22,7 @@ export default function ServicesTab({ org }) {
 
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState("");
+  const [searchQuery, setSearchQuery] = useState(""); // 🔍 Search state
   const { palette } = useOrganizationColors(org.slug_organization);
 
   // ======================
@@ -41,14 +42,29 @@ export default function ServicesTab({ org }) {
     setCategories(data);
   }
 
-  async function loadServices() {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/services/slug/${org.slug_organization}`,
-      { credentials: "include" }
+  async function loadServices(search = "") {
+    const url = new URL(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/services/slug/${org.slug_organization}`
     );
+    
+    // Adiciona parâmetro de search se fornecido
+    if (search) {
+      url.searchParams.append("name", search);
+    }
+
+    const res = await fetch(url.toString(), { credentials: "include" });
     const data = await res.json();
     setServices(data);
   }
+
+  // 🔍 Efeito para buscar ao digitar (com delay)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadServices(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -99,7 +115,7 @@ export default function ServicesTab({ org }) {
       setPreview("");
       setImage(null);
 
-      loadServices();
+      loadServices(searchQuery); // 🔍 Mantém a busca após salvar
     } catch {
       toast.error("Erro ao salvar serviço.");
     }
@@ -135,7 +151,7 @@ export default function ServicesTab({ org }) {
       { method: "DELETE", credentials: "include" }
     );
 
-    loadServices();
+    loadServices(searchQuery); // 🔍 Mantém a busca após deletar
   };
 
   return (
@@ -293,6 +309,25 @@ export default function ServicesTab({ org }) {
       {/* TABELA */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700">
         <h4 className="text-lg font-bold text-gray-700 dark:text-gray-200 mb-4">Serviços</h4>
+
+        {/* 🔍 Search Input */}
+        <div className="mb-4 flex gap-2">
+          <input
+            type="text"
+            placeholder="Buscar por nome..."
+            className="flex-1 border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 text-sm focus:ring focus:ring-purple-200 outline-none"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm hover:bg-gray-300 dark:hover:bg-gray-600"
+            >
+              Limpar
+            </button>
+          )}
+        </div>
 
         <div className="overflow-x-auto rounded-lg border dark:border-gray-700">
           <table className="w-full text-sm">
