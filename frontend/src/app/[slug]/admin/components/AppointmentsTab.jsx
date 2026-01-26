@@ -44,11 +44,13 @@ const calendarStyles = `
     color: white !important;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
     transition: transform .15s ease, box-shadow .15s ease;
+    cursor: move !important;
   }
 
   .fc-event:hover {
     transform: translateY(-2px) scale(1.02);
     box-shadow: 0 6px 16px rgba(0,0,0,0.25) !important;
+    cursor: pointer !important;
   }
 
   /* Barra vermelha do AGORA */
@@ -115,6 +117,9 @@ export default function AppointmentsTab({ org }) {
   const calendarRef = useRef(null);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
+  const touchStartY = useRef(0);
+  const isSwiping = useRef(false);
+  const clickTimer = useRef(null);
   const [editData, setEditData] = useState({
     employee: null,
     date: "",
@@ -362,18 +367,45 @@ export default function AppointmentsTab({ org }) {
 
   // 🆕 Handlers para swipe horizontal no mobile
   const handleTouchStart = (e) => {
+    // Ignorar se clicou em botão ou evento
+    const target = e.target;
+    if (target.closest('.fc-button') || target.closest('.fc-event')) {
+      return;
+    }
+    
     touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    isSwiping.current = false;
   };
 
   const handleTouchMove = (e) => {
+    if (touchStartX.current === 0) return;
+    
     touchEndX.current = e.touches[0].clientX;
+    const touchEndY = e.touches[0].clientY;
+    
+    const deltaX = Math.abs(touchEndX.current - touchStartX.current);
+    const deltaY = Math.abs(touchEndY - touchStartY.current);
+    
+    // Considerar swipe apenas se movimento horizontal for maior que vertical
+    if (deltaX > deltaY && deltaX > 10) {
+      isSwiping.current = true;
+    }
   };
 
   const handleTouchEnd = () => {
-    if (!calendarRef.current) return;
+    if (!calendarRef.current || touchStartX.current === 0) return;
+    
+    // Só processar swipe se realmente houve movimento horizontal significativo
+    if (!isSwiping.current) {
+      touchStartX.current = 0;
+      touchEndX.current = 0;
+      touchStartY.current = 0;
+      return;
+    }
     
     const swipeDistance = touchStartX.current - touchEndX.current;
-    const minSwipeDistance = 50; // mínimo de 50px para considerar um swipe
+    const minSwipeDistance = 50;
 
     const api = calendarRef.current.getApi();
 
@@ -389,6 +421,8 @@ export default function AppointmentsTab({ org }) {
     // Reset
     touchStartX.current = 0;
     touchEndX.current = 0;
+    touchStartY.current = 0;
+    isSwiping.current = false;
   };
 
   // Adicionar event listeners quando o calendário for montado
@@ -399,7 +433,7 @@ export default function AppointmentsTab({ org }) {
     if (!calendarEl) return;
 
     calendarEl.addEventListener('touchstart', handleTouchStart, { passive: true });
-    calendarEl.addEventListener('touchmove', handleTouchMove, { passive: true });
+    calendarEl.addEventListener('touchmove', handleTouchMove, { passive: false });
     calendarEl.addEventListener('touchend', handleTouchEnd);
 
     return () => {
@@ -408,6 +442,80 @@ export default function AppointmentsTab({ org }) {
       calendarEl.removeEventListener('touchend', handleTouchEnd);
     };
   }, [calendarRef.current]);
+
+  // 🆕 Handler para arrastar e soltar eventos (reagendar)
+  const handleEventDrop = async (info) => {
+    const eventId = info.event.id;
+    const newStart = info.event.start;
+    const newEnd = info.event.end;
+
+    if (!newStart || !newEnd) {
+      info.revert();
+      return;
+    }
+
+    // Formatar data e horários
+    const appointmentDate = newStart.toISOString().split('T')[0];
+    const startTime = newStart.toTimeString().slice(0, 5);
+    const endTime = newEnd.toTimeString().slice(0, 5);
+
+    try {
+      // Buscar dados completos do agendamento
+      const fetchRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}/${eventId}`,
+        { credentials: "include" }
+      );
+      const appointmentData = await fetchRes.json();
+
+      // Atualizar no backend
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}/${eventId}`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employee_id: appointmentData.employees.id,
+            appointment_date: appointmentDate,
+            start_time: startTime,
+            end_time: endTime,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Erro ao atualizar agendamento");
+      }
+
+      // Recarregar agendamentos
+      await loadAppointments(filters);
+    } catch (error) {
+      console.error("Erro ao reagendar:", error);
+      info.revert(); // Reverter a mudança visual
+      alert("Erro ao reagendar o agendamento. Tente novamente.");
+    }
+  };
+
+  // 🆕 Handler para clique duplo no evento (abrir modal de edição)
+  const handleEventClick = (info) => {
+    // Prevenir comportamento padrão
+    info.jsEvent.preventDefault();
+    info.jsEvent.stopPropagation();
+    
+    // Detectar clique duplo
+    if (clickTimer.current) {
+      // É um clique duplo
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+      openEditModal(info.event.id);
+    } else {
+      // Primeiro clique - aguardar para ver se há um segundo
+      clickTimer.current = setTimeout(() => {
+        clickTimer.current = null;
+        // Opcional: fazer algo no clique simples (ex: mostrar tooltip)
+      }, 300);
+    }
+  };
 
   const EditModal = () => {
     if (!showEditModal || !editingAppointment) return null;
@@ -711,6 +819,9 @@ export default function AppointmentsTab({ org }) {
             allDaySlot={false}
             nowIndicator={true}
             expandRows={true}
+            editable={true}
+            eventDrop={handleEventDrop}
+            eventClick={handleEventClick}
             headerToolbar={{
               left: "prev,next today",
               center: "title",
