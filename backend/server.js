@@ -45,6 +45,7 @@ import { calendarColorsRouter } from './routes/calendarColorsRoutes.js';
 import { whatsappOrganizationRouter } from './routes/whatsappOrganizationRoutes.js';
 import { clientRouter } from './routes/clientRoutes.js';
 import { organizationsPaymentsRouter } from './routes/organizationsPaymentsRoutes.js';
+import { expensesRouter } from './routes/expensesRoutes.js';
 // import { sendWhatsappRouter } from "./routes/sendWhatsappRoutes.js";
 
 const app = express();
@@ -126,6 +127,7 @@ app.use('/api/calendar-colors', calendarColorsRouter);
 app.use('/api/whatsapp-organization', whatsappOrganizationRouter);
 app.use('/api/clients', clientRouter)
 app.use('/api/payments', organizationsPaymentsRouter)
+app.use('/api/admin/expenses', expensesRouter)
 // app.use("/api/whatsapp-send", sendWhatsappRouter);
 
 app.listen(port, () => {

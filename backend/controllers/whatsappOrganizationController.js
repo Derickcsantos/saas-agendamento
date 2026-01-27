@@ -834,6 +834,7 @@ export const updateContactInfo = async (req, res) => {
     // Invalida cache de contatos ao atualizar (remove todas as páginas)
     if (redis) {
       try {
+        const cacheKey = `whatsapp_contacts:${orgId}`;
         const cacheCountKey = `whatsapp_contacts_count:${orgId}`;
         const cachedCountStr = await redis.get(cacheCountKey);
         const cachedCount = parseInt(cachedCountStr || '0', 10);

@@ -26,6 +26,7 @@ import GalleryTab from "./components/GalleryTab";
 import ClosedPeriodsTab from './components/ClosedPeriods';
 import RevenueAreaChartCard from "./components/RevenueAreaChartCard";
 import WhatsappTab from "./components/WhatsappTab";
+import ExpensesTab from "./components/ExpensesTab";
 
 export default function AdminDashboard({ slug }) {
   const router = useRouter();
@@ -159,6 +160,8 @@ export default function AdminDashboard({ slug }) {
         return <ClientsTab org={org} />;
       case "revenues":
         return <RevenuesTab org={org} />;
+      case "expenses":
+        return <ExpensesTab org={org} />;
       case "gallery":
         return <GalleryTab org={org} />;
       case "coupons":
