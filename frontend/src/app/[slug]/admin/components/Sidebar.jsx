@@ -38,6 +38,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
     { name: "Períodos fechados", key: "closed-periods", icon: "bi-calendar-check" },
     { name: "Agendamento rápido", key: "faster-schedule", icon: "bi-lightning" },
     { name: "Receitas", key: "revenues", icon: "bi-cash-coin" },
+    { name: "Despesas", key: "expenses", icon: "bi-receipt" },
     { name: "Cupons", key: "coupons", icon: "bi-wallet2" },
     { name: "Usuários", key: "users", icon: "bi-person-badge" },
     { name: "WhatsApp", key: "whatsapp", icon: "bi-whatsapp" },
