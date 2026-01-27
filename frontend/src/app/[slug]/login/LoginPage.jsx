@@ -153,6 +153,11 @@ export default function LoginPage({ slug }) {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="absolute top-1 left-4 w-10 h-10 ">
+        <a href={`/${slug}/agendar`} >
+        <img width="30" height="30" src="https://img.icons8.com/ios/50/left--v1.png" alt="left--v1"/>
+        </a>
+      </div>
       <div className="max-w-md w-full bg-white rounded-xl shadow-md p-8">
         <h1 className="text-2xl font-semibold text-center mb-6" style={{color: palette?.strong_color}}>
           Login — {organization?.name || slug}
