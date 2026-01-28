@@ -65,7 +65,7 @@ export default function AdminDashboard({ slug }) {
         setUser(data.user);
 
         // ✅ Busca dados do usuário para verificar app_installed
-        const userRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${data.user.id}`);
+        const userRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${slug}/${data.user.id}`);
         const userData = await userRes.json();
         setAppInstalled(userData?.app_installed || false);
 

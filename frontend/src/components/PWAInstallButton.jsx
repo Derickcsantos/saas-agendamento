@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Download, Smartphone, X } from "lucide-react";
 
-export default function PWAInstallButton({ userId, palette, onInstallSuccess }) {
+export default function PWAInstallButton({ userId, slug, palette, onInstallSuccess }) {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -54,7 +54,12 @@ export default function PWAInstallButton({ userId, palette, onInstallSuccess }) 
 
   const updateAppInstalled = async (userId) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${userId}`, {
+      if (!slug) {
+        console.warn("Slug não fornecido ao PWAInstallButton");
+        return;
+      }
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${slug}/${userId}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
