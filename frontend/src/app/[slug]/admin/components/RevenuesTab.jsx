@@ -5,6 +5,7 @@ import jsPDF from "jspdf";
 import { toast } from 'react-toastify'
 import autoTable from 'jspdf-autotable';
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 
 export default function RevenueTab({ org }) {
   const [data, setData] = useState(null);
@@ -18,6 +19,8 @@ export default function RevenueTab({ org }) {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawingBalance, setWithdrawingBalance] = useState(false);
   const { palette } = useOrganizationColors(org.slug_organization);
+
+  const { confirm } = useConfirm()
 
   const API = process.env.NEXT_PUBLIC_API_URL;
   const slug = org.slug_organization;
@@ -299,8 +302,16 @@ export default function RevenueTab({ org }) {
                   toast.error("Valor solicitado maior que o saldo disponível.");
                   return;
                 }
-                const confirmed = window.confirm(`Confirmar saque de R$ ${requestedAmount.toFixed(2)}?\n\nTaxa: R$ 1,00\nValor a receber: R$ ${(requestedAmount - 1).toFixed(2)}\n\nA chave PIX cadastrada em Configurações será usada.`);
-                if (!confirmed) return;
+                // const confirmed = window.confirm(`Confirmar saque de R$ ${requestedAmount.toFixed(2)}?\n\nTaxa: R$ 1,00\nValor a receber: R$ ${(requestedAmount - 1).toFixed(2)}\n\nA chave PIX cadastrada em Configurações será usada.`);
+                // if (!confirmed) return;
+
+                const confirmed = await confirm({
+                  title: "Confirmar saque",
+                  message: `Confirmar saque de R$ ${requestedAmount.toFixed(2)}?\n\nTaxa: R$ 1,00\nValor a receber: R$ ${(requestedAmount - 1).toFixed(2)}\n\nA chave PIX cadastrada em Configurações será usada.`
+                });
+
+                if (!confirmed) return
+
                 try {
                   setWithdrawingBalance(true);
                   const res = await fetch(`${API}/api/payments/${slug}/withdraw`, {

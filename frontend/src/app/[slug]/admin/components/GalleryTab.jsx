@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useDropzone } from "react-dropzone";
 import { fetchWithAuth } from "@/lib/fetchWithAuth"; // 🔥 IMPORTANTE
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 
 export default function GalleryTab({ org }) {
   const [galleryImages, setGalleryImages] = useState([]);
@@ -11,6 +12,8 @@ export default function GalleryTab({ org }) {
 
   const [uploadFiles, setUploadFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
+
+  const { confirm } = useConfirm()
 
   const [form, setForm] = useState({
     titulo: "",
@@ -106,7 +109,14 @@ export default function GalleryTab({ org }) {
   const handleBatchDelete = async () => {
     if (selectedIds.length === 0) return;
 
-    if (!confirm("Deseja excluir as imagens selecionadas?")) return;
+    // if (!confirm("Deseja excluir as imagens selecionadas?")) return;
+
+    const confirmed = await confirm({
+      title: "Excluir imagens",
+      message: "Deseja realmente excluir estas imagens?"
+    });
+
+    if (!confirmed) return
 
     try {
       const res = await fetchWithAuth(

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 
 export default function UsersTab({ org }) {
   const [users, setUsers] = useState([]);
@@ -10,6 +11,8 @@ export default function UsersTab({ org }) {
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(null);
   const { palette } = useOrganizationColors(org.slug_organization);
+
+  const { confirm } = useConfirm()
 
   const [form, setForm] = useState({
     username: "",
@@ -106,7 +109,14 @@ export default function UsersTab({ org }) {
   };
 
   const deleteUser = async (id) => {
-    if (!confirm("Deseja excluir este usuário?")) return;
+    // if (!confirm("Deseja excluir este usuário?")) return;
+
+    const confirmed = await confirm({
+      title: "Excluir usuário",
+      message: `Deseja excluir este usuário?`
+    });
+
+    if (!confirmed) return
 
     await fetch(`${API}/api/users/${orgSlug}/${id}`, {
       method: "DELETE",

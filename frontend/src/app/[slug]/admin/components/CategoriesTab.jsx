@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import ImageDropzone from "./ImageDropzone"
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 
 export default function CategoriesTab({ org }) {
   const [categories, setCategories] = useState([]);
@@ -16,6 +17,8 @@ export default function CategoriesTab({ org }) {
   const [searchQuery, setSearchQuery] = useState(""); // 🔍 Search state
   const formRef = useRef(null);
   const { palette } = useOrganizationColors(org.slug_organization);
+
+  const { confirm } = useConfirm()
 
   const loadCategories = async (search = "") => {
     try {
@@ -104,7 +107,14 @@ export default function CategoriesTab({ org }) {
 
 
   const handleDelete = async (id) => {
-    if (!confirm("Deseja realmente excluir esta categoria?")) return;
+    // if (!confirm("Deseja realmente excluir esta categoria?")) return;
+
+    const confirmed = await confirm({
+      title: "Excluir categoria",
+      message: "Deseja realmente excluir esta categoria?"
+    });
+
+    if (!confirmed) return
 
     await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/admin/categories/${org.slug_organization}/${id}`,

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { toast } from 'react-toastify'
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 
 export default function CouponsTab({ org }) {
   const [coupons, setCoupons] = useState([]);
@@ -20,6 +21,7 @@ export default function CouponsTab({ org }) {
 
   const [loading, setLoading] = useState(false);
   const { palette } = useOrganizationColors(org.slug_organization);
+  const { confirm } = useConfirm() 
 
   useEffect(() => {
     loadCoupons();
@@ -83,7 +85,14 @@ export default function CouponsTab({ org }) {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Deseja realmente excluir este cupom?")) return;
+    // if (!confirm("Deseja realmente excluir este cupom?")) return;
+
+    const confirmed = await confirm({
+      title: "Excluir cupom",
+      message: "Deseja realmente excluir este cupom?"
+    });
+
+    if (!confirmed) return    
 
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/coupons/${org.slug_organization}/${id}`, {  

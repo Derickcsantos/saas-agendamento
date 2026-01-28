@@ -9,6 +9,7 @@ import formatDateFromYYYYMMDD from "@/app/utils/formatDateFromYYYYMMDD";
 import { statusClasses } from "@/app/utils/appointmentStatus";
 import { statusInfo } from "@/app/utils/appointmentsInfo";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 
 const calendarStyles = `
   .fc-theme-standard td, 
@@ -131,6 +132,8 @@ export default function AppointmentsTab({ org }) {
     date: "",
     statuses: ["confirmed", "completed"],
   });
+
+  const { confirm } = useConfirm()
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
@@ -275,7 +278,15 @@ export default function AppointmentsTab({ org }) {
   };
 
   const handleStatusChange = async (id, newStatus) => {
-    if (!confirm("Confirmar mudança de status?")) return;
+    // if (!confirm("Confirmar mudança de status?")) return;
+
+    const confirmed = await confirm({
+      title: "Mudança de status",
+      message: "Deseja realmente mudar o status?"
+    });
+
+    if (!confirmed) return
+
     setSavingId(id);
 
     await fetch(
