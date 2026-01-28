@@ -46,9 +46,9 @@ export const adminPlanRouter = Router();
  *               services:
  *                 type: array
  *                 items:
- *                  type: integer
-  *              isActive:
- *                  type: boolean
+ *                   type: integer
+ *               isActive:
+ *                 type: boolean
  *     responses:
  *       201:
  *         description: Plano criado com sucesso

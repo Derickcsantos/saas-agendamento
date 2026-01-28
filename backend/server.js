@@ -3,7 +3,6 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import cron from 'node-cron';
 import setupSwagger from './swagger.js';
 import { categoryRouter } from './routes/categoryRoutes.js';
 import { userRouter } from './routes/userRoutes.js';
@@ -11,7 +10,6 @@ import { forgotPasswordRouter } from './routes/forgotPasswordRoutes.js';
 import { verifyUserRouter } from './routes/verifyUserRoutes.js';
 import { couponRouter } from './routes/couponRoutes.js';
 import { serviceRouter } from './routes/ServiceRoutes.js';
-import updateYesterdayAppointmentsToCompleted from './utils/confirmAppointments.js';
 import { registerUserRouter } from './routes/registerUserRoutes.js';
 import { appointmentsRouter } from './routes/appointmentsRoutes.js'
 import { adminAppointmentRouter } from './routes/adminAppointmentRoutes.js';
@@ -46,7 +44,7 @@ import { whatsappOrganizationRouter } from './routes/whatsappOrganizationRoutes.
 import { clientRouter } from './routes/clientRoutes.js';
 import { organizationsPaymentsRouter } from './routes/organizationsPaymentsRoutes.js';
 import { expensesRouter } from './routes/expensesRoutes.js';
-// import { sendWhatsappRouter } from "./routes/sendWhatsappRoutes.js";
+import scheduleJob from './utils/screduleJobs.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -63,31 +61,9 @@ setupSwagger(app)
 
 app.use(passport.initialize());
 
-const TZ = "America/Sao_Paulo";
-
-function scheduleJob(cronExpr, label) {
-  cron.schedule(
-    cronExpr,
-    async () => {
-      console.log(`[CRON ${label}] Executando atualização diária de agendamentos...`);
-
-      // Se você atualizou sua função para aceitar lookbackDays:
-      const result = await updateYesterdayAppointmentsToCompleted({ lookbackDays: 2 });
-
-      // Se sua função AINDA não aceita params, use:
-      // const result = await updateYesterdayAppointmentsToCompleted();
-
-      if (result.success) console.log(`[CRON ${label}] ${result.message}`);
-      else console.error(`[CRON ${label}] Erro na tarefa agendada:`, result.error);
-    },
-    { timezone: TZ }
-  );
-}
-
-scheduleJob("0 0 * * *", "00:00");
-scheduleJob("0 3 * * *", "03:00");
+scheduleJob("0 6 * * *", "06:00");
 scheduleJob("0 8 * * *", "08:00");
-
+scheduleJob("0 10 * * *", "10:00");
 
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
 app.use('/api/appointments', appointmentProcessRouter);
