@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 export async function GET(request, { params }) {
-  const { slug } = params;
+  const { slug } = await params;
 
   // Buscar dados da organização
   let organizationData = null;

@@ -14,6 +14,7 @@
     "@fullcalendar/interaction": "^6.1.19",
     "@fullcalendar/react": "^6.1.19",
     "@fullcalendar/timegrid": "^6.1.19",
+    "@hello-pangea/dnd": "^18.0.1",
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
     "apexcharts": "^5.3.6",
@@ -39,6 +40,7 @@
     "react-dropzone": "^14.3.8",
     "react-hot-toast": "^2.6.0",
     "react-icons": "^5.5.0",
+    "react-select": "^5.10.2",
     "react-svg-credit-card-payment-icons": "^5.1.2",
     "react-toastify": "^11.0.5",
     "tailwind-merge": "^3.4.0"

@@ -44,10 +44,19 @@ import { whatsappOrganizationRouter } from './routes/whatsappOrganizationRoutes.
 import { clientRouter } from './routes/clientRoutes.js';
 import { organizationsPaymentsRouter } from './routes/organizationsPaymentsRoutes.js';
 import { expensesRouter } from './routes/expensesRoutes.js';
+import queueRouter from './routes/queueRoutes.js';
 import scheduleJob from './utils/screduleJobs.js';
+import QueueWebSocketManager from './lib/websocket.js';
+import http from 'http';
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Criar servidor HTTP para suportar WebSocket
+const server = http.createServer(app);
+
+// Inicializar WebSocket Manager
+export const queueWebSocket = new QueueWebSocketManager(server);
 
 app.set("trust proxy", 1);
 
@@ -61,9 +70,9 @@ setupSwagger(app)
 
 app.use(passport.initialize());
 
-scheduleJob("0 6 * * *", "06:00");
+scheduleJob("0 0 * * *", "00:00");
+scheduleJob("0 3 * * *", "03:00");
 scheduleJob("0 8 * * *", "08:00");
-scheduleJob("0 10 * * *", "10:00");
 
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
 app.use('/api/appointments', appointmentProcessRouter);
@@ -104,8 +113,10 @@ app.use('/api/whatsapp-organization', whatsappOrganizationRouter);
 app.use('/api/clients', clientRouter)
 app.use('/api/payments', organizationsPaymentsRouter)
 app.use('/api/admin/expenses', expensesRouter)
+app.use('/api/queues', queueRouter)
 // app.use("/api/whatsapp-send", sendWhatsappRouter);
 
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
+  console.log(`WebSocket disponível em ws://localhost:${port}`);
 });
