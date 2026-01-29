@@ -70,9 +70,9 @@ setupSwagger(app)
 
 app.use(passport.initialize());
 
-scheduleJob("0 6 * * *", "06:00");
+scheduleJob("0 0 * * *", "00:00");
+scheduleJob("0 3 * * *", "03:00");
 scheduleJob("0 8 * * *", "08:00");
-scheduleJob("0 10 * * *", "10:00");
 
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
 app.use('/api/appointments', appointmentProcessRouter);

@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import {
   getTodayQueue,
+  createQueue,
   getQueueEntries,
   getAvailableEmployees,
   joinQueue,
@@ -16,7 +17,7 @@ import {
 } from "../controllers/queueController.js";
 import { validateSlugForWebSocket } from "../controllers/websocketController.js";
 
-const queueRouter = express.Router();
+export const queueRouter = express.Router();
 
 // CORS mais permissivo para endpoint público de validação WebSocket
 const publicCorsOptions = {
@@ -39,8 +40,8 @@ const publicCorsOptions = {
  * /api/queues/{slug}/today:
  *   get:
  *     tags: ['Queues']
- *     summary: 'Obter ou criar fila do dia'
- *     description: 'Retorna a fila de hoje ou cria uma nova se não existir'
+ *     summary: 'Obter fila do dia'
+ *     description: 'Retorna a fila de hoje (não cria automaticamente)'
  *     parameters:
  *       - in: path
  *         name: slug
@@ -76,6 +77,8 @@ const publicCorsOptions = {
  *         description: 'Organização não encontrada'
  */
 queueRouter.get("/:slug/today", getTodayQueue);
+
+queueRouter.post("/:slug/create", createQueue);
 
 /**
  * @swagger

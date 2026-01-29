@@ -29,8 +29,7 @@ export function broadcastQueueUpdate(organizationId, queueId, data) {
 
 /**
  * GET /api/queues/:slug/today
- * Pega ou cria a fila do dia
- * (Mantém HTTP, apenas remove SSE)
+ * Pega a fila do dia (não cria automaticamente)
  */
 export const getTodayQueue = async (req, res) => {
   try {
@@ -64,8 +63,8 @@ export const getTodayQueue = async (req, res) => {
     const opensAt = policy?.opens_at || "08:00:00";
     const closesAt = policy?.closes_at || "18:00:00";
 
-    // Buscar ou criar fila do dia
-    let { data: queue, error: queueError } = await supabase
+    // Buscar fila do dia
+    const { data: queue, error: queueError } = await supabase
       .from("queues")
       .select(
         `
@@ -93,27 +92,77 @@ export const getTodayQueue = async (req, res) => {
       .eq("queue_date", today)
       .single();
 
-    // Se não existe, criar
-    if (!queue) {
-      const { data: newQueue, error: createError } = await supabase
-        .from("queues")
-        .insert({
-          organization_id: org.id,
-          queue_date: today,
-          status: "open",
-          opens_at: opensAt,
-          closes_at: closesAt,
-        })
-        .select()
-        .single();
-
-      if (createError) throw createError;
-      queue = newQueue;
+    if (queueError || !queue) {
+      return res.status(404).json({ error: "Fila não encontrada" });
     }
 
     res.json(queue);
   } catch (error) {
     console.error("Erro em getTodayQueue:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+/**
+ * POST /api/queues/:slug/create
+ * Cria fila para uma data específica
+ */
+export const createQueue = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { queue_date, opens_at, closes_at } = req.body;
+
+    if (!slug) {
+      return res.status(400).json({ error: "Slug não fornecido" });
+    }
+
+    if (!queue_date || !opens_at || !closes_at) {
+      return res.status(400).json({ error: "queue_date, opens_at e closes_at são obrigatórios" });
+    }
+
+    const { data: org, error: orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
+    const { data: existing } = await supabase
+      .from("queues")
+      .select("queue_id")
+      .eq("organization_id", org.id)
+      .eq("queue_date", queue_date)
+      .maybeSingle();
+
+    if (existing) {
+      return res.status(400).json({ error: "Já existe fila criada para essa data" });
+    }
+
+    const normalizeTime = (value) => {
+      if (!value) return value;
+      return value.length === 5 ? `${value}:00` : value;
+    };
+
+    const { data: created, error: createError } = await supabase
+      .from("queues")
+      .insert({
+        organization_id: org.id,
+        queue_date,
+        status: "open",
+        opens_at: normalizeTime(opens_at),
+        closes_at: normalizeTime(closes_at),
+      })
+      .select()
+      .single();
+
+    if (createError) throw createError;
+
+    res.status(201).json(created);
+  } catch (error) {
+    console.error("Erro em createQueue:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -369,19 +418,7 @@ export const joinQueue = async (req, res) => {
       .single();
 
     if (!queue) {
-      const { data: newQueue } = await supabase
-        .from("queues")
-        .insert({
-          organization_id: org.id,
-          queue_date: today,
-          status: "open",
-          opens_at: "08:00:00",
-          closes_at: "18:00:00",
-        })
-        .select("queue_id, status")
-        .single();
-
-      queue = newQueue;
+      return res.status(404).json({ error: "Fila não criada para hoje" });
     }
 
     if (queue.status !== "open") {

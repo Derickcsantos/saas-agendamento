@@ -16,6 +16,11 @@ export default function QueueTab({ slug }) {
   const [wsConnected, setWsConnected] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const { palette } = useOrganizationColors(slug);
+  const [creatingQueue, setCreatingQueue] = useState(false);
+  const [createQueueLoading, setCreateQueueLoading] = useState(false);
+  const [createQueueDate, setCreateQueueDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [createQueueStart, setCreateQueueStart] = useState("08:00");
+  const [createQueueEnd, setCreateQueueEnd] = useState("18:00");
 
   // ================================
   // HANDLER DE MENSAGENS WEBSOCKET
@@ -87,6 +92,9 @@ export default function QueueTab({ slug }) {
           const data = await queueRes.json();
           setQueue(data);
           setQueueEntries(data.queue_entries || []);
+        } else if (queueRes.status === 404) {
+          setQueue(null);
+          setQueueEntries([]);
         } else {
           toast.error("Erro ao carregar fila");
         }
@@ -335,6 +343,39 @@ export default function QueueTab({ slug }) {
     }
   };
 
+  const handleCreateQueue = async () => {
+    try {
+      setCreateQueueLoading(true);
+      const res = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/queues/${slug}/create`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            queue_date: createQueueDate,
+            opens_at: createQueueStart,
+            closes_at: createQueueEnd,
+          }),
+        }
+      );
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao criar fila");
+      }
+
+      setQueue(data);
+      setQueueEntries([]);
+      setCreatingQueue(false);
+      toast.success("Fila criada com sucesso", { autoClose: 3000 });
+    } catch (err) {
+      console.error("Erro ao criar fila:", err);
+      toast.error(err.message || "Erro ao criar fila");
+    } finally {
+      setCreateQueueLoading(false);
+    }
+  };
+
   // ================================
   // RENDER
   // ================================
@@ -351,6 +392,83 @@ export default function QueueTab({ slug }) {
     .sort((a, b) => a.position - b.position);
   const completedEntries = queueEntries.filter(e => e.status === "completed");
   const cancelledEntries = queueEntries.filter(e => e.status === "canceled");
+
+  if (!queue && !loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 px-4 py-6 sm:p-6">
+        <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+          <div className="text-center">
+            <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
+              Não há fila criada para hoje
+            </h1>
+            <p className="text-sm text-slate-500 mt-2">
+              Gostaria de criar uma fila agora?
+            </p>
+          </div>
+
+          {!creatingQueue ? (
+            <div className="mt-6">
+              <button
+                onClick={() => setCreatingQueue(true)}
+                style={{ backgroundColor: palette?.strong_color || "#111827" }}
+                className="w-full px-4 py-3 rounded-lg text-white text-sm font-semibold hover:opacity-95 transition"
+              >
+                Criar fila
+              </button>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-500">Data</label>
+                <input
+                  type="date"
+                  value={createQueueDate}
+                  onChange={(e) => setCreateQueueDate(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500">Início</label>
+                  <input
+                    type="time"
+                    value={createQueueStart}
+                    onChange={(e) => setCreateQueueStart(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500">Fim</label>
+                  <input
+                    type="time"
+                    value={createQueueEnd}
+                    onChange={(e) => setCreateQueueEnd(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => setCreatingQueue(false)}
+                  className="w-full sm:flex-1 px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCreateQueue}
+                  disabled={createQueueLoading}
+                  style={{ backgroundColor: palette?.strong_color || "#111827" }}
+                  className="w-full sm:flex-1 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-95 disabled:opacity-50"
+                >
+                  {createQueueLoading ? "Criando..." : "Confirmar criação"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-5 sm:p-6 space-y-5 sm:space-y-6">
