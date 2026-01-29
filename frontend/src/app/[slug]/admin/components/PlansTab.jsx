@@ -34,6 +34,7 @@ export default function PlansTab({ org }) {
       setPlans(data);
     } catch (err) {
       console.error("Erro ao carregar planos:", err);
+      toast.error("Erro ao carregar planos");
     } finally {
       setLoading(false);
     }

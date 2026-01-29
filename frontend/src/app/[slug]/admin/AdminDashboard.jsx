@@ -27,6 +27,9 @@ import ClosedPeriodsTab from './components/ClosedPeriods';
 import RevenueAreaChartCard from "./components/RevenueAreaChartCard";
 import WhatsappTab from "./components/WhatsappTab";
 import ExpensesTab from "./components/ExpensesTab";
+import QueueTab from "@/app/[slug]/admin/components/QueueTab";
+import SubscriptionsTab from "./components/SubscriptionsTab";
+import PlansTab from "./components/PlansTab";
 
 export default function AdminDashboard({ slug }) {
   const router = useRouter();
@@ -162,6 +165,8 @@ export default function AdminDashboard({ slug }) {
         return <RevenuesTab org={org} />;
       case "expenses":
         return <ExpensesTab org={org} />;
+      case "queue":
+        return <QueueTab slug={slug} />;
       case "gallery":
         return <GalleryTab org={org} />;
       case "coupons":
