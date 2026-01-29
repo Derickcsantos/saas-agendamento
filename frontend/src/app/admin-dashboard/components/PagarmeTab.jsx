@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { FiPlus, FiEdit2, FiXCircle, FiTrash2 } from "react-icons/fi";
 import dynamic from "next/dynamic";
 import { toast } from 'react-toastify'
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 
 const Modal = dynamic(() => import("./PagarmeTabModal"), { ssr: false });
 
@@ -36,6 +37,8 @@ export default function PagarmeTab() {
     billing_type: "postpaid",
     payment_methods: ["credit_card"],
   });
+
+  const { confirm } = useConfirm()
 
   // ================================
   // FETCH PLANS & SUBSCRIPTIONS
@@ -146,7 +149,14 @@ export default function PagarmeTab() {
   }
 
   async function deletePlan(id) {
-    if (!confirm("Tem certeza que deseja excluir este plano?")) return;
+    // if (!confirm("Tem certeza que deseja excluir este plano?")) return;
+
+    const confirmed = await confirm({
+      title: "Excluir plano",
+      message: "Tem certeza que deseja excluir este plano?"
+    });
+
+    if (!confirmed) return
 
     try {
       const res = await fetch(`${API}/plans/${id}`, {
@@ -167,7 +177,14 @@ export default function PagarmeTab() {
   // CANCEL SUBSCRIPTION
   // ================================
   async function cancelSubscription(id) {
-    if (!confirm("Deseja cancelar esta assinatura?")) return;
+    // if (!confirm("Deseja cancelar esta assinatura?")) return;
+
+    const confirmed = await confirm({
+      title: "Cancelar assinatura",
+      message: "Deseja cancelar esta assinatura?"
+    });
+
+    if (!confirmed) return
 
     await fetch(`${API}/subscriptions/${id}/cancel`, {
       method: "POST",
