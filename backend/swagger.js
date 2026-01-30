@@ -20,6 +20,14 @@ export const swaggerOptions = {
         url: 'https://ubiquitous-train-v6pw96wx6v64h664v-3000.app.github.dev',
         description: 'Servidor Codespaces (Public URL)'
       },
+      {
+        url: 'https://backend.marcafy.com.br',
+        description: 'Servidor principal'
+      },
+      {
+        url: 'https://marcafybackend.up.railway.app',
+        description: 'Servidor reserva'
+      },
     ]
   },
   apis: [

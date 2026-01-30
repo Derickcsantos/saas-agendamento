@@ -619,6 +619,90 @@ expensesRouter.get('/:slug', authenticateJWT, getAllExpenses);
  */
 expensesRouter.get('/:slug/:id', authenticateJWT, getExpenseById);
 
+/**
+ * @swagger
+ * /api/admin/expenses/{slug}:
+ *   post:
+ *     summary: Cria uma nova despesa
+ *     description: Registra uma nova despesa para a organização, podendo ser única ou parcelada
+ *     tags: [Despesas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Slug da organização
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - description_expense
+ *               - value_expense
+ *               - date_expense
+ *               - category_id
+ *               - payment_method_id
+ *             properties:
+ *               description_expense:
+ *                 type: string
+ *                 description: Descrição da despesa
+ *                 example: "Compra de produtos"
+ *               value_expense:
+ *                 type: number
+ *                 description: Valor total da despesa
+ *                 example: 500.00
+ *               date_expense:
+ *                 type: string
+ *                 format: date
+ *                 description: Data da despesa
+ *                 example: "2025-01-30"
+ *               category_id:
+ *                 type: integer
+ *                 description: ID da categoria da despesa
+ *                 example: 1
+ *               payment_method_id:
+ *                 type: integer
+ *                 description: ID do método de pagamento
+ *                 example: 2
+ *               is_recurring:
+ *                 type: boolean
+ *                 description: Se a despesa é recorrente
+ *                 example: false
+ *               installments:
+ *                 type: integer
+ *                 description: Número de parcelas (se aplicável)
+ *                 example: 3
+ *               notes:
+ *                 type: string
+ *                 description: Observações adicionais
+ *     responses:
+ *       201:
+ *         description: Despesa criada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 description_expense:
+ *                   type: string
+ *                 value_expense:
+ *                   type: number
+ *                 date_expense:
+ *                   type: string
+ *       400:
+ *         description: Dados inválidos
+ *       401:
+ *         description: Não autorizado
+ *       500:
+ *         description: Erro ao criar despesa
+ */
 expensesRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, createExpense);
 
 /**
