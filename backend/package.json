@@ -17,6 +17,7 @@
     "npm": ">=9.0.0"
   },
   "dependencies": {
+    "@aws-sdk/client-route-53": "^3.978.0",
     "@getbrevo/brevo": "^3.0.1",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.39.0",

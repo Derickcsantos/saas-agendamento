@@ -14,6 +14,9 @@ export default function FasterScheduleTab({ org }) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [selectedService, setSelectedService] = useState(null);
+  const [manualTimeMode, setManualTimeMode] = useState(false);
+  const [manualStartTime, setManualStartTime] = useState("");
+  const [manualEndTime, setManualEndTime] = useState("");
 
   const [form, setForm] = useState({
     client_name: "",
@@ -220,10 +223,26 @@ export default function FasterScheduleTab({ org }) {
     }
   };
 
+  const toggleManualTimeMode = () => {
+    setManualTimeMode(!manualTimeMode);
+    // Limpa os campos ao alternar modo
+    setForm({ ...form, time_slot: "" });
+    setManualStartTime("");
+    setManualEndTime("");
+  };
+
   const submit = async (e) => {
     e.preventDefault();
 
-    const [start_time, end_time] = form.time_slot.split("|");
+    // Define horários baseado no modo (manual ou automático)
+    let start_time, end_time;
+    
+    if (manualTimeMode) {
+      start_time = manualStartTime;
+      end_time = manualEndTime;
+    } else {
+      [start_time, end_time] = form.time_slot.split("|");
+    }
 
     const payload = {
       client_name: form.client_name,
@@ -237,6 +256,7 @@ export default function FasterScheduleTab({ org }) {
       final_price: Number(form.final_price),
       original_price: Number(selectedService?.price || 0),
       coupon_code: null,
+      admin_override: true, // ✅ Flag para permitir agendamentos especiais
     };
 
     const res = await fetch(
@@ -271,11 +291,29 @@ export default function FasterScheduleTab({ org }) {
     setEmployees([]);
     setSlots([]);
     setSelectedService(null);
+    setManualTimeMode(false);
+    setManualStartTime("");
+    setManualEndTime("");
   };
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border">
       <h2 className="text-lg font-semibold text-gray-700 mb-4">Agendamento Rápido</h2>
+
+      {manualTimeMode && (
+        <div className="bg-orange-50 border-l-4 border-orange-500 p-4 mb-4 rounded">
+          <div className="flex items-start gap-2">
+            <span className="text-orange-500 text-xl">⚠️</span>
+            <div>
+              <h3 className="font-semibold text-orange-800 text-sm">Modo Admin Ativo</h3>
+              <p className="text-orange-700 text-xs mt-1">
+                Você pode agendar em qualquer horário, mesmo fora do expediente do funcionário ou com conflitos. 
+                Use com responsabilidade.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={submit} className="space-y-6">
         <div className="grid md:grid-cols-3 gap-4">
@@ -401,19 +439,59 @@ export default function FasterScheduleTab({ org }) {
             required
           />
 
-          <select
-            className="border p-2 rounded-md"
-            value={form.time_slot}
-            onChange={(e) => setForm({ ...form, time_slot: e.target.value })}
-            required
-          >
-            <option value="">Horário...</option>
-            {slots.map((slot, i) => (
-              <option key={i} value={`${slot.start}|${slot.end}`}>
-                {slot.start} - {slot.end}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 mb-1">
+              <label className="text-sm text-gray-600">
+                Modo de seleção de horário:
+              </label>
+              <button
+                type="button"
+                onClick={toggleManualTimeMode}
+                className={`text-xs px-3 py-1 rounded-full font-medium transition ${
+                  manualTimeMode
+                    ? "bg-orange-500 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                {manualTimeMode ? "✏️ Manual" : "🤖 Automático"}
+              </button>
+            </div>
+
+            {!manualTimeMode ? (
+              <select
+                className="border p-2 rounded-md"
+                value={form.time_slot}
+                onChange={(e) => setForm({ ...form, time_slot: e.target.value })}
+                required
+              >
+                <option value="">Horário disponível...</option>
+                {slots.map((slot, i) => (
+                  <option key={i} value={`${slot.start}|${slot.end}`}>
+                    {slot.start} - {slot.end}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="time"
+                  className="border p-2 rounded-md flex-1"
+                  placeholder="Início"
+                  value={manualStartTime}
+                  onChange={(e) => setManualStartTime(e.target.value)}
+                  required
+                />
+                <input
+                  type="time"
+                  className="border p-2 rounded-md flex-1"
+                  placeholder="Fim"
+                  value={manualEndTime}
+                  onChange={(e) => setManualEndTime(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+          </div>
 
           <input
             type="number"

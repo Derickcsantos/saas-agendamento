@@ -215,6 +215,7 @@ export const createAppointment = async (req, res) => {
       final_price,
       coupon_code,
       original_price,
+      admin_override, // ✅ Flag para agendamentos especiais de admin (ignora validações de horário/conflito)
     } = req.body;
     const { slug } = req.params;
 
