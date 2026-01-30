@@ -46,6 +46,49 @@ export const closedPeriodsRouter = Router();
  */
 closedPeriodsRouter.get('/:slug', authenticateJWT, getClosedPeriodsBySlug);
 
+/**
+ * @swagger
+ * /api/closed-periods/{slug}/all:
+ *   get:
+ *     summary: Lista todos os períodos fechados (sem autenticação)
+ *     description: Retorna lista completa de períodos fechados da organização sem necessidade de autenticação. Útil para o frontend público verificar disponibilidade
+ *     tags: [Períodos Fechados]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Slug da organização
+ *         example: "meu-salao"
+ *     responses:
+ *       200:
+ *         description: Lista de períodos fechados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   start_day:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2025-12-25T00:00:00Z"
+ *                   end_day:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2025-12-25T23:59:59Z"
+ *                   reason:
+ *                     type: string
+ *                     example: "Natal"
+ *       404:
+ *         description: Organização não encontrada
+ *       500:
+ *         description: Erro interno do servidor
+ */
 closedPeriodsRouter.get('/:slug/all', getAllClosedPeriods);
 
 /**
