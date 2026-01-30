@@ -453,7 +453,7 @@ export default function FasterScheduleTab({ org }) {
                     : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }`}
               >
-                {manualTimeMode ? "✏️ Manual" : "🤖 Automático"}
+                {manualTimeMode ? "Manual" : "Automático"}
               </button>
             </div>
 
