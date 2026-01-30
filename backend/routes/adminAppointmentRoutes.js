@@ -165,7 +165,31 @@ adminAppointmentRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganiza
  */
 adminAppointmentRouter.put('/:slug/:id/complete', authenticateJWT, requireAdminOfOrganization, updateAdminAppointmentToCompleted);
 
-
+/**
+ * @swagger
+ * /api/admin/appointments/complete-yesterday:
+ *   put:
+ *     summary: Marca como concluídos todos os agendamentos de ontem
+ *     description: Atualiza automaticamente o status de todos os agendamentos do dia anterior para "concluído"
+ *     tags: [Agendamentos]
+ *     responses:
+ *       200:
+ *         description: Agendamentos atualizados com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 updated:
+ *                   type: integer
+ *                   description: Número de agendamentos atualizados
+ *                   example: 15
+ *       500:
+ *         description: Erro ao atualizar agendamentos
+ */
 adminAppointmentRouter.put('/complete-yesterday', updateAdminAppointmentToCompletedYesterday);
 
 

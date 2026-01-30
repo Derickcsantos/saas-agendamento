@@ -42,12 +42,26 @@ export async function generateMetadata({ params }) {
   return {
     title,
     description,
+    manifest: `/${slug}/manifest.json`,
+    applicationName: org?.name || "Marcafy",
 
     alternates: { canonical: url },
 
     icons: {
-      icon: org?.logo_organization,
-      apple: org?.logo_organization,
+      icon: org?.logo_organization || "/marcafy-logo.jpg",
+      apple: org?.logo_organization || "/marcafy-logo.jpg",
+      shortcut: org?.logo_organization || "/marcafy-logo.jpg",
+    },
+
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: org?.name || "Marcafy",
+      startupImage: org?.logo_organization,
+    },
+
+    formatDetection: {
+      telephone: false,
     },
 
     openGraph: {
@@ -56,13 +70,14 @@ export async function generateMetadata({ params }) {
       url,
       type: "website",
       locale: "pt_BR",
-      siteName: org?.name,
+      siteName: org?.name || "Marcafy",
       images: [
         {
           url: image,
           width: 1200,
           height: 630,
           type: "image/png",
+          alt: title,
         },
       ],
     },
@@ -72,6 +87,7 @@ export async function generateMetadata({ params }) {
       title,
       description,
       images: [image],
+      creator: org?.name ? `@${org.name.replace(/\s+/g, '')}` : "@marcafy",
     },
   };
 }

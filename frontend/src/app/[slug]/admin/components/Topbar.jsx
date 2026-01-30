@@ -115,7 +115,8 @@ export default function Topbar({ org, slug, setActiveTab, user, appInstalled, on
       {/* ✅ Botão PWA Install */}
       {!appInstalled && user && (
         <PWAInstallButton 
-          userId={user.id} 
+          userId={user.id}
+          slug={slug}
           palette={palette}
           onInstallSuccess={onAppInstalled}
         />

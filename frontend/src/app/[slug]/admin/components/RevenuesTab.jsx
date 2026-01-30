@@ -6,6 +6,7 @@ import { toast } from 'react-toastify'
 import autoTable from 'jspdf-autotable';
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import { useConfirm } from "@/components/ConfirmDialogProvider";
+import SecretCodeModal from "@/components/SecretCodeModal";
 
 export default function RevenueTab({ org }) {
   const [data, setData] = useState(null);
@@ -18,6 +19,8 @@ export default function RevenueTab({ org }) {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawingBalance, setWithdrawingBalance] = useState(false);
+  const [secretCodeModalOpen, setSecretCodeModalOpen] = useState(false);
+  const [pendingWithdrawAmount, setPendingWithdrawAmount] = useState(null);
   const { palette } = useOrganizationColors(org.slug_organization);
 
   const { confirm } = useConfirm()
@@ -191,6 +194,36 @@ export default function RevenueTab({ org }) {
     loadHistory();
   }, []);
 
+  const handleSecretCodeVerified = async (code) => {
+    if (!pendingWithdrawAmount) return;
+
+    try {
+      setWithdrawingBalance(true);
+      const res = await fetch(`${API}/api/payments/${slug}/withdraw`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          amount: pendingWithdrawAmount,
+          secret_code: code 
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Erro ao solicitar saque");
+      
+      toast.success("Saque solicitado com sucesso!");
+      setWithdrawAmount("");
+      setPendingWithdrawAmount(null);
+      setSecretCodeModalOpen(false);
+      loadBalance();
+      loadHistory();
+    } catch (err) {
+      toast.error(err.message || "Falha ao solicitar saque");
+    } finally {
+      setWithdrawingBalance(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* FILTROS */}
@@ -331,6 +364,10 @@ export default function RevenueTab({ org }) {
                 } finally {
                   setWithdrawingBalance(false);
                 }
+
+                // Abrir modal de verificação do secret code
+                setPendingWithdrawAmount(requestedAmount);
+                setSecretCodeModalOpen(true);
               }}
               disabled={withdrawingBalance || !withdrawAmount}
               className="px-5 py-3 rounded-lg font-semibold bg-white text-gray-900 hover:bg-gray-100 transition shadow disabled:opacity-50 disabled:cursor-not-allowed"
@@ -502,6 +539,22 @@ export default function RevenueTab({ org }) {
           </div>
         )}
       </div>
+
+      {/* SECRET CODE MODAL */}
+      <SecretCodeModal
+        isOpen={secretCodeModalOpen}
+        title="🔐 Código de Segurança"
+        description={`Digite seu código de 4 dígitos para confirmar o saque de R$ ${pendingWithdrawAmount?.toFixed(2) || '0.00'}`}
+        onVerify={handleSecretCodeVerified}
+        onCancel={() => {
+          setSecretCodeModalOpen(false);
+          setPendingWithdrawAmount(null);
+        }}
+        slug={slug}
+        isLoading={withdrawingBalance}
+        strongColor={palette?.strong_color}
+        mode="verify"
+      />
     </div>
   );
 }

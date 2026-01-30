@@ -28,6 +28,7 @@ export async function generateMetadata({ params }) {
     return {
       title: "Agende agora | Marcafy",
       description: "Agendamento online rápido e fácil.",
+      manifest: `/${slug}/manifest.json`,
       openGraph: {
         title: "Agende agora | Marcafy",
         description: "Agendamento online rápido e fácil.",
@@ -63,6 +64,8 @@ export async function generateMetadata({ params }) {
   return {
     title,
     description,
+    manifest: `/${slug}/manifest.json`,
+    applicationName: org?.name || "Marcafy",
 
     alternates: {
       canonical: url,
@@ -71,6 +74,18 @@ export async function generateMetadata({ params }) {
     icons: {
       icon: org?.logo_organization || "/marcafy-logo.jpg",
       apple: org?.logo_organization || "/marcafy-logo.jpg",
+      shortcut: org?.logo_organization || "/marcafy-logo.jpg",
+    },
+
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: org?.name || "Marcafy",
+      startupImage: org?.logo_organization,
+    },
+
+    formatDetection: {
+      telephone: false,
     },
 
     openGraph: {
@@ -96,6 +111,7 @@ export async function generateMetadata({ params }) {
       title,
       description,
       images: [image],
+      creator: org?.name ? `@${org.name.replace(/\s+/g, '')}` : "@marcafy",
     },
   };
 }

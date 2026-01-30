@@ -41,6 +41,33 @@ export const userRepresentativeRouter = Router();
  */
 userRepresentativeRouter.get('/', authenticateJWT, getUserRepresentatives)
 
+/**
+ * @swagger
+ * /api/user-representative/{slug}:
+ *   get:
+ *     summary: Busca representante da organização por slug
+ *     description: Retorna os dados do representante responsável pela organização identificada pelo slug
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Slug da organização
+ *         example: "meu-salao"
+ *     responses:
+ *       200:
+ *         description: Dados do representante
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       404:
+ *         description: Representante não encontrado
+ *       500:
+ *         description: Erro interno do servidor
+ */
 userRepresentativeRouter.get('/:slug', getUserRepresentativeBySlug)
 /**
  * @swagger
