@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import ImageDropzone from "./ImageDropzone"
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 
 export default function ServicesTab({ org }) {
   const [services, setServices] = useState([]);
@@ -24,6 +25,8 @@ export default function ServicesTab({ org }) {
   const [preview, setPreview] = useState("");
   const [searchQuery, setSearchQuery] = useState(""); // 🔍 Search state
   const { palette } = useOrganizationColors(org.slug_organization);
+
+  const { confirm } = useConfirm()
 
   // ======================
   // 1️⃣ Carregar dados
@@ -144,7 +147,14 @@ export default function ServicesTab({ org }) {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Deseja realmente excluir este serviço?")) return;
+    // if (!confirm("Deseja realmente excluir este serviço?")) return;
+
+    const confirmed = await confirm({
+      title: "Excluir serviço",
+      message: "Deseja realmente excluir este serviço?"
+    });
+
+    if (!confirmed) return
 
     await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/admin/services/${org.slug_organization}/${id}`,

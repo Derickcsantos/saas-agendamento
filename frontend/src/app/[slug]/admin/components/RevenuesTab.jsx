@@ -5,6 +5,7 @@ import jsPDF from "jspdf";
 import { toast } from 'react-toastify'
 import autoTable from 'jspdf-autotable';
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 import SecretCodeModal from "@/components/SecretCodeModal";
 
 export default function RevenueTab({ org }) {
@@ -21,6 +22,8 @@ export default function RevenueTab({ org }) {
   const [secretCodeModalOpen, setSecretCodeModalOpen] = useState(false);
   const [pendingWithdrawAmount, setPendingWithdrawAmount] = useState(null);
   const { palette } = useOrganizationColors(org.slug_organization);
+
+  const { confirm } = useConfirm()
 
   const API = process.env.NEXT_PUBLIC_API_URL;
   const slug = org.slug_organization;
@@ -331,6 +334,35 @@ export default function RevenueTab({ org }) {
                 if (requestedAmount > maxAmount) {
                   toast.error("Valor solicitado maior que o saldo disponível.");
                   return;
+                }
+                // const confirmed = window.confirm(`Confirmar saque de R$ ${requestedAmount.toFixed(2)}?\n\nTaxa: R$ 1,00\nValor a receber: R$ ${(requestedAmount - 1).toFixed(2)}\n\nA chave PIX cadastrada em Configurações será usada.`);
+                // if (!confirmed) return;
+
+                const confirmed = await confirm({
+                  title: "Confirmar saque",
+                  message: `Confirmar saque de R$ ${requestedAmount.toFixed(2)}?\n\nTaxa: R$ 1,00\nValor a receber: R$ ${(requestedAmount - 1).toFixed(2)}\n\nA chave PIX cadastrada em Configurações será usada.`
+                });
+
+                if (!confirmed) return
+
+                try {
+                  setWithdrawingBalance(true);
+                  const res = await fetch(`${API}/api/payments/${slug}/withdraw`, {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ amount: requestedAmount }),
+                  });
+                  const json = await res.json();
+                  if (!res.ok) throw new Error(json.error || "Erro ao solicitar saque");
+                  toast.success("Saque solicitado com sucesso!");
+                  setWithdrawAmount("");
+                  loadBalance();
+                  loadHistory();
+                } catch (err) {
+                  toast.error(err.message || "Falha ao solicitar saque");
+                } finally {
+                  setWithdrawingBalance(false);
                 }
 
                 // Abrir modal de verificação do secret code

@@ -7,6 +7,7 @@ import { format, parseISO } from "date-fns";
 import { toast } from "react-toastify";
 import { ptBR } from "date-fns/locale";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 
 const modalStyles = `
   .react-datepicker {
@@ -50,6 +51,8 @@ export default function ClosedPeriodsTab({ org }) {
   const [editingPeriod, setEditingPeriod] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const { palette } = useOrganizationColors(org.slug_organization);
+
+  const { confirm } = useConfirm()
   
   // Estados para criação
   const [newPeriod, setNewPeriod] = useState({
@@ -205,7 +208,14 @@ export default function ClosedPeriodsTab({ org }) {
   };
 
   const handleDeletePeriod = async (id) => {
-    if (!confirm("Tem certeza que deseja excluir este período fechado?")) return;
+    // if (!confirm("Tem certeza que deseja excluir este período fechado?")) return;
+
+    const confirmed = await confirm({
+      title: "Excluir período fechado",
+      message: "Deseja realmente excluir este período fechado?"
+    });
+
+    if (!confirmed) return
     
     setDeletingId(id);
     

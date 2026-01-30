@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import { QRCodeCanvas } from "qrcode.react";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 
 export default function WhatsappTab({ org }) {
   const { palette } = useOrganizationColors(org.slug_organization);
@@ -62,6 +63,8 @@ export default function WhatsappTab({ org }) {
 
   const strong = palette?.strong_color || "#25D366";
   const light = palette?.light_color || "#F5F5F5";
+
+  const { confirm } = useConfirm()
 
   // Verificar status da conexão
   useEffect(() => {
@@ -280,7 +283,14 @@ export default function WhatsappTab({ org }) {
   }
 
   async function handleDisconnect() {
-    if (!confirm("Deseja realmente desconectar o WhatsApp?")) return;
+    // if (!confirm("Deseja realmente desconectar o WhatsApp?")) return;
+
+    const confirmed = await confirm({
+      title: "Desconectar WhatsApp",
+      message: `Deseja realmente desconectar o WhatsApp?`
+    });
+
+    if (!confirmed) return
 
     try {
       const res = await fetch(

@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { toast } from 'react-toastify'
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import ImageDropzone from "./ImageDropzone";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 
 export default function EmployeesTab({ org }) {
   const [employees, setEmployees] = useState([]);
@@ -30,6 +31,8 @@ export default function EmployeesTab({ org }) {
   const [availableColors, setAvailableColors] = useState([]);
   const [selectedColorId, setSelectedColorId] = useState(null);
   const { palette } = useOrganizationColors(org.slug_organization);
+
+  const { confirm } = useConfirm()
 
   useEffect(() => {
     loadEmployees();
@@ -159,7 +162,15 @@ export default function EmployeesTab({ org }) {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Deseja realmente excluir este funcionário?")) return;
+    // if (!confirm("Deseja realmente excluir este funcionário?")) return;
+
+    const confirmed = await confirm({
+      title: "Excluir funcionário",
+      message: "Deseja realmente excluir este funcionário?"
+    });
+
+    if (!confirmed) return
+
     await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/admin/employees/${org.slug_organization}/${id}`,
       { method: "DELETE", credentials: 'include' }
