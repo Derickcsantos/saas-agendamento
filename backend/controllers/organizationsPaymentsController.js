@@ -1,5 +1,6 @@
 import axios from "axios";
 import { supabase } from "../lib/supabase.js";
+import { validateSecretCode, verifySecretCode } from "../utils/encryption.js";
 
 // Retorna histórico de entradas (agendamentos confirmados e transações bem-sucedidas)
 export async function getIncomeHistory(req, res) {
@@ -338,7 +339,7 @@ export async function abacatePayPixWebhook(req, res) {
  */
 export async function requestWithdrawal(req, res) {
   const { slug } = req.params;
-  const { amount, pix_key, pix_key_type } = req.body;
+  const { amount, pix_key, pix_key_type, secret_code } = req.body;
 
   if (!amount || amount <= 0) {
     return res.status(400).json({ error: "Invalid amount" });
@@ -354,6 +355,26 @@ export async function requestWithdrawal(req, res) {
 
     if (orgError || !org) {
       return res.status(404).json({ error: "Organization not found" });
+    }
+
+    // 🔐 Validar secret_code antes de prosseguir
+    if (!secret_code || !validateSecretCode(secret_code)) {
+      return res.status(400).json({ error: "Secret code inválido" });
+    }
+
+    const { data: policy, error: policyError } = await supabase
+      .from("organization_policies")
+      .select("secret_code, pix_key")
+      .eq("organization_id", org.id)
+      .maybeSingle();
+
+    if (policyError || !policy?.secret_code) {
+      return res.status(400).json({ error: "Secret code não configurado" });
+    }
+
+    const isSecretValid = verifySecretCode(secret_code, policy.secret_code);
+    if (!isSecretValid) {
+      return res.status(401).json({ error: "Secret code incorreto" });
     }
 
     await ensureOrganizationBalance(org.id);
@@ -380,12 +401,6 @@ export async function requestWithdrawal(req, res) {
     let effectivePixKeyType = pix_key_type;
 
     if (!effectivePixKey || !effectivePixKeyType) {
-      const { data: policy } = await supabase
-        .from("organization_policies")
-        .select("pix_key")
-        .eq("organization_id", org.id)
-        .maybeSingle();
-
       if (!effectivePixKey && policy?.pix_key) {
         effectivePixKey = policy.pix_key;
       }

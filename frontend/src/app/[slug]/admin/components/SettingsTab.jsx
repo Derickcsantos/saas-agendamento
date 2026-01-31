@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import SecretCodeModal from "@/components/SecretCodeModal";
 
 const Input = React.memo(function Input({
   label,
@@ -57,7 +58,14 @@ export default function SettingsTab({ org }) {
     prepayment_type: "percent",
     prepayment_value: "",
     pix_key: "",
+    secret_code: "",
   });
+
+  // SECRET CODE STATE
+  const [hasSecretCode, setHasSecretCode] = useState(false);
+  const [secretCodeModal, setSecretCodeModal] = useState(false);
+  const [secretCodeMode, setSecretCodeMode] = useState("set"); // "verify" | "set"
+  const [verifiedSecretCode, setVerifiedSecretCode] = useState("");
 
   const strongColor = palette?.strong_color || "#5E3BEE";
 
@@ -67,15 +75,17 @@ export default function SettingsTab({ org }) {
   useEffect(() => {
     const loadAll = async () => {
       try {
-        const [colorsRes, detailsRes, policiesRes] = await Promise.all([
+        const [colorsRes, detailsRes, policiesRes, hasSecretRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${org.slug_organization}`),
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${org.slug_organization}`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}/has-secret-code`)
         ]);
 
         const colorsData = await colorsRes.json();
         const detailsData = await detailsRes.json();
         const policiesData = await policiesRes.json();
+        const hasSecretData = await hasSecretRes.json();
 
         setPalette(colorsData);
         setSettings({
@@ -90,6 +100,7 @@ export default function SettingsTab({ org }) {
           ...policies,
           ...policiesData,
         });
+        setHasSecretCode(hasSecretData.hasSecretCode);
 
       } catch (e) {
         toast.error("Erro ao carregar configurações");
@@ -138,9 +149,9 @@ export default function SettingsTab({ org }) {
     }
   };
 
-  /* ================================================================
-     HANDLERS COM useCallback → identidade estável → sem remount
-  ================================================================ */
+  // ============================
+  // HANDLERS COM useCallback
+  // ============================
   const handleSettingChange = useCallback(
     (key) => (v) => {
       setSettings((prev) => ({ ...prev, [key]: v }));
@@ -154,6 +165,59 @@ export default function SettingsTab({ org }) {
     },
     []
   );
+
+  // ============================
+  // SECRET CODE HANDLERS
+  // ============================
+  const handleSecretCodeClick = () => {
+    if (hasSecretCode) {
+      setSecretCodeMode("verify");
+      setSecretCodeModal(true);
+    } else {
+      setSecretCodeMode("set");
+      setSecretCodeModal(true);
+    }
+  };
+
+  const handleSecretCodeVerify = async (code) => {
+    // Etapa 1: validar o código atual
+    if (secretCodeMode === "verify") {
+      toast.success("Código confirmado. Defina o novo código.");
+      setVerifiedSecretCode(code);
+      setSecretCodeMode("set");
+      return;
+    }
+
+    // Etapa 2: salvar o novo código
+    try {
+      setSavingField("secret_code");
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            secret_code: code,
+            ...(hasSecretCode ? { current_secret_code: verifiedSecretCode } : {}),
+          }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Erro ao atualizar código");
+
+      setHasSecretCode(true);
+      setSecretCodeModal(false);
+      setVerifiedSecretCode("");
+      toast.success(`Código de segurança ${hasSecretCode ? "atualizado" : "criado"}!`);
+    } catch (err) {
+      toast.error("Erro ao atualizar código");
+      console.error("Erro:", err);
+    } finally {
+      setSavingField(null);
+    }
+  };
 
   // ============================
   // UPLOAD DE LOGO
@@ -486,8 +550,52 @@ export default function SettingsTab({ org }) {
               Ver planos
             </button>
           </div>
+
+          {/* SECRET CODE CARD */}
+          <div className="p-6 border rounded-xl shadow-sm bg-gradient-to-br from-purple-50 to-purple-100">
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">🔐 Código de Segurança</h3>
+
+            <p className="text-sm text-gray-600 mb-4">
+              {hasSecretCode
+                ? "Você já possui um código de segurança. Clique para atualizar."
+                : "Crie um código de 4 dígitos para proteger operações sensíveis como saques."}
+            </p>
+
+            <button
+              onClick={handleSecretCodeClick}
+              className="px-4 py-2 rounded-lg text-white transition"
+              style={{ backgroundColor: strongColor }}
+            >
+              {hasSecretCode ? "Atualizar Código" : "Criar Código"}
+            </button>
+
+            <p className="text-xs text-gray-500 mt-3">
+              ℹ️ O código será solicitado antes de operações importantes como saques.
+            </p>
+          </div>
         </div>
       </div>
+
+      {/* SECRET CODE MODAL */}
+      <SecretCodeModal
+        isOpen={secretCodeModal}
+        title={secretCodeMode === "set" ? "Definir Código de Segurança" : "Confirmar Código Atual"}
+        description={
+          secretCodeMode === "set"
+            ? "Defina um código de 4 dígitos para proteger operações sensíveis."
+            : "Digite seu código atual para confirmar a alteração."
+        }
+        onVerify={handleSecretCodeVerify}
+        onCancel={() => {
+          setSecretCodeModal(false);
+          setSecretCodeMode("set");
+          setVerifiedSecretCode("");
+        }}
+        slug={org.slug_organization}
+        isLoading={savingField === "secret_code"}
+        strongColor={strongColor}
+        mode={secretCodeMode === "set" ? "create" : "verify"}
+      />
     </div>
   );
 }

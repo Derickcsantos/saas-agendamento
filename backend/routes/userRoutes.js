@@ -50,7 +50,7 @@ userRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, getUsers)
 
 /**
  * @swagger
- * /api/users/{id}:
+ * /api/users/{slug}/{id}:
  *   get:
  *     summary: Retorna um usuário específico de uma organização
  *     description: Busca um usuário pelo ID dentro da organização identificada pelo slug.
@@ -86,7 +86,7 @@ userRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, getUsers)
  *       500:
  *         description: Erro interno do servidor
  */
-userRouter.get('/:id', authenticateJWT, requireAdminOfOrganization, getUserById)
+userRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganization, getUserById)
 
 
 /**

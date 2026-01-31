@@ -99,7 +99,7 @@ plansRouter.get("/:id", getPlanById);
  *       201:
  *         description: Plano criado com sucesso
  */
-plansRouter.post("/", authenticateJWT, createPlan);
+plansRouter.post("/:slug", authenticateJWT, createPlan);
 
 /**
  * @swagger

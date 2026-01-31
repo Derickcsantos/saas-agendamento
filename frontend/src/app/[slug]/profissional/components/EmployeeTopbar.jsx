@@ -2,7 +2,7 @@
 
 import PWAInstallButton from "@/components/PWAInstallButton";
 
-export default function EmployeeTopbar({ user, palette, appInstalled, onAppInstalled }) {
+export default function EmployeeTopbar({ user, slug, palette, appInstalled, onAppInstalled }) {
   return (
     <header className="bg-white border-b shadow-sm px-6 py-4 sticky top-0 z-30">
       <div className="flex items-center justify-between">
@@ -19,7 +19,8 @@ export default function EmployeeTopbar({ user, palette, appInstalled, onAppInsta
           {/* ✅ Botão PWA Install */}
           {!appInstalled && user && (
             <PWAInstallButton 
-              userId={user.id} 
+              userId={user.id}
+              slug={slug}
               palette={palette}
               onInstallSuccess={onAppInstalled}
             />
