@@ -89,7 +89,8 @@ export default function CouponsTab({ org }) {
 
     const confirmed = await confirm({
       title: "Excluir cupom",
-      message: "Deseja realmente excluir este cupom?"
+      message: "Deseja realmente excluir este cupom?",
+      confirmVariant: "danger"
     });
 
     if (!confirmed) return    

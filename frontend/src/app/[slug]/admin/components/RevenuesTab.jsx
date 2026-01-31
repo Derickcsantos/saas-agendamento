@@ -307,7 +307,9 @@ export default function RevenueTab({ org }) {
 
                 const confirmed = await confirm({
                   title: "Confirmar saque",
-                  message: `Confirmar saque de R$ ${requestedAmount.toFixed(2)}?\n\nTaxa: R$ 1,00\nValor a receber: R$ ${(requestedAmount - 1).toFixed(2)}\n\nA chave PIX cadastrada em Configurações será usada.`
+                  message: `Confirmar saque de R$ ${requestedAmount.toFixed(2)}?\n\nTaxa: R$ 1,00\nValor a receber: R$ ${(requestedAmount - 1).toFixed(2)}\n\nA chave PIX cadastrada em Configurações será usada.`,
+                  confirmVariant: "primary",
+                  confirmColor: palette?.strong_color
                 });
 
                 if (!confirmed) return

@@ -151,7 +151,8 @@ export default function ServicesTab({ org }) {
 
     const confirmed = await confirm({
       title: "Excluir serviço",
-      message: "Deseja realmente excluir este serviço?"
+      message: "Deseja realmente excluir este serviço?",
+      confirmVariant: "danger"
     });
 
     if (!confirmed) return

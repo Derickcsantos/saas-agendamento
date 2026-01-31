@@ -111,7 +111,8 @@ export default function CategoriesTab({ org }) {
 
     const confirmed = await confirm({
       title: "Excluir categoria",
-      message: "Deseja realmente excluir esta categoria?"
+      message: "Deseja realmente excluir esta categoria?",
+      confirmVariant: "danger"
     });
 
     if (!confirmed) return

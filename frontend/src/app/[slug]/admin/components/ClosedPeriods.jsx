@@ -212,7 +212,8 @@ export default function ClosedPeriodsTab({ org }) {
 
     const confirmed = await confirm({
       title: "Excluir período fechado",
-      message: "Deseja realmente excluir este período fechado?"
+      message: "Deseja realmente excluir este período fechado?",
+      confirmVariant: "danger"
     });
 
     if (!confirmed) return

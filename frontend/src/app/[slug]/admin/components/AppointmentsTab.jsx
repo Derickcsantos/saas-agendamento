@@ -282,7 +282,9 @@ export default function AppointmentsTab({ org }) {
 
     const confirmed = await confirm({
       title: "Mudança de status",
-      message: "Deseja realmente mudar o status?"
+      message: "Deseja realmente mudar o status?",
+      confirmVariant: "primary",
+      confirmColor: palette?.strong_color
     });
 
     if (!confirmed) return

@@ -287,7 +287,8 @@ export default function WhatsappTab({ org }) {
 
     const confirmed = await confirm({
       title: "Desconectar WhatsApp",
-      message: `Deseja realmente desconectar o WhatsApp?`
+      message: `Deseja realmente desconectar o WhatsApp?`,
+      confirmVariant: "danger"
     });
 
     if (!confirmed) return
