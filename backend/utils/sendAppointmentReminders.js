@@ -1,26 +1,6 @@
 import { supabase } from "../lib/supabase.js";
 import { sendWhatsAppMessage } from "../lib/whatsapp.js";
-
-/**
- * Normaliza telefone brasileiro removendo caracteres especiais
- * @param {string} phone - Telefone a normalizar
- * @returns {string} Telefone limpo
- */
-function normalizePhone(phone) {
-  if (!phone) return null;
-  
-  // Remove parênteses, espaços, traços e outros caracteres
-  const cleaned = phone.replace(/[\s\(\)\-]/g, "");
-  
-  // Garante que começa com +55
-  if (cleaned.startsWith("+55")) {
-    return cleaned;
-  } else if (cleaned.startsWith("55")) {
-    return `+${cleaned}`;
-  } else {
-    return `+55${cleaned}`;
-  }
-}
+import { normalizePhone } from "./normalizePhone.js";
 
 /**
  * Formata data no padrão brasileiro (DD/MM/YYYY)
@@ -113,14 +93,17 @@ export default async function sendAppointmentReminders() {
     // Envia lembrete para cada agendamento
     for (const appointment of appointments) {
       try {
-        const phone = normalizePhone(appointment.client_phone);
+        const phoneObj = normalizePhone(appointment.client_phone);
         
-        if (!phone) {
+        if (!phoneObj) {
           console.warn(`⚠️ Telefone inválido para ${appointment.client_name} (ID: ${appointment.id})`);
           errorCount++;
           errors.push({ appointmentId: appointment.id, error: "Telefone inválido" });
           continue;
         }
+
+        // Usa o formato WhatsApp do objeto normalizado
+        const phone = phoneObj.whatsappPlus;
 
         // Verifica se organização tem WhatsApp próprio
         const hasOrgWhatsApp = await hasOrganizationWhatsApp(appointment.organization_id);

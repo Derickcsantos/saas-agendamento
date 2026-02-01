@@ -243,7 +243,7 @@ export default function AppointmentsTab({ org }) {
           
           return {
             id: a.id,
-            title: `${a.client_name} — ${a.services.name}`,
+            title: `${a.client_name} — ${a.services?.name || 'Serviço não informado'}`,
             start: `${a.appointment_date}T${a.start_time}`,
             end: `${a.appointment_date}T${a.end_time}`,
             backgroundColor,
@@ -332,12 +332,14 @@ export default function AppointmentsTab({ org }) {
         time: { start: data.start_time.slice(0,5), end: data.end_time.slice(0,5) },
       });
 
-      // Carregar horários disponíveis
-      await loadEditAvailableTimes(
-        data.employees.id,
-        data.appointment_date,
-        data.services.duration
-      );
+      // Carregar horários disponíveis (apenas se houver serviço com duração)
+      if (data.services?.duration) {
+        await loadEditAvailableTimes(
+          data.employees.id,
+          data.appointment_date,
+          data.services.duration
+        );
+      }
 
       setShowEditModal(true);
     } catch (err) {
@@ -541,7 +543,7 @@ export default function AppointmentsTab({ org }) {
 
           {/* infos */}
           <p><strong>Cliente:</strong> {a.client_name}</p>
-          <p><strong>Serviço:</strong> {a.services.name}</p>
+          <p><strong>Serviço:</strong> {a.services?.name || 'Não informado'}</p>
 
           {/* LINK DO MEET */}
           {a.meeting_url && (
@@ -782,7 +784,7 @@ export default function AppointmentsTab({ org }) {
                           {a.client_name}
                         </div>
                       </td>
-                      <td className="px-4 py-3">{a.services.name}</td>
+                      <td className="px-4 py-3">{a.services?.name || '—'}</td>
                       <td className="px-4 py-3">{a.employees.name}</td>
                       <td className="px-4 py-3">{formatDateFromYYYYMMDD(a.appointment_date)}</td>
                       <td className="px-4 py-3">

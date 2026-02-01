@@ -2,6 +2,7 @@
 // import { transporter } from '../lib/nodemailer.js';
 import { sendWhatsAppMessage } from "../lib/whatsapp.js";
 import { supabase } from '../lib/supabase.js';
+import { normalizePhone } from '../utils/normalizePhone.js';
 
 // export const emailContact = async (req, res) => {
 //   const { name, email, phone, message } = req.body;
@@ -96,6 +97,8 @@ export const confirmedAppointmentWhatsApp = async (req, res) => {
 Qualquer dúvida, estamos à disposição 💬
     `.trim();
 
+    // ✅ Telefone será normalizado automaticamente no sendWhatsAppMessage
+    // Aceita qualquer formato: +55..., 55..., 11..., (11) 9999-9999, etc.
     await sendWhatsAppMessage(client.phone, message);
 
     return res.status(200).json({ success: true });

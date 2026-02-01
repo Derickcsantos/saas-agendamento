@@ -368,11 +368,11 @@ export default function FasterScheduleTab({ org }) {
               </div>
             )}
 
-            {showClientDropdown && searchQuery.trim().length > 0 && filteredClients.length === 0 && (
+            {/* {showClientDropdown && searchQuery.trim().length > 0 && filteredClients.length === 0 && (
               <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg px-4 py-3 text-sm text-gray-500">
                 Nenhum cliente encontrado. Digite o nome, email ou telefone.
               </div>
-            )}
+            )} */}
           </div>
 
           <input
