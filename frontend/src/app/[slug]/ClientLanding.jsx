@@ -1,158 +1,179 @@
 "use client";
-
 import { useEffect, useState } from "react";
 
-export default function ClientLanding({ slug }) {
-  const [landing, setLanding] = useState(null);
-  const [palette, setPalette] = useState(null);
+export default function ClientLanding({ 
+  slug, 
+  injectedLanding = null, 
+  injectedPalette = null, 
+  isPreview = false 
+}) {
+  const [landing, setLanding] = useState(injectedLanding);
+  const [organization, setOrganization] = useState(null);
+  const [palette, setPalette] = useState(injectedPalette);
+  const [services, setServices] = useState([]);
   const [notFound, setNotFound] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isPreview);
 
-  // -------------------------------------------------
-  // Helpers
-  // -------------------------------------------------
   const normalizeWhatsapp = (phone) => {
-    if (!phone) return "";
-    const onlyNumbers = phone.replace(/\D/g, "");
-    if (onlyNumbers.startsWith("55")) return onlyNumbers;
-    return `55${onlyNumbers}`;
+    if (!phone) return null;
+    return phone.replace(/[^\d]/g, "");
   };
 
   const whatsappLink = (phone) => {
-    const n = normalizeWhatsapp(phone);
-    return n ? `https://wa.me/${n}` : "#";
+    const normalized = normalizeWhatsapp(phone);
+    return normalized ? `https://wa.me/${normalized}` : "#";
   };
 
   const instagramLink = (url) => {
-    if (!url) return "#";
+    if (!url || url === "sem instagram") return null;
     if (url.startsWith("http")) return url;
     return `https://instagram.com/${url.replace("@", "")}`;
   };
 
-  // -------------------------------------------------
-  // Fetch Data
-  // -------------------------------------------------
   useEffect(() => {
-    async function load() {
-      if (!slug) return;
+    if (isPreview) {
+      setLanding(injectedLanding);
+      setPalette(injectedPalette);
+      return;
+    }
 
-      setLoading(true);
-      setNotFound(false);
-
+    (async () => {
       try {
-        const [landingRes, colorRes] = await Promise.all([
-          fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/landing-page/${slug}`,
-            { credentials: "include" }
-          ),
-          fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`,
-            { credentials: "include" }
-          )
+        const [landingRes, orgRes, paletteRes, servicesRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/landing-page/${slug}`, { credentials: "include" }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${slug}`, { credentials: "include" }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`, { credentials: "include" }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/services/${slug}`, { credentials: "include" }),
         ]);
 
-        if (!landingRes.ok) throw new Error("not found");
+        if (!landingRes.ok || !orgRes.ok) {
+          setNotFound(true);
+          return;
+        }
 
-        const landingJson = await landingRes.json();
-        const paletteJson = colorRes.ok ? await colorRes.json() : null;
+        const landingData = await landingRes.json();
+        const orgData = await orgRes.json();
+        const paletteData = paletteRes.ok ? await paletteRes.json() : {};
+        const servicesData = servicesRes.ok ? await servicesRes.json() : [];
 
-        setLanding(landingJson);
-        setPalette(paletteJson);
-      } catch (e) {
-        console.error(e);
+        setLanding(landingData);
+        setOrganization(orgData);
+        setPalette(paletteData);
+        setServices(servicesData);
+      } catch (err) {
+        console.error("[ClientLanding] Erro:", err);
         setNotFound(true);
       } finally {
         setLoading(false);
       }
-    }
+    })();
+  }, [slug, isPreview, injectedLanding, injectedPalette]);
 
-    load();
-  }, [slug]);
+  // CSS animations inline para garantir funcionamento
+  const fadeUpStyle = {
+    animation: "fadeUp 0.6s ease-out forwards",
+    opacity: 0,
+    transform: "translateY(20px)"
+  };
 
-  // -------------------------------------------------
-  // Loading Screen (Ultra Minimal)
-  // -------------------------------------------------
+  const fadeUpDelayStyle = {
+    animation: "fadeUp 0.6s ease-out 0.2s forwards",
+    opacity: 0,
+    transform: "translateY(20px)"
+  };
+
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-white text-gray-700">
-        <div className="flex flex-col items-center gap-3 animate-fadeIn">
-          <span className="h-8 w-8 rounded-full border-2 border-gray-200 border-t-gray-400 animate-spin" />
-          <p className="text-xs tracking-widest text-gray-500">
-            Carregando sua experiência premium...
-          </p>
-        </div>
-      </main>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <style jsx>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+        <div className="w-10 h-10 border-3 border-gray-200 border-t-gray-800 rounded-full animate-spin" 
+             style={{ animation: "spin 0.8s linear infinite" }} />
+      </div>
     );
   }
 
-  // -------------------------------------------------
-  // Not Found
-  // -------------------------------------------------
   if (notFound || !landing) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center bg-white text-gray-800 p-6 text-center">
-        <h1 className="text-3xl font-semibold mb-3">
-          Esta página ainda não está disponível
-        </h1>
-        <p className="text-gray-500 max-w-md mb-6 leading-relaxed">
-          O profissional ainda não concluiu a configuração.  
-          Assim que estiver tudo pronto, você poderá acessar uma
-          página moderna, clara, intuitiva e totalmente otimizada 
-          para agendamentos rápidos.
-        </p>
-
-        <a
-          href="/"
-          className="px-6 py-2 rounded-full bg-gray-900 text-white text-sm font-medium shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
-        >
-          Voltar ao início
-        </a>
-      </main>
+      <div className="min-h-screen bg-white flex items-center justify-center p-6">
+        <div className="text-center space-y-3">
+          <h1 className="text-2xl font-semibold text-gray-900">Página não encontrada</h1>
+          <p className="text-gray-500">Verifique o endereço e tente novamente.</p>
+        </div>
+      </div>
     );
   }
 
-  // -------------------------------------------------
-  // Palette + Defaults
-  // -------------------------------------------------
-  const STRONG = palette?.strong_color || "#5E3BEE"; // destaque
-  const TEXT = "#111827";
-  const TEXT_SOFT = "#4B5563";
-  const BG = "#ffffff";
+  const PRIMARY = palette?.strong_color || "#3B82F6";
+  const org = organization || { name: landing?.slug || "Empresa", logo_organization: null };
 
-  const org = landing.org || landing.organizations || {};
+  const heroTitle = landing?.hero_title || 
+    `Agende seu horário com ${org.name} de forma rápida e descomplicada`;
+  
+  const heroSubtitle = landing?.hero_subtitle || 
+    "Escolha o melhor horário para você, receba confirmação instantânea e lembretes automáticos. Simples, rápido e sem burocracia.";
+  
+  const heroButtonText = landing?.hero_button_text || "Agendar agora";
+  
+  const aboutTitle = landing?.about_title || "Por que escolher a gente?";
+  
+  const aboutText = landing?.about_text || 
+    "Profissionais qualificados, atendimento personalizado e horários flexíveis. Trabalhamos para oferecer a melhor experiência desde o agendamento até o atendimento.";
 
-  // Copies longas e persuasivas
-  const heroTitle =
-    landing.hero_title ||
-    "Transforme sua rotina com agendamentos modernos, rápidos e pensados para quem valoriza tempo, bem-estar e praticidade.";
+  const contact = {
+    whatsapp: landing?.whatsapp || org?.phone,
+    instagram: landing?.instagram,
+    email: landing?.email || org?.email,
+    telefone: landing?.telefone || org?.phone,
+    endereco: landing?.endereco || org?.address,
+  };
 
-  const heroSubtitle =
-    landing.hero_subtitle ||
-    "Agendar nunca foi tão fácil. Em poucos cliques você encontra horários disponíveis, confirma sua visita e recebe lembretes automáticos. Ideal para consultórios, clínicas, salões, mentores, estúdios, terapeutas, coaches, nutricionistas, personal trainers e qualquer profissional que deseje oferecer uma experiência impecável.";
-
-  const heroButtonText =
-    landing.hero_button_text || "Agendar agora — é rápido, fácil e gratuito";
-
-  // -------------------------------------------------
-  // UI — Ultra Premium Light (Linear Style)
-  // -------------------------------------------------
   return (
-    <main className="font-sans bg-white text-gray-900 min-h-screen">
-      {/* NAVBAR */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl shadow-[0_2px_20px_rgba(0,0,0,0.03)]">
-        <nav className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          {/* LEFT */}
+    <div style={{ fontFamily: '"Inter", system-ui, sans-serif' }} className="bg-white">
+      <style jsx global>{`
+        @keyframes fadeUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fadeUp {
+          animation: fadeUp 0.6s ease-out forwards;
+        }
+        .animate-fadeUpDelay {
+          animation: fadeUp 0.6s ease-out 0.2s forwards;
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.4s ease-out forwards;
+        }
+      `}</style>
+
+      {/* Header Premium */}
+      <header className="border-b border-gray-100 bg-white/95 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gray-50 shadow-sm flex items-center justify-center overflow-hidden border border-black/5">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 shadow-sm flex items-center justify-center overflow-hidden border border-gray-200">
               {org.logo_organization ? (
                 <img
                   src={org.logo_organization}
                   alt={org.name}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover p-1"
                 />
               ) : (
-                <span className="text-xs font-semibold text-gray-800">
-                  {(org?.name || "MB")
+                <span className="text-sm font-bold text-gray-800">
+                  {(org.name || "MB")
                     .split(" ")
                     .map((i) => i[0])
                     .join("")
@@ -161,715 +182,502 @@ export default function ClientLanding({ slug }) {
                 </span>
               )}
             </div>
-
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-gray-900">
-                {org?.name || "Seu espaço profissional"}
-              </span>
-              <span className="text-xs text-gray-500">
-                Atendimento moderno e organizado
-              </span>
+              <span className="font-bold text-gray-900 tracking-tight">{org.name}</span>
+              <span className="text-xs text-gray-500">Atendimento premium</span>
             </div>
           </div>
 
-          {/* RIGHT */}
-          <div className="hidden md:flex items-center gap-6 text-sm text-gray-600">
-            <a href={`/${slug}#sobre`} className="hover:text-gray-900 transition">
-              Sobre
-            </a>
-            <a
-              href={`/${slug}#como-funciona`}
-              className="hover:text-gray-900 transition"
-            >
-              Como funciona
-            </a>
-            <a
-              href={`/${slug}#beneficios`}
-              className="hover:text-gray-900 transition"
-            >
-              Benefícios
-            </a>
-            <a
-              href={`/${slug}#contato`}
-              className="hover:text-gray-900 transition"
-            >
-              Contato
-            </a>
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
+            <a href="#servicos" className="hover:text-gray-900 transition-colors duration-200">Serviços</a>
+            <a href="#sobre" className="hover:text-gray-900 transition-colors duration-200">Sobre</a>
+            <a href="#beneficios" className="hover:text-gray-900 transition-colors duration-200">Benefícios</a>
+            <a href="#contato" className="hover:text-gray-900 transition-colors duration-200">Contato</a>
+          </nav>
 
-            <a
-              href={`/${slug}/agendar`}
-              className="px-4 py-2 rounded-full bg-gray-900 text-white shadow hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs font-semibold"
-            >
-              Agendar
-            </a>
-          </div>
-        </nav>
+          <a
+            href={`/${slug}/agendar`}
+            style={{ 
+              backgroundColor: PRIMARY,
+              boxShadow: `0 4px 14px ${PRIMARY}40`
+            }}
+            className="text-white text-sm font-semibold px-6 py-3 rounded-full hover:opacity-95 transition-all duration-200 hover:-translate-y-0.5"
+          >
+            Agendar agora
+          </a>
+        </div>
       </header>
 
-      {/* HERO */}
-      <section className="relative px-4 pt-16 pb-24 max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-12">
-        {/* TEXT */}
-        <div className="flex-1 space-y-6 animate-fadeUp">
-          <span
-            className="inline-flex px-4 py-1 rounded-full text-xs font-medium shadow-sm"
-            style={{
-              backgroundColor: `${STRONG}15`,
-              color: STRONG,
-            }}
-          >
-            Agenda sempre disponível • Atendimento profissional
-          </span>
+      <main>
+        {/* Hero Section Premium */}
+        <section className="relative bg-gradient-to-b from-gray-50 via-white to-white overflow-hidden">
+          <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]"></div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32 relative">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              <div className="space-y-8">
+                <div style={fadeUpStyle}>
+                  <span 
+                    className="inline-flex px-4 py-2 rounded-full text-xs font-semibold tracking-wide mb-6"
+                    style={{
+                      backgroundColor: `${PRIMARY}15`,
+                      color: PRIMARY,
+                      backdropFilter: 'blur(10px)'
+                    }}
+                  >
+                    🎯 AGENDAMENTO INTELIGENTE
+                  </span>
+                  
+                  <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight tracking-tight">
+                    {heroTitle}
+                  </h1>
+                  
+                  <p className="text-lg sm:text-xl text-gray-600 leading-relaxed mt-6">
+                    {heroSubtitle}
+                  </p>
+                </div>
 
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 leading-tight">
-            {heroTitle}
-          </h1>
-
-          <p className="text-gray-600 text-base md:text-lg leading-relaxed max-w-xl">
-            {heroSubtitle}
-          </p>
-
-          {/* CTA */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 pt-4">
-            <a
-              href={`/${slug}/agendar`}
-              className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 rounded-full text-sm font-semibold text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
-              style={{
-                backgroundColor: STRONG,
-                boxShadow: `0 8px 20px ${STRONG}35`,
-              }}
-            >
-              {heroButtonText}
-            </a>
-
-            <a
-              href={whatsappLink(landing.whatsapp)}
-              target="_blank"
-              className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 rounded-full border border-black/5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-all"
-            >
-              Falar no WhatsApp
-            </a>
-          </div>
-
-          <p className="text-xs text-gray-500">
-            * Agendar é gratuito. Pagamento feito somente no dia do atendimento.
-          </p>
-        </div>
-
-        {/* SIDE CARD */}
-        <div className="flex-1 flex justify-center animate-fadeUpDelay">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-[0_10px_40px_rgba(0,0,0,0.06)] border border-black/5">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-500">Próximos horários</p>
-                <p className="text-sm font-semibold text-gray-900">
-                  Agende em menos de 1 minuto
-                </p>
+                <div className="flex flex-col sm:flex-row gap-4 pt-4" style={fadeUpDelayStyle}>
+                  <a
+                    href={`/${slug}/agendar`}
+                    style={{ 
+                      backgroundColor: PRIMARY,
+                      boxShadow: `0 6px 20px ${PRIMARY}40`
+                    }}
+                    className="inline-flex items-center justify-center text-white font-semibold px-8 py-4 rounded-full hover:opacity-95 transition-all duration-300 hover:-translate-y-1 text-center group"
+                  >
+                    <span>{heroButtonText}</span>
+                    <svg className="w-5 h-5 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </a>
+                  
+                  {contact.whatsapp && (
+                    <a
+                      href={whatsappLink(contact.whatsapp)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center border-2 border-gray-200 text-gray-700 font-semibold px-8 py-4 rounded-full hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 text-center"
+                    >
+                      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.507 14.307l-.009.075c-2.199-1.096-2.429-1.242-2.713-.816-.197.295-.771.964-.944 1.162-.175.195-.349.21-.646.075-.3-.15-1.263-.465-2.403-1.485-.888-.795-1.484-1.77-1.66-2.07-.293-.506.32-.578.878-1.634.1-.21.049-.375-.025-.524-.075-.15-.672-1.62-.922-2.206-.24-.584-.487-.51-.672-.51-.576-.05-.997-.05-1.368.344-1.614 1.774-1.207 3.604.174 5.55 2.714 3.552 4.16 4.206 6.8 5.114.714.227 1.365.195 1.88.121.574-.091 1.754-.721 2-1.426.255-.705.255-1.29.18-1.425-.074-.135-.27-.21-.57-.345z"/>
+                        <path d="M20.52 3.449C12.975-2.333 2.457-.638 3.894 10.237c.1.75-1.6 3.566-1.6 3.566-.796 2.603.53 6.645 4.919 8.299 4.492 1.693 8.617.78 10.69-.638 1.417-1.003 3.206-2.456 3.206-2.456l3.55 1.076c1.456.453 2.008-.595 2.008-.595.996-2.237-.472-3.696-.472-3.696.93-1.395 1.708-2.408 1.989-3.878C24.975 8.21 23.656 6.588 20.52 3.449z"/>
+                      </svg>
+                      Falar no WhatsApp
+                    </a>
+                  )}
+                </div>
               </div>
 
-              <span
-                className="px-3 py-1 text-[10px] rounded-full font-medium text-white"
-                style={{ backgroundColor: STRONG }}
-              >
-                Atendendo
-              </span>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              {/* presencial */}
-              <div className="rounded-2xl bg-gray-50 p-4 shadow-sm border border-black/5 hover:shadow-md transition-all">
-                <p className="font-semibold text-gray-900">Atendimento presencial</p>
-                <p className="text-gray-600">
-                  Endereço:{" "}
-                  {landing.endereco ||
-                    org?.address ||
-                    "Será informado no momento da confirmação"}
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-gray-50 p-4 shadow-sm border border-black/5 hover:shadow-md transition-all">
-                <p className="font-semibold text-gray-900">Agendamento online</p>
-                <p className="text-gray-600">
-                  Horários sempre atualizados em tempo real.
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-gray-50 p-4 shadow-sm border border-black/5 hover:shadow-md transition-all">
-                <p className="font-semibold text-gray-900">Área do cliente</p>
-                <p className="text-gray-600">
-                  Consulte histórico, reagende e atualize seus dados.
-                </p>
-              </div>
+              {landing?.hero_image_url && (
+                <div className="relative" style={fadeUpDelayStyle}>
+                  <div className="relative rounded-3xl overflow-hidden shadow-2xl transform hover:scale-[1.02] transition-transform duration-500">
+                    <img
+                      src={landing.hero_image_url}
+                      alt={org.name}
+                      className="w-full h-[400px] md:h-[500px] object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      </section>
-      {/* ============================================
-          ABOUT — Seção institucional premium
-      ============================================= */}
-      <section
-        id="sobre"
-        className="w-full bg-white border-t border-black/5 border-b border-black/5"
-      >
-        <div className="max-w-6xl mx-auto px-4 py-20 grid md:grid-cols-2 gap-12 items-center">
+        </section>
 
-          {/* TEXT */}
-          <div className="space-y-6 animate-fadeUp">
-            <span className="text-xs font-semibold tracking-widest text-gray-400">
-              SOBRE O PROFISSIONAL
-            </span>
+        {/* Services Section */}
+        <section id="servicos" className="py-20 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                Serviços Premium
+              </h2>
+              <p className="text-gray-600 max-w-2xl mx-auto">
+                Experiências cuidadosamente elaboradas para você
+              </p>
+            </div>
 
-            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
-              {landing.about_title ||
-                "Profissionais comprometidos com cuidado, excelência e uma experiência inesquecível."}
-            </h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {services.length > 0 ? (
+                services.slice(0, 6).map((service, i) => (
+                  <div
+                    key={service.id || i}
+                    className="group bg-white rounded-2xl border border-gray-200 p-8 hover:border-gray-300 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+                  >
+                    <div className="flex items-start justify-between mb-6">
+                      <div 
+                        className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg"
+                        style={{ 
+                          background: `linear-gradient(135deg, ${PRIMARY}, ${PRIMARY}CC)`,
+                          boxShadow: `0 8px 20px ${PRIMARY}40`
+                        }}
+                      >
+                        {String(i + 1).padStart(2, '0')}
+                      </div>
+                      {service.price && (
+                        <span className="text-lg font-bold text-gray-900">
+                          R$ {parseFloat(service.price).toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-gray-700 transition-colors">
+                      {service.name}
+                    </h3>
+                    <p className="text-gray-600 mb-4 leading-relaxed">
+                      {service.description || "Serviço de excelência com profissionais especializados."}
+                    </p>
+                    {service.duration && (
+                      <div className="flex items-center text-sm text-gray-500">
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {service.duration} minutos
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                [1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-2xl border border-gray-200 p-8"
+                  >
+                    <div 
+                      className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-lg mb-6 shadow-lg"
+                      style={{ 
+                        background: `linear-gradient(135deg, ${PRIMARY}, ${PRIMARY}CC)`,
+                        boxShadow: `0 8px 20px ${PRIMARY}40`
+                      }}
+                    >
+                      {String(i).padStart(2, '0')}
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-3">
+                      Serviço {i}
+                    </h3>
+                    <p className="text-gray-600">
+                      Descrição do serviço premium oferecido com qualidade excepcional.
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
 
-            <p className="text-gray-600 leading-relaxed text-base md:text-lg">
-              {landing.about_text ||
-                "Aqui você encontra uma abordagem moderna e acolhedora. Seja para saúde, estética, performance, bem-estar ou desenvolvimento pessoal, o atendimento é pensado para proporcionar conforto, transparência, segurança e uma jornada impecável do início ao fim. Pontualidade, clareza e qualidade fazem parte da essência do nosso trabalho."}
-            </p>
-
-            <div className="grid sm:grid-cols-2 gap-4 pt-4">
-              <div className="rounded-2xl bg-gray-50 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-black/5 transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)]">
-                <p className="text-sm font-semibold text-gray-900 mb-1">
-                  Atendimento personalizado
-                </p>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  Tratamentos e serviços adaptados às suas necessidades, com atenção aos detalhes.
-                </p>
+            {services.length > 6 && (
+              <div className="text-center mt-12">
+                <a
+                  href={`/${slug}/agendar`}
+                  className="inline-flex items-center text-gray-700 font-semibold hover:text-gray-900 transition-colors group"
+                >
+                  Ver todos os serviços
+                  <svg className="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </a>
               </div>
+            )}
+          </div>
+        </section>
 
-              <div className="rounded-2xl bg-gray-50 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-black/5 transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)]">
-                <p className="text-sm font-semibold text-gray-900 mb-1">
-                  Ambiente seguro e acolhedor
+        {/* About Section */}
+        <section id="sobre" className="py-20 bg-gradient-to-b from-white to-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              {landing?.about_image_url && (
+                <div className="order-2 lg:order-1">
+                  <div className="relative rounded-3xl overflow-hidden shadow-2xl">
+                    <img
+                      src={landing.about_image_url}
+                      alt="Sobre nós"
+                      className="w-full h-[400px] object-cover transform hover:scale-105 transition-transform duration-700"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                  </div>
+                </div>
+              )}
+
+              <div className={`space-y-8 ${landing?.about_image_url ? 'order-1 lg:order-2' : ''}`}>
+                <div>
+                  <span className="text-sm font-semibold text-gray-500 tracking-widest uppercase">
+                    SOBRE NÓS
+                  </span>
+                  <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-2">
+                    {aboutTitle}
+                  </h2>
+                </div>
+                
+                <p className="text-gray-600 text-lg leading-relaxed">
+                  {aboutText}
                 </p>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  Focado em garantir tranquilidade para você relaxar e aproveitar o momento.
-                </p>
+
+                <div className="grid sm:grid-cols-2 gap-6 pt-4">
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-4">
+                      <svg className="w-5 h-5" style={{ color: PRIMARY }} fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Profissionais Certificados</h3>
+                    <p className="text-sm text-gray-600">Equipe com formação e experiência comprovada</p>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-4">
+                      <svg className="w-5 h-5" style={{ color: PRIMARY }} fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Atendimento Puntual</h3>
+                    <p className="text-sm text-gray-600">Respeitamos seu tempo com agendamentos precisos</p>
+                  </div>
+                </div>
+
+                {contact.whatsapp && (
+                  <a
+                    href={whatsappLink(contact.whatsapp)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ backgroundColor: PRIMARY }}
+                    className="inline-flex items-center justify-center text-white font-semibold px-8 py-4 rounded-full hover:opacity-95 transition-all duration-300 hover:-translate-y-1 shadow-lg"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17.507 14.307l-.009.075c-2.199-1.096-2.429-1.242-2.713-.816-.197.295-.771.964-.944 1.162-.175.195-.349.21-.646.075-.3-.15-1.263-.465-2.403-1.485-.888-.795-1.484-1.77-1.66-2.07-.293-.506.32-.578.878-1.634.1-.21.049-.375-.025-.524-.075-.15-.672-1.62-.922-2.206-.24-.584-.487-.51-.672-.51-.576-.05-.997-.05-1.368.344-1.614 1.774-1.207 3.604.174 5.55 2.714 3.552 4.16 4.206 6.8 5.114.714.227 1.365.195 1.88.121.574-.091 1.754-.721 2-1.426.255-.705.255-1.29.18-1.425-.074-.135-.27-.21-.57-.345z"/>
+                    </svg>
+                    Falar com a equipe
+                  </a>
+                )}
               </div>
             </div>
           </div>
+        </section>
 
-          {/* IMAGE */}
-          <div className="relative animate-fadeUpDelay">
-            <div className="absolute inset-0 rounded-3xl bg-gray-100 blur-2xl opacity-70"></div>
-            <div className="relative rounded-3xl overflow-hidden shadow-[0_12px_50px_rgba(0,0,0,0.06)] border border-black/5">
-              <img
-                src={
-                  landing.about_image_url ||
-                  landing.hero_image_url ||
-                  "https://images.pexels.com/photos/8467412/pexels-photo-8467412.jpeg?auto=compress&cs=tinysrgb&w=1200"
+        {/* Benefits Section */}
+        <section id="beneficios" className="py-20 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                Por que escolher nosso método?
+              </h2>
+              <p className="text-gray-600 max-w-2xl mx-auto">
+                Tecnologia e humanização trabalhando juntas para sua melhor experiência
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              {[
+                {
+                  icon: "📱",
+                  title: "Agendamento 24/7",
+                  description: "Marque seu horário a qualquer momento, sem depender do horário comercial."
+                },
+                {
+                  icon: "🔔",
+                  title: "Lembretes Automáticos",
+                  description: "Receba notificações por WhatsApp e e-mail para não esquecer seu compromisso."
+                },
+                {
+                  icon: "📊",
+                  title: "Histórico Completo",
+                  description: "Acesse todos seus agendamentos e histórico de serviços em um só lugar."
+                },
+                {
+                  icon: "💳",
+                  title: "Sem Taxas Escondidas",
+                  description: "Transparência total nos valores. Você só paga pelo serviço realizado."
+                },
+                {
+                  icon: "⭐",
+                  title: "Avaliações Verificadas",
+                  description: "Feedback real de clientes para ajudar na sua escolha."
+                },
+                {
+                  icon: "🔄",
+                  title: "Reagendamento Fácil",
+                  description: "Precisa mudar? Reagende com poucos cliques, sem burocracia."
                 }
-                alt="Ambiente"
-                className="w-full h-[320px] md:h-[380px] object-cover"
-              />
+              ].map((benefit, i) => (
+                <div
+                  key={i}
+                  className="group bg-white p-8 rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-xl transition-all duration-300"
+                >
+                  <div className="text-3xl mb-4">{benefit.icon}</div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-gray-700">
+                    {benefit.title}
+                  </h3>
+                  <p className="text-gray-600">
+                    {benefit.description}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-
-      {/* ============================================
-          COMO FUNCIONA — Passo a passo minimalista
-      ============================================= */}
-      <section
-        id="como-funciona"
-        className="w-full bg-white py-20 border-b border-black/5"
-      >
-        <div className="max-w-6xl mx-auto px-4">
-
-          {/* TITLE */}
-          <div className="text-center max-w-2xl mx-auto mb-14 space-y-4 animate-fadeUp">
-            <span className="text-xs font-semibold tracking-widest text-gray-400">
-              COMO FUNCIONA
-            </span>
-
-            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
-              Simples, claro e totalmente intuitivo — do primeiro clique até o atendimento.
+        {/* Final CTA */}
+        <section className="py-20 text-white" style={{backgroundColor: palette?.strong_color}}>
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              Pronto para viver uma experiência premium?
             </h2>
-
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-              O sistema foi pensado para eliminar atritos, facilitar a vida dos clientes e aumentar a organização do profissional. Tudo funciona de maneira fluida, clara e agradável.
+            <p className="text-gray-300 text-lg mb-8 max-w-2xl mx-auto">
+              Agende seu horário agora e descubra por que nossos clientes nos recomendam.
             </p>
-          </div>
-
-          {/* STEPS */}
-          <div className="grid md:grid-cols-3 gap-8">
-
-            {/* Step 1 */}
-            <div className="group rounded-3xl bg-white p-7 border border-black/5 shadow-[0_6px_25px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] transition-all animate-fadeUp delay-75">
-              <span className="inline-flex items-center justify-center h-10 w-10 rounded-xl bg-gray-100 text-gray-800 font-semibold shadow-sm mb-4">
-                1
-              </span>
-
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Escolha o serviço ou profissional
-              </h3>
-
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Você visualiza rapidamente todas as opções de atendimento e escolhe o serviço ideal ou o profissional preferido.
-              </p>
-            </div>
-
-            {/* Step 2 */}
-            <div className="group rounded-3xl bg-white p-7 border border-black/5 shadow-[0_6px_25px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] transition-all animate-fadeUp delay-100">
-              <span className="inline-flex items-center justify-center h-10 w-10 rounded-xl bg-gray-100 text-gray-800 font-semibold shadow-sm mb-4">
-                2
-              </span>
-
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Veja os horários disponíveis
-              </h3>
-
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Os horários aparecem automaticamente em tempo real, sem necessidade de troca de mensagens.
-              </p>
-            </div>
-
-            {/* Step 3 */}
-            <div className="group rounded-3xl bg-white p-7 border border-black/5 shadow-[0_6px_25px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.06)] transition-all animate-fadeUp delay-150">
-              <span className="inline-flex items-center justify-center h-10 w-10 rounded-xl bg-gray-100 text-gray-800 font-semibold shadow-sm mb-4">
-                3
-              </span>
-
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Confirme e receba lembretes
-              </h3>
-
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Após confirmar seus dados, você recebe alertas automáticos para não esquecer seu compromisso.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-      {/* ============================================
-          BENEFÍCIOS — Cards premium e copy forte
-      ============================================= */}
-      <section
-        id="beneficios"
-        className="w-full bg-white py-20 border-b border-black/5"
-      >
-        <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-2 gap-16 items-center">
-
-          {/* TEXT */}
-          <div className="space-y-6 animate-fadeUp">
-            <span className="text-xs font-semibold tracking-widest text-gray-400">
-              BENEFÍCIOS
-            </span>
-
-            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
-              Menos mensagens, mais organização — e uma experiência impecável para cada cliente.
-            </h2>
-
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-              A agenda online reduz falhas de comunicação, aumenta a confiança do cliente e melhora a rotina do profissional. Tudo fica registrado, organizado e acessível quando você mais precisa.
-            </p>
-
-            <ul className="space-y-2 text-sm text-gray-700">
-              <li>• Agendamentos 24h sem depender do WhatsApp</li>
-              <li>• Lembretes automáticos reduzem faltas e atrasos</li>
-              <li>• Histórico completo de cada cliente</li>
-              <li>• Perfeito para clínicas, salões, consultórios, mentores e muito mais</li>
-            </ul>
-
-            {/* CTAs */}
-            <div className="pt-6 flex flex-wrap gap-3">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
                 href={`/${slug}/agendar`}
-                className="px-8 py-3 rounded-full text-sm font-semibold text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition"
-                style={{ backgroundColor: STRONG }}
+                className="inline-flex items-center justify-center bg-white text-gray-900 font-semibold px-8 py-4 rounded-full hover:bg-gray-100 transition-all duration-300 hover:-translate-y-1 shadow-lg"
               >
                 Ver horários disponíveis
               </a>
-
-              <a
-                href={whatsappLink(landing.whatsapp)}
-                target="_blank"
-                className="px-8 py-3 rounded-full border border-black/5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                Tirar dúvidas no WhatsApp
-              </a>
+              {contact.whatsapp && (
+                <a
+                  href={whatsappLink(contact.whatsapp)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center border-2 border-white text-white font-semibold px-8 py-4 rounded-full hover:bg-white/10 transition-all duration-300"
+                >
+                  Falar com atendente
+                </a>
+              )}
             </div>
           </div>
+        </section>
 
-          {/* MINI CARDS */}
-          <div className="grid sm:grid-cols-2 gap-4 animate-fadeUpDelay">
-            {[
-              {
-                title: "Perfeito para novos clientes",
-                text: "Quem te encontra pelo Instagram, Google ou indicação já consegue marcar o horário imediatamente.",
-              },
-              {
-                title: "Experiência premium desde o início",
-                text: "Uma página clara, leve e profissional aumenta confiança e conversões.",
-              },
-              {
-                title: "Funciona para qualquer área",
-                text: "Saúde, estética, beleza, desenvolvimento pessoal, performance e muito mais.",
-              },
-              {
-                title: "Organização completa",
-                text: "Tenha histórico, dados e controle total dos atendimentos.",
-              },
-            ].map((card, index) => (
-              <div
-                key={index}
-                className="p-5 rounded-3xl bg-gray-50 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-black/5 hover:shadow-[0_8px_30px_rgba(0,0,0,0.05)] transition-all"
-              >
-                <h3 className="text-sm font-semibold text-gray-900 mb-1">
-                  {card.title}
-                </h3>
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  {card.text}
+        {/* Contact Section */}
+        <section id="contato" className="py-20 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-16">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-6">Entre em Contato</h2>
+                <p className="text-gray-600 mb-8">
+                  Estamos aqui para ajudar. Escolha a forma de contato mais conveniente para você.
                 </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-      {/* ============================================
-          GALERIA — Imagens reais (ou placeholder premium)
-      ============================================= */}
-      {landing.show_gallery && (
-        <section
-          id="galeria"
-          className="w-full bg-white py-20 border-t border-b border-black/5"
-        >
-          <div className="max-w-6xl mx-auto px-4 text-center space-y-6 animate-fadeUp">
+                
+                <div className="space-y-6">
+                  {contact.whatsapp && (
+                    <a
+                      href={whatsappLink(contact.whatsapp)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center p-4 rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-300 group"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center mr-4">
+                        <svg className="w-6 h-6 text-emerald-600" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M17.507 14.307l-.009.075c-2.199-1.096-2.429-1.242-2.713-.816-.197.295-.771.964-.944 1.162-.175.195-.349.21-.646.075-.3-.15-1.263-.465-2.403-1.485-.888-.795-1.484-1.77-1.66-2.07-.293-.506.32-.578.878-1.634.1-.21.049-.375-.025-.524-.075-.15-.672-1.62-.922-2.206-.24-.584-.487-.51-.672-.51-.576-.05-.997-.05-1.368.344-1.614 1.774-1.207 3.604.174 5.55 2.714 3.552 4.16 4.206 6.8 5.114.714.227 1.365.195 1.88.121.574-.091 1.754-.721 2-1.426.255-.705.255-1.29.18-1.425-.074-.135-.27-.21-.57-.345z"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 group-hover:text-gray-700">WhatsApp</h3>
+                        <p className="text-gray-600">{contact.whatsapp}</p>
+                      </div>
+                      <svg className="w-5 h-5 ml-auto text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </a>
+                  )}
 
-            <span className="text-xs font-semibold tracking-widest text-gray-400">
-              GALERIA
-            </span>
+                  {contact.email && (
+                    <a
+                      href={`mailto:${contact.email}`}
+                      className="flex items-center p-4 rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-300 group"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mr-4">
+                        <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 group-hover:text-gray-700">E-mail</h3>
+                        <p className="text-gray-600 break-all">{contact.email}</p>
+                      </div>
+                    </a>
+                  )}
 
-            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
-              {landing.gallery_title || "Resultados reais, ambientes profissionais e experiências que inspiram confiança."}
-            </h2>
-
-            <p className="max-w-2xl mx-auto text-gray-600 leading-relaxed text-base md:text-lg">
-              {landing.gallery_subtitle ||
-                "Assim que o profissional adicionar fotos de atendimentos, bastidores, resultados e ambientes, elas irão aparecer aqui automaticamente. Enquanto isso, você já pode explorar outras áreas da página."}
-            </p>
-
-            <a
-              href={`/${slug}/galeria`}
-              className="inline-flex items-center justify-center mt-4 px-8 py-3 rounded-full text-sm font-semibold text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition"
-              style={{ backgroundColor: STRONG }}
-            >
-              Ver galeria completa
-            </a>
-          </div>
-        </section>
-      )}
-
-
-
-      {/* ============================================
-          TESTEMUNHOS — Credibilidade e Prova Social
-      ============================================= */}
-      {landing.show_testimonials && (
-        <section className="w-full bg-white py-20 border-b border-black/5">
-          <div className="max-w-6xl mx-auto px-4 text-center space-y-6 animate-fadeUp">
-
-            <span className="text-xs font-semibold tracking-widest text-gray-400">
-              DEPOIMENTOS
-            </span>
-
-            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
-              {landing.testimonials_title || "Clientes que viveram uma experiência transformadora."}
-            </h2>
-
-            <p className="max-w-2xl mx-auto text-gray-600 leading-relaxed text-base md:text-lg">
-              {landing.testimonials_subtitle ||
-                "Assim que os depoimentos forem cadastrados pelo profissional, eles serão exibidos aqui. Uma forma sincera e poderosa de mostrar como cada atendimento faz a diferença."}
-            </p>
-
-            <div className="pt-6 text-xs text-gray-400">
-              * Os depoimentos aparecerão automaticamente quando incluídos.
-            </div>
-
-          </div>
-        </section>
-      )}
-
-
-
-      {/* ============================================
-          EQUIPE — Cards ultra premium e minimalistas
-      ============================================= */}
-      {landing.show_team && (
-        <section className="w-full bg-white py-20 border-b border-black/5">
-          <div className="max-w-6xl mx-auto px-4 space-y-6 text-center animate-fadeUp">
-
-            <span className="text-xs font-semibold tracking-widest text-gray-400">
-              EQUIPE
-            </span>
-
-            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">
-              {landing.team_title || "Conheça os profissionais que estão prontos para te atender."}
-            </h2>
-
-            <p className="max-w-2xl mx-auto text-gray-600 leading-relaxed text-base md:text-lg">
-              {landing.team_subtitle ||
-                "Cada integrante da equipe possui formação, especialização e uma paixão genuína pelo que faz. Assim que forem cadastrados, aparecerão aqui com suas fotos, áreas de atuação e breve apresentação."}
-            </p>
-
-            <div className="pt-6 text-xs text-gray-400">
-              * Os profissionais serão exibidos automaticamente quando cadastrados.
-            </div>
-
-          </div>
-        </section>
-      )}
-
-
-
-      {/* ============================================
-          CONTATO — CTA Final Premium
-      ============================================= */}
-      <section
-        id="contato"
-        className="w-full bg-white py-24 border-b border-black/5"
-      >
-        <div className="max-w-6xl mx-auto px-4 text-center space-y-10 animate-fadeUp">
-
-          <span className="text-xs font-semibold tracking-widest text-gray-400">
-            ENTRE EM CONTATO
-          </span>
-
-          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
-            {landing.contact_title || "Comece agora a transformar sua experiência com agendamentos online."}
-          </h2>
-
-          <p className="max-w-2xl mx-auto text-base md:text-lg text-gray-600 leading-relaxed">
-            Você pode agendar diretamente pelo site, tirar dúvidas pelo WhatsApp ou acompanhar conteúdos
-            no Instagram. Tudo foi pensado para facilitar sua vida e oferecer um atendimento moderno,
-            rápido e totalmente transparente.
-          </p>
-
-          {/* CONTACT OPTIONS */}
-          <div className="grid md:grid-cols-3 gap-6 pt-6">
-
-            {/* AGENDAR */}
-            <a
-              href={`/${slug}/agendar`}
-              className="rounded-3xl p-8 bg-white border border-black/5 shadow-[0_8px_30px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_45px_rgba(0,0,0,0.07)] hover:-translate-y-1 transition-all text-center group"
-            >
-              <p className="text-xs font-semibold text-gray-400 mb-1">
-                AGENDAR ONLINE
-              </p>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Horários em tempo real
-              </h3>
-              <p className="text-sm text-gray-600 leading-relaxed mb-4">
-                Veja todas as opções disponíveis e confirme sua visita em poucos segundos.
-              </p>
-              <span
-                className="inline-flex items-center justify-center rounded-full px-5 py-2 text-xs font-semibold text-white transition"
-                style={{ backgroundColor: STRONG }}
-              >
-                Ver agenda
-              </span>
-            </a>
-
-            {/* WHATSAPP */}
-            <a
-              href={whatsappLink(landing.whatsapp)}
-              target="_blank"
-              className="rounded-3xl p-8 bg-white border border-black/5 shadow-[0_8px_30px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_45px_rgba(0,0,0,0.07)] hover:-translate-y-1 transition-all text-center group"
-            >
-              <p className="text-xs font-semibold text-gray-400 mb-1">
-                WHATSAPP
-              </p>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Atendimento direto
-              </h3>
-              <p className="text-sm text-gray-600 leading-relaxed mb-4">
-                Tire dúvidas de forma rápida e prática com a equipe.
-              </p>
-              <span
-                className="inline-flex items-center justify-center rounded-full px-5 py-2 text-xs font-semibold text-white bg-emerald-500 group-hover:bg-emerald-400 transition"
-              >
-                Abrir WhatsApp
-              </span>
-            </a>
-
-            {/* INSTAGRAM */}
-            <a
-              href={instagramLink(landing.instagram)}
-              target="_blank"
-              className="rounded-3xl p-8 bg-white border border-black/5 shadow-[0_8px_30px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_45px_rgba(0,0,0,0.07)] hover:-translate-y-1 transition-all text-center group"
-            >
-              <p className="text-xs font-semibold text-gray-400 mb-1">
-                INSTAGRAM
-              </p>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Conteúdos e bastidores
-              </h3>
-              <p className="text-sm text-gray-600 leading-relaxed mb-4">
-                Inspire-se com resultados, novidades, rotinas e conteúdos exclusivos.
-              </p>
-              <span
-                className="inline-flex items-center justify-center rounded-full px-5 py-2 text-xs font-semibold text-white bg-pink-500 group-hover:bg-pink-400 transition"
-              >
-                Abrir Instagram
-              </span>
-            </a>
-          </div>
-        </div>
-      </section>
-      {/* ============================================
-          FOOTER ULTRA PREMIUM
-      ============================================= */}
-      <footer className="w-full bg-white border-t border-black/5 pt-16 pb-10">
-        <div className="max-w-6xl mx-auto px-4">
-
-          {/* TOP GRID */}
-          <div className="grid md:grid-cols-3 gap-12 pb-14">
-
-            {/* LOGO + INFO */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-gray-100 border border-black/5 overflow-hidden shadow-sm flex items-center justify-center">
-                  {org?.logo_organization ? (
-                    <img
-                      src={org.logo_organization}
-                      alt={org?.name || "Logo"}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-base font-semibold text-gray-800">
-                      {(org?.name || "MB")
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .substring(0, 2)
-                        .toUpperCase()}
-                    </span>
+                  {contact.endereco && (
+                    <div className="flex items-start p-4 rounded-xl border border-gray-200">
+                      <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center mr-4 mt-1">
+                        <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-1">Endereço</h3>
+                        <p className="text-gray-600">{contact.endereco}</p>
+                      </div>
+                    </div>
                   )}
                 </div>
-
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-gray-900">
-                    {org?.name || "Seu espaço profissional"}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {landing.endereco || org?.address || "Endereço não informado"}
-                  </span>
-                </div>
               </div>
 
-              <p className="text-sm text-gray-600 leading-relaxed max-w-xs">
-                Uma página premium criada para elevar sua presença profissional, facilitar agendamentos e oferecer uma experiência impecável para seus clientes.
-              </p>
-            </div>
-
-            {/* NAVIGATION */}
-            <div>
-              <p className="text-sm font-semibold text-gray-900 mb-3">
-                Navegação rápida
-              </p>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href={`/${slug}`} className="hover:text-gray-900 transition">Home</a></li>
-                <li><a href={`/${slug}/agendar`} className="hover:text-gray-900 transition">Agendar</a></li>
-                <li><a href={`/${slug}/galeria`} className="hover:text-gray-900 transition">Galeria</a></li>
-                <li><a href={`/${slug}/login`} className="hover:text-gray-900 transition">Área do cliente</a></li>
-                <li><a href={`/${slug}/cadastro`} className="hover:text-gray-900 transition">Quero uma página</a></li>
-              </ul>
-            </div>
-
-            {/* CONTACT */}
-            <div>
-              <p className="text-sm font-semibold text-gray-900 mb-3">
-                Contato
-              </p>
-              <ul className="space-y-2 text-sm text-gray-600">
-
-                {landing.whatsapp && (
-                  <li>
-                    <a
-                      href={whatsappLink(landing.whatsapp)}
-                      target="_blank"
-                      className="hover:text-gray-900 transition"
-                    >
-                      WhatsApp: {landing.whatsapp}
-                    </a>
-                  </li>
-                )}
-
-                {landing.telefone && (
-                  <li>
-                    <a
-                      href={`tel:${landing.telefone}`}
-                      className="hover:text-gray-900 transition"
-                    >
-                      Telefone: {landing.telefone}
-                    </a>
-                  </li>
-                )}
-
-                {landing.email && (
-                  <li>
-                    <a
-                      href={`mailto:${landing.email}`}
-                      className="hover:text-gray-900 transition"
-                    >
-                      E-mail: {landing.email}
-                    </a>
-                  </li>
-                )}
-
-                {landing.instagram && (
-                  <li>
-                    <a
-                      href={instagramLink(landing.instagram)}
-                      target="_blank"
-                      className="hover:text-gray-900 transition"
-                    >
-                      Instagram
-                    </a>
-                  </li>
-                )}
-              </ul>
+              {contact.instagram && contact.instagram !== "sem instagram" && instagramLink(contact.instagram) && (
+                <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl p-8 border border-pink-100">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-4">Siga-nos no Instagram</h3>
+                  <p className="text-gray-600 mb-6">
+                    Acompanhe novidades, promoções exclusivas e o dia a dia do nosso trabalho.
+                  </p>
+                  <a
+                    href={instagramLink(contact.instagram)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center bg-gradient-to-r from-pink-600 to-rose-600 text-white font-semibold px-8 py-4 rounded-full hover:opacity-95 transition-all duration-300 hover:-translate-y-1 shadow-lg"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                    </svg>
+                    Seguir no Instagram
+                  </a>
+                </div>
+              )}
             </div>
           </div>
+        </section>
+      </main>
 
-          {/* DIVIDER */}
-          <div className="w-full border-t border-black/5 pt-6 flex flex-col md:flex-row items-center justify-between text-xs text-gray-500 gap-3">
-
-            <span>
-              © {new Date().getFullYear()} Todos os direitos reservados.
-            </span>
-
-            <span>
-              Página criada com{" "}
-              <a
-                href="https://www.marcafy.com.br"
-                className="font-semibold text-gray-700 hover:text-gray-900 transition"
-              >
-                Marcafy
-              </a>.
-            </span>
+      {/* Footer */}
+      <footer className="bg-gray-50 border-t border-gray-200 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center gap-3 mb-6 md:mb-0">
+              {org.logo_organization && (
+                <img src={org.logo_organization} alt={org.name} className="h-8 w-8 object-contain" />
+              )}
+              <span className="font-semibold text-gray-900">{org.name}</span>
+            </div>
+            
+            <div className="flex flex-wrap gap-6 text-sm text-gray-600 justify-center">
+              <a href="#servicos" className="hover:text-gray-900 transition">Serviços</a>
+              <a href="#sobre" className="hover:text-gray-900 transition">Sobre</a>
+              <a href="#beneficios" className="hover:text-gray-900 transition">Benefícios</a>
+              <a href="#contato" className="hover:text-gray-900 transition">Contato</a>
+              <a href={`/${slug}/agendar`} className="hover:text-gray-900 transition">Agendar</a>
+            </div>
+          </div>
+          
+          <div className="mt-8 pt-8 border-t border-gray-200 text-center">
+            <p className="text-sm text-gray-500">
+              © {new Date().getFullYear()} {org.name}. Todos os direitos reservados.
+              <span className="block md:inline mt-2 md:mt-0 md:ml-2">
+                Desenvolvido com tecnologia moderna para sua melhor experiência.
+              </span>
+            </p>
           </div>
         </div>
       </footer>
 
-
-      {/* ============================================
-          FLOATING WHATSAPP — Botão premium
-      ============================================= */}
-      {landing.whatsapp && (
+      {/* WhatsApp Floating Button */}
+      {contact.whatsapp && (
         <a
-          href={whatsappLink(landing.whatsapp)}
+          href={whatsappLink(contact.whatsapp)}
           target="_blank"
-          className="fixed bottom-5 right-5 z-50 inline-flex h-12 w-12 items-center justify-center rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] bg-emerald-500 hover:bg-emerald-400 transition-all hover:-translate-y-1"
+          rel="noopener noreferrer"
+          className="fixed bottom-6 right-6 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full shadow-xl bg-emerald-500 hover:bg-emerald-600 transition-all duration-300 hover:-translate-y-1 hover:scale-110 animate-fadeIn"
           aria-label="Falar no WhatsApp"
+          style={{ animationDelay: '1s' }}
         >
-          <span className="text-white text-xl">💬</span>
+          <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M17.507 14.307l-.009.075c-2.199-1.096-2.429-1.242-2.713-.816-.197.295-.771.964-.944 1.162-.175.195-.349.21-.646.075-.3-.15-1.263-.465-2.403-1.485-.888-.795-1.484-1.77-1.66-2.07-.293-.506.32-.578.878-1.634.1-.21.049-.375-.025-.524-.075-.15-.672-1.62-.922-2.206-.24-.584-.487-.51-.672-.51-.576-.05-.997-.05-1.368.344-1.614 1.774-1.207 3.604.174 5.55 2.714 3.552 4.16 4.206 6.8 5.114.714.227 1.365.195 1.88.121.574-.091 1.754-.721 2-1.426.255-.705.255-1.29.18-1.425-.074-.135-.27-.21-.57-.345z"/>
+          </svg>
         </a>
       )}
-
-    </main>
+    </div>
   );
 }
