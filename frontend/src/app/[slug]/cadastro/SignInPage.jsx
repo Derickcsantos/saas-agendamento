@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 
 export default function SignInPage({ slug }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteCode = searchParams.get("invite"); // 🆕 Pega código do convite da URL
 
   const [form, setForm] = useState({
     username: "",
@@ -21,6 +23,45 @@ export default function SignInPage({ slug }) {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [inviteData, setInviteData] = useState(null); // 🆕 Dados do convite
+  const [validatingInvite, setValidatingInvite] = useState(false); // 🆕 Estado de validação
+
+  // ==========================
+  // 0️⃣ Valida convite (se houver)
+  // ==========================
+  useEffect(() => {
+    if (!inviteCode) {
+      setValidatingInvite(false);
+      return;
+    }
+
+    const validateInvite = async () => {
+      setValidatingInvite(true);
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/user-invites/${slug}/validate/${inviteCode}`,
+          { credentials: "include" }
+        );
+
+        if (!res.ok) {
+          const error = await res.json();
+          setErrorMsg(error.error || "Convite inválido ou expirado");
+          return;
+        }
+
+        const data = await res.json();
+        setInviteData(data.invite);
+        console.log("✅ Convite validado:", data.invite);
+      } catch (err) {
+        console.error("Erro ao validar convite:", err);
+        setErrorMsg("Erro ao validar convite. Tente novamente.");
+      } finally {
+        setValidatingInvite(false);
+      }
+    };
+
+    validateInvite();
+  }, [inviteCode, slug]);
 
   // ==========================
   // 1️⃣ Verifica autenticação (cookie JWT)
@@ -69,6 +110,35 @@ export default function SignInPage({ slug }) {
 
     setLoading(true);
     try {
+      // 🆕 Se houver convite, resgatar via endpoint especial
+      if (inviteCode && inviteData) {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/user-invites/${slug}/redeem/${inviteCode}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username,
+              email,
+              aniversario,
+              phone,
+              password,
+            }),
+          }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Erro ao resgatar convite.");
+        }
+
+        setSuccessMsg("✅ Cadastro realizado com sucesso! Redirecionando...");
+        setTimeout(() => router.push(`/${slug}/login`), 2000);
+        return;
+      }
+
+      // Cadastro normal (sem convite)
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/register/${slug}`,
         {
@@ -99,10 +169,10 @@ export default function SignInPage({ slug }) {
     }
   };
 
-  if (checkingAuth) {
+  if (checkingAuth || validatingInvite) {
     return (
       <div className="h-screen flex items-center justify-center bg-white text-gray-700">
-        Verificando autenticação...
+        {checkingAuth ? "Verificando autenticação..." : "Validando convite..."}
       </div>
     );
   }
@@ -110,9 +180,21 @@ export default function SignInPage({ slug }) {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full bg-white rounded-xl shadow-md p-8">
-        <h1 className="text-2xl font-semibold text-center mb-6" style={{color: palette?.strong_color}}>
+        <h1 className="text-2xl font-semibold text-center mb-2" style={{color: palette?.strong_color}}>
           Criar Conta — {slug}
         </h1>
+
+        {/* 🆕 Banner de convite */}
+        {inviteData && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-6 text-sm">
+            <p className="text-green-800 font-medium">
+              ✅ Você foi convidado como <strong>{inviteData.type}</strong>
+            </p>
+            <p className="text-green-700 text-xs mt-1">
+              Criado por: {inviteData.organization_name}
+            </p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

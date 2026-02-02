@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import { useConfirm } from "@/components/ConfirmDialogProvider";
+import InviteModal from "@/app/[slug]/admin/components/InviteModal";
 
 export default function UsersTab({ org }) {
   const [users, setUsers] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const { palette } = useOrganizationColors(org.slug_organization);
 
   const { confirm } = useConfirm()
@@ -54,9 +56,7 @@ export default function UsersTab({ org }) {
     loadEmployees();
   }, []);
 
-  // ======================
-  // Submit
-  // ======================
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -136,9 +136,21 @@ export default function UsersTab({ org }) {
         onSubmit={handleSubmit}
         className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 space-y-6"
       >
-        <h3 className="text-lg font-bold text-gray-700 dark:text-gray-200">
-          {editing ? "Editar Usuário" : "Criar Usuário"}
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-gray-700 dark:text-gray-200">
+            {editing ? "Editar Usuário" : "Criar Usuário"}
+          </h3>
+          
+          {/* 🆕 Botão de Compartilhamento */}
+          <button
+            type="button"
+            onClick={() => setShowInviteModal(true)}
+            style={{backgroundColor: palette?.strong_color}}
+            className="flex items-center gap-2 px-4 py-2 text-white rounded-lg text-sm font-medium transition"
+          >
+           <i class="bi bi-person-plus-fill"></i>
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
@@ -292,6 +304,15 @@ export default function UsersTab({ org }) {
           </table>
         </div>
       </div>
+
+      {/* 🆕 Modal de Convite */}
+      <InviteModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        org={org}
+        palette={palette}
+        onInviteCreated={loadUsers}
+      />
     </div>
   );
 }

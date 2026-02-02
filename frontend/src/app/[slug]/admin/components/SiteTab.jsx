@@ -164,19 +164,21 @@ export default function SiteTab({ org }) {
   ===================================================================== */
   const Preview = () => (
     <div
-      className={`transition-all duration-300 border rounded-xl overflow-hidden shadow-xl bg-white ${
+      className={`transition-all duration-300 border rounded-xl overflow-auto shadow-xl bg-white ${
         previewMode === "mobile"
-          ? "max-w-[420px] mx-auto scale-95"
-          : "w-full min-h-[700px]"
+          ? "max-w-[420px] mx-auto"
+          : "w-full"
       }`}
-      style={{ height: previewMode === "desktop" ? "100%" : "750px" }}
+      style={{ height: previewMode === "desktop" ? "800px" : "750px" }}
     >
-      <ClientLanding
-        slug={org.slug_organization}
-        injectedLanding={form}
-        injectedPalette={palette}
-        isPreview
-      />
+      <div className={previewMode === "mobile" ? "scale-[0.85] origin-top" : ""}>
+        <ClientLanding
+          slug={org.slug_organization}
+          injectedLanding={form}
+          injectedPalette={palette}
+          isPreview
+        />
+      </div>
     </div>
   );
 
