@@ -153,7 +153,8 @@ export default function PagarmeTab() {
 
     const confirmed = await confirm({
       title: "Excluir plano",
-      message: "Tem certeza que deseja excluir este plano?"
+      message: "Tem certeza que deseja excluir este plano?",
+      confirmVariant: "danger"
     });
 
     if (!confirmed) return
@@ -181,7 +182,8 @@ export default function PagarmeTab() {
 
     const confirmed = await confirm({
       title: "Cancelar assinatura",
-      message: "Deseja cancelar esta assinatura?"
+      message: "Deseja cancelar esta assinatura?",
+      confirmVariant: "danger"
     });
 
     if (!confirmed) return

@@ -9,8 +9,8 @@ export function ConfirmProvider({ children }) {
   const [options, setOptions] = useState(null);
   const [resolver, setResolver] = useState(null);
 
-  function confirm({ title, message }) {
-    setOptions({ title, message });
+  function confirm({ title, message, confirmVariant, confirmColor }) {
+    setOptions({ title, message, confirmVariant, confirmColor });
 
     return new Promise((resolve) => {
       setResolver(() => resolve);
@@ -40,6 +40,8 @@ export function ConfirmProvider({ children }) {
         open={!!options}
         title={options?.title}
         message={options?.message}
+        confirmVariant={options?.confirmVariant}
+        confirmColor={options?.confirmColor}
         onConfirm={handleConfirm}
         onCancel={handleCancel}
       />

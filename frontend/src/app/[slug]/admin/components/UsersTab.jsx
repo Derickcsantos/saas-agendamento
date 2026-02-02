@@ -113,7 +113,8 @@ export default function UsersTab({ org }) {
 
     const confirmed = await confirm({
       title: "Excluir usuário",
-      message: `Deseja excluir este usuário?`
+      message: `Deseja excluir este usuário?`,
+      confirmVariant: "danger"
     });
 
     if (!confirmed) return

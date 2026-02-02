@@ -166,7 +166,8 @@ export default function EmployeesTab({ org }) {
 
     const confirmed = await confirm({
       title: "Excluir funcionário",
-      message: "Deseja realmente excluir este funcionário?"
+      message: "Deseja realmente excluir este funcionário?",
+      confirmVariant: "danger"
     });
 
     if (!confirmed) return

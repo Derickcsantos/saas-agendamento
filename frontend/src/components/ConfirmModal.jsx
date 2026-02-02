@@ -7,9 +7,21 @@ export default function ConfirmModal({
   title = "Confirmação",
   message,
   onConfirm,
-  onCancel
+  onCancel,
+  confirmVariant = "primary",
+  confirmColor
 }) {
   if (!open) return null;
+
+  const confirmButtonClass =
+    confirmVariant === "danger"
+      ? "bg-red-700 hover:bg-red-800 text-white"
+      : "text-white";
+
+  const confirmButtonStyle =
+    confirmVariant === "primary" && confirmColor
+      ? { backgroundColor: confirmColor }
+      : undefined
 
   return (
     // Backdrop
@@ -22,7 +34,7 @@ export default function ConfirmModal({
         </h3>
 
         {/* Mensagem */}
-        <p className="text-gray-600 dark:text-gray-300 mb-6">
+        <p className="text-gray-600 dark:text-gray-300 mb-6 whitespace-pre-line">
           {message}
         </p>
 
@@ -37,7 +49,8 @@ export default function ConfirmModal({
 
           <button
             onClick={onConfirm}
-            className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+            className={`px-4 py-2 rounded-lg transition ${confirmButtonClass}`}
+            style={confirmButtonStyle}
           >
             Confirmar
           </button>

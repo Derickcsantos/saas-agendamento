@@ -113,7 +113,8 @@ export default function GalleryTab({ org }) {
 
     const confirmed = await confirm({
       title: "Excluir imagens",
-      message: "Deseja realmente excluir estas imagens?"
+      message: "Deseja realmente excluir estas imagens?",
+      confirmVariant: "danger"
     });
 
     if (!confirmed) return
