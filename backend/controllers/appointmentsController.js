@@ -845,7 +845,8 @@ Qualquer dúvida, entre em contato conosco! 💬
     👉 https://marcafy.com.br/${slug}/login
           `.trim();
 
-          await sendWhatsAppMessage(user.phone, message, orgData.id);
+          // ✅ Enviar para representante usando API key padrão (.env)
+          await sendWhatsAppMessage(user.phone, message, null, true);
 
           console.log("📲 WhatsApp enviado ao representante:", user.username);
         }

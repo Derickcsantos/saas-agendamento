@@ -45,6 +45,7 @@ import { clientRouter } from './routes/clientRoutes.js';
 import { organizationsPaymentsRouter } from './routes/organizationsPaymentsRoutes.js';
 import { expensesRouter } from './routes/expensesRoutes.js';
 import queueRouter from './routes/queueRoutes.js';
+import { userInvitesRouter } from './routes/userInvitesRoutes.js';
 import scheduleJob from './utils/screduleJobs.js';
 import QueueWebSocketManager from './lib/websocket.js';
 import http from 'http';
@@ -70,8 +71,6 @@ setupSwagger(app)
 
 app.use(passport.initialize());
 
-scheduleJob("0 0 * * *", "00:00");
-scheduleJob("0 3 * * *", "03:00");
 scheduleJob("0 8 * * *", "08:00");
 
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
@@ -114,6 +113,7 @@ app.use('/api/clients', clientRouter)
 app.use('/api/payments', organizationsPaymentsRouter)
 app.use('/api/admin/expenses', expensesRouter)
 app.use('/api/queues', queueRouter)
+app.use('/api/user-invites', userInvitesRouter)
 // app.use("/api/whatsapp-send", sendWhatsappRouter);
 
 server.listen(port, () => {

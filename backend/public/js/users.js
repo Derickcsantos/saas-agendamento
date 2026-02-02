@@ -172,9 +172,9 @@ async function updateUserProfile(e) {
     const response = await fetch(`/api/users/${userId}?organization_id=${organizationId}`, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}` // Adicione se usar autenticação por token
+        'Content-Type': 'application/json'
       },
+      credentials: 'include',
       body: JSON.stringify(updateData)
     });
 
