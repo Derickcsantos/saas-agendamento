@@ -1148,6 +1148,12 @@ const sendWhatsappConfirmation = async () => {
                   </p>
                 )}
 
+                <button
+                  onClick={() => next()}
+                  className="mt-4 w-full bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition-all font-semibold"
+                >
+                  Continuar sem cupom
+                </button>
               </motion.div>
             )}
 
@@ -1264,14 +1270,13 @@ const sendWhatsappConfirmation = async () => {
             Voltar
           </button>
 
-          {step === 7 ? (
-            <></>
-          ) : (
+          {/* Hide "Next" button for steps 1-5 since auto-advance is active */}
+          {step === 6 && (
             <button
               onClick={next}
-              disabled={step === 7 || !canAdvance()}
+              disabled={!canAdvance()}
               className={`px-6 py-2 rounded-lg ${
-                step === 7 || !canAdvance()
+                !canAdvance()
                   ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                   : "bg-purple-600 text-white hover:bg-purple-700"
               }`}
