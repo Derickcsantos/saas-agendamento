@@ -536,10 +536,17 @@ const sendWhatsappConfirmation = async () => {
     }
   };
 
+  // Avança sem verificação (usado nos handlers de seleção)
   const next = () => {
-    if (!canAdvance()) return;
     setStep((s) => Math.min(s + 1, 7));
   };
+
+  // Avança COM verificação (usado no botão "Próximo")
+  const nextIfCan = () => {
+    if (!canAdvance()) return;
+    next();
+  };
+
   const back = () => setStep((s) => Math.max(s - 1, 1));
 
   const handleSelect = (field, value) => {
@@ -1273,7 +1280,7 @@ const sendWhatsappConfirmation = async () => {
           {/* Show "Next" button only on step 6 (coupon). Steps 1-5 have auto-advance, step 7 has its own confirm button */}
           {step === 6 && (
             <button
-              onClick={next}
+              onClick={nextIfCan}
               disabled={!canAdvance()}
               className={`px-6 py-2 rounded-lg ${
                 !canAdvance()
