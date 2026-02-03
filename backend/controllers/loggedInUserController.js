@@ -26,8 +26,8 @@ export const getLoggedInUserAppointments = async (req, res) => {
         employees(name)
       `)
       .eq('client_email', email)
-      .order('appointment_date', { ascending: true })
-      .order('start_time', { ascending: true });
+      .order('appointment_date', { ascending: false })
+      .order('start_time', { ascending: false });
 
     if (error) throw error;
 
