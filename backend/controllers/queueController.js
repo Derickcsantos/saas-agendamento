@@ -425,20 +425,6 @@ export const joinQueue = async (req, res) => {
       return res.status(403).json({ error: "Fila está fechada para novas entradas" });
     }
 
-    // Verificar se cliente já está na fila
-    const { data: existing } = await supabase
-      .from("queue_entries")
-      .select("id")
-      .eq("queue_id", queue.queue_id)
-      .eq("client_id", clientId)
-      .maybeSingle();
-
-    if (existing) {
-      return res.status(400).json({
-        error: "Cliente já está na fila",
-      });
-    }
-
     // Buscar última posição
     const { data: lastEntry } = await supabase
       .from("queue_entries")
