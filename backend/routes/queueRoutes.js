@@ -9,7 +9,7 @@ import {
   callNextInQueue,
   removeFromQueue,
   completeQueueEntry,
-  updateQueueStatus,
+  updateQueue,
   reorderQueue,
   completeEntry,
   cancelEntry,
@@ -345,7 +345,7 @@ queueRouter.delete("/:slug/:queueId/:entryId", removeFromQueue);
  *       200:
  *         description: 'Status da fila atualizado'
  */
-queueRouter.put("/:slug/:queueId", updateQueueStatus);
+queueRouter.put("/:slug/:queueId", updateQueue);
 
 /**
  * @swagger

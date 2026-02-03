@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { useQueueWebSocket } from "@/hooks/useQueueWebSocket";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import { QRCodeCanvas } from "qrcode.react";
+import { useConfirm } from '@/components/ConfirmDialogProvider'
 
 export default function QueueTab({ slug }) {
   const [queue, setQueue] = useState(null);
@@ -21,6 +23,16 @@ export default function QueueTab({ slug }) {
   const [createQueueDate, setCreateQueueDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [createQueueStart, setCreateQueueStart] = useState("08:00");
   const [createQueueEnd, setCreateQueueEnd] = useState("18:00");
+  
+  // Estados para modais
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showEditQueue, setShowEditQueue] = useState(false);
+  const [editQueueDate, setEditQueueDate] = useState("");
+  const [editQueueStart, setEditQueueStart] = useState("");
+  const [editQueueEnd, setEditQueueEnd] = useState("");
+  const [editQueueLoading, setEditQueueLoading] = useState(false);
+  const qrCodeRef = useRef();
+  const { confirm } = useConfirm();
 
   // ================================
   // HANDLER DE MENSAGENS WEBSOCKET
@@ -76,6 +88,29 @@ export default function QueueTab({ slug }) {
     queue?.queue_id,
     handleWebSocketMessage
   );
+
+  // ================================
+  // FUNÇÕES AUXILIARES
+  // ================================
+  const formatDate = (isoDate) => {
+    if (!isoDate) return "";
+    const [y, m, d] = isoDate.split("-");
+    return `${d}/${m}/${y}`;
+  };
+
+  const getQueueShareUrl = () => {
+    return `${window.location.origin}/${slug}/fila`;
+  };
+
+  const handleCopyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Link copiado para a área de transferência!", { autoClose: 2000 });
+    } catch (err) {
+      console.error("Erro ao copiar:", err);
+      toast.error("Erro ao copiar o link");
+    }
+  };
 
   // ================================
   // 1️⃣ CARREGAR FILA DO DIA
@@ -255,7 +290,12 @@ export default function QueueTab({ slug }) {
   // 6️⃣ CANCELAR ENTRADA
   // ================================
   const handleCancel = async (entryId) => {
-    const confirmed = window.confirm("Tem certeza que deseja cancelar este cliente?");
+    const confirmed = await confirm({
+      title: 'Remover da fila',
+      message: 'Deseja realmente tira-lo da fila?',
+      confirmVariant: 'danger'
+    });
+
     if (!confirmed) return;
 
     try {
@@ -343,6 +383,49 @@ export default function QueueTab({ slug }) {
     }
   };
 
+  // ================================
+  // 9️⃣ EDITAR FILA
+  // ================================
+  const handleOpenEditQueue = () => {
+    setEditQueueDate(queue.queue_date);
+    setEditQueueStart(queue.opens_at?.substring(0, 5) || "08:00");
+    setEditQueueEnd(queue.closes_at?.substring(0, 5) || "18:00");
+    setShowEditQueue(true);
+  };
+
+  const handleUpdateQueue = async () => {
+    try {
+      setEditQueueLoading(true);
+      const res = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/queues/${slug}/${queue.queue_id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            queue_date: editQueueDate,
+            opens_at: `${editQueueStart}:00`,
+            closes_at: `${editQueueEnd}:00`,
+          }),
+        }
+      );
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao atualizar fila");
+      }
+
+      setQueue(data);
+      setShowEditQueue(false);
+      toast.success("Fila atualizada com sucesso!", { autoClose: 3000 });
+      setShowShareModal(true);
+    } catch (err) {
+      console.error("Erro ao atualizar fila:", err);
+      toast.error(err.message || "Erro ao atualizar fila");
+    } finally {
+      setEditQueueLoading(false);
+    }
+  };
+
   const handleCreateQueue = async () => {
     try {
       setCreateQueueLoading(true);
@@ -368,6 +451,7 @@ export default function QueueTab({ slug }) {
       setQueueEntries([]);
       setCreatingQueue(false);
       toast.success("Fila criada com sucesso", { autoClose: 3000 });
+      setShowShareModal(true);
     } catch (err) {
       console.error("Erro ao criar fila:", err);
       toast.error(err.message || "Erro ao criar fila");
@@ -477,7 +561,7 @@ export default function QueueTab({ slug }) {
         <div>
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900">Gerenciamento de fila</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {queue?.queue_date} • {queue?.opens_at?.substring(0, 5)} - {queue?.closes_at?.substring(0, 5)}
+            {formatDate(queue?.queue_date)} • {queue?.opens_at?.substring(0, 5)} - {queue?.closes_at?.substring(0, 5)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto">
@@ -487,6 +571,26 @@ export default function QueueTab({ slug }) {
               Conectado
             </span>
           )}
+          <button
+            onClick={handleOpenEditQueue}
+            className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition"
+            title="Editar fila"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Editar
+          </button>
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition"
+            title="Compartilhar fila"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C9.589 12.581 10 11.596 10 10.5C10 8.015 8.507 6 6.5 6S3 8.015 3 10.5 4.507 15 6.5 15c1.083 0 2.118-.36 2.942-.999M15 12a3 3 0 11-6 0 3 3 0 016 0zm6-3a6 6 0 11-12 0 6 6 0 0112 0z" />
+            </svg>
+            Compartilhar
+          </button>
           <button
             onClick={handleToggleQueueStatus}
             className={`inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold border transition ${
@@ -510,7 +614,7 @@ export default function QueueTab({ slug }) {
             onClick={handleCallNext}
             disabled={activeEntries.length === 0}
             style={{ backgroundColor: palette?.strong_color }}
-            className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 rounded-lg text-white text-sm font-semibold hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h2l2 5-2 1a11 11 0 005 5l1-2 5 2v2a2 2 0 01-2 2h-1C8.373 18 3 12.627 3 6V5z" />
@@ -796,6 +900,146 @@ export default function QueueTab({ slug }) {
               >
                 Fechar
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Share Modal com QRCode */}
+      <AnimatePresence>
+        {showShareModal && (
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowShareModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 sm:p-8"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Compartilhar Fila</h2>
+                <p className="text-sm text-gray-500 mt-2">
+                  {formatDate(queue?.queue_date)} • {queue?.opens_at?.substring(0, 5)} - {queue?.closes_at?.substring(0, 5)}
+                </p>
+              </div>
+
+              {/* QRCode */}
+              <div className="flex justify-center mb-6 p-4 bg-white rounded-xl border-2 border-slate-100">
+                <QRCodeCanvas
+                  ref={qrCodeRef}
+                  value={getQueueShareUrl()}
+                  size={200}
+                  level="H"
+                  includeMargin={true}
+                  fgColor="#000000"
+                  bgColor="#ffffff"
+                />
+              </div>
+
+              {/* Link Input */}
+              <div className="space-y-3 mb-6">
+                <label className="text-sm font-semibold text-gray-700">Link da fila</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    value={getQueueShareUrl()}
+                    readOnly
+                    className="flex-1 px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm text-gray-700 font-mono"
+                  />
+                  <button
+                    onClick={() => handleCopyToClipboard(getQueueShareUrl())}
+                    className="flex-shrink-0 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
+                    title="Copiar link"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="w-full px-4 py-2 rounded-lg text-white font-semibold transition text-sm"
+                style={{ backgroundColor: palette?.strong_color || "#111827" }}
+              >
+                Fechar
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Queue Modal */}
+      <AnimatePresence>
+        {showEditQueue && (
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowEditQueue(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 sm:p-8"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Editar Fila</h2>
+
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-2 block">Data</label>
+                  <input
+                    type="date"
+                    value={editQueueDate}
+                    onChange={(e) => setEditQueueDate(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg border border-slate-200 text-gray-700"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700 mb-2 block">Início</label>
+                    <input
+                      type="time"
+                      value={editQueueStart}
+                      onChange={(e) => setEditQueueStart(e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-slate-200 text-gray-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700 mb-2 block">Fim</label>
+                    <input
+                      type="time"
+                      value={editQueueEnd}
+                      onChange={(e) => setEditQueueEnd(e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-slate-200 text-gray-700"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => setShowEditQueue(false)}
+                  className="flex-1 px-4 py-2 rounded-lg border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleUpdateQueue}
+                  disabled={editQueueLoading}
+                  style={{ backgroundColor: palette?.strong_color || "#111827" }}
+                  className="flex-1 px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition disabled:opacity-50"
+                >
+                  {editQueueLoading ? "Atualizando..." : "Atualizar"}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

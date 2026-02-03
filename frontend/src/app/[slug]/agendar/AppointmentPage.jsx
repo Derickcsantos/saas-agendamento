@@ -167,7 +167,7 @@ export default function AppointmentPage({ slug }) {
       }
     };
     loadCategories();
-  }, []);
+  }, [slug]);
 
   // ================================
   // 4️⃣ LOAD SERVICES
@@ -517,11 +517,93 @@ const sendWhatsappConfirmation = async () => {
     }
   };
 
-  const next = () => setStep((s) => Math.min(s + 1, 7));
+  const canAdvance = () => {
+    switch (step) {
+      case 1:
+        return !!selected.category;
+      case 2:
+        return !!selected.service;
+      case 3:
+        return !!selected.employee;
+      case 4:
+        return !!selected.date;
+      case 5:
+        return !!selected.time;
+      case 6:
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  const next = () => {
+    if (!canAdvance()) return;
+    setStep((s) => Math.min(s + 1, 7));
+  };
   const back = () => setStep((s) => Math.max(s - 1, 1));
 
   const handleSelect = (field, value) => {
     setSelected((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSelectCategory = (cat) => {
+    setSelected((prev) => ({
+      ...prev,
+      category: cat,
+      service: null,
+      employee: null,
+      date: "",
+      time: null,
+      coupon: null,
+    }));
+    setServices([]);
+    setEmployees([]);
+    setTimeSlots([]);
+    setUnavailableDays([]);
+    setCouponInput("");
+    setCouponStatus({ loading: false, valid: null, message: "" });
+    loadServices(cat.id);
+    next();
+  };
+
+  const handleSelectService = (srv) => {
+    setSelected((prev) => ({
+      ...prev,
+      service: srv,
+      employee: null,
+      date: "",
+      time: null,
+      coupon: null,
+    }));
+    setEmployees([]);
+    setTimeSlots([]);
+    setUnavailableDays([]);
+    setCouponInput("");
+    setCouponStatus({ loading: false, valid: null, message: "" });
+    loadEmployees(srv.id);
+    next();
+  };
+
+  const handleSelectEmployee = (emp) => {
+    setSelected((prev) => ({
+      ...prev,
+      employee: emp,
+      date: "",
+      time: null,
+    }));
+    setTimeSlots([]);
+    setUnavailableDays([]);
+    next();
+  };
+
+  const handleSelectDate = (dateIso) => {
+    setSelected((prev) => ({
+      ...prev,
+      date: dateIso,
+      time: null,
+    }));
+    setTimeSlots([]);
+    next();
   };
 
   if (checkingAuth)
@@ -838,7 +920,7 @@ const sendWhatsappConfirmation = async () => {
                   i + 1 <= step ? " font-semibold" : "text-gray-400"
                 }`}
               >
-                {s.title}
+                {s}
               </p>
             </div>
           ))}
@@ -857,11 +939,7 @@ const sendWhatsappConfirmation = async () => {
                   {categories.map((cat) => (
                     <div
                       key={cat.id}
-                      onClick={() => {
-                        handleSelect("category", cat);
-                        loadServices(cat.id);
-                        next();
-                      }}
+                      onClick={() => handleSelectCategory(cat)}
                       className={`cursor-pointer p-4 rounded-xl border text-center transition-all ${
                         selected.category?.id === cat.id
                           ? "border-gray-600 bg-purple-50"
@@ -890,12 +968,7 @@ const sendWhatsappConfirmation = async () => {
                   {services.map((srv) => (
                     <div
                       key={srv.id}
-                      onClick={() => {
-                        handleSelect("service", srv);
-                        loadEmployees(srv.id);
-                        setUnavailableDays([]);
-                        next();
-                      }}
+                      onClick={() => handleSelectService(srv)}
                       className={`cursor-pointer p-4 rounded-xl border transition-all ${
                         selected.service?.id === srv.id
                           ? "border-gray-600 bg-purple-50"
@@ -930,10 +1003,7 @@ const sendWhatsappConfirmation = async () => {
                   {employees.map((emp) => (
                     <div
                       key={emp.id}
-                      onClick={() => {
-                        handleSelect("employee", emp);
-                        next();
-                      }}
+                      onClick={() => handleSelectEmployee(emp)}
                       className={`cursor-pointer p-4 rounded-xl border text-center transition-all ${
                         selected.employee?.id === emp.id
                           ? "border-gray-600 bg-purple-50"
@@ -985,8 +1055,7 @@ const sendWhatsappConfirmation = async () => {
                         return;
                       }
 
-                      handleSelect("date", formatted);
-                      next(); // já avança para horários (UX melhor)
+                      handleSelectDate(formatted);
                     }}
                     disabled={(date) => {
                       const iso = format(date, "yyyy-MM-dd");
@@ -1028,7 +1097,7 @@ const sendWhatsappConfirmation = async () => {
                         key={i}
                         onClick={() => {
                           handleSelect("time", slot);
-                          next(); 
+                          next();
                         }}
                         className={`px-4 py-2 text-gray-800 rounded-lg border transition-all ${
                           selected.time?.start === slot.start
@@ -1208,9 +1277,9 @@ const sendWhatsappConfirmation = async () => {
           ) : (
             <button
               onClick={next}
-              disabled={step === 7}
+              disabled={step === 7 || !canAdvance()}
               className={`px-6 py-2 rounded-lg ${
-                step === 7
+                step === 7 || !canAdvance()
                   ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                   : "bg-purple-600 text-white hover:bg-purple-700"
               }`}

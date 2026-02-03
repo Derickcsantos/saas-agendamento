@@ -650,7 +650,87 @@ export const completeQueueEntry = async (req, res) => {
 
 /**
  * PUT /api/queues/:slug/:queueId
+ * Atualizar status ou detalhes da fila (queue_date, opens_at, closes_at, status)
+ */
+export const updateQueue = async (req, res) => {
+  try {
+    const { slug, queueId } = req.params;
+    const { status, queue_date, opens_at, closes_at } = req.body;
+
+    if (!slug || !queueId) {
+      return res.status(400).json({ error: "Slug e queueId são obrigatórios" });
+    }
+
+    // Se houver status, validar
+    if (status && !["open", "closed", "paused"].includes(status)) {
+      return res.status(400).json({
+        error: "Status deve ser: open, closed ou paused",
+      });
+    }
+
+    // Normalizar horários (adicionar :00 se necessário)
+    const normalizeTime = (value) => {
+      if (!value) return value;
+      return value.length === 5 ? `${value}:00` : value;
+    };
+
+    // Construir objeto de atualização
+    const updateData = {};
+    if (status) updateData.status = status;
+    if (queue_date) updateData.queue_date = queue_date;
+    if (opens_at) updateData.opens_at = normalizeTime(opens_at);
+    if (closes_at) updateData.closes_at = normalizeTime(closes_at);
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: "Nenhum campo para atualizar" });
+    }
+
+    console.log("📝 Atualizando fila:", updateData);
+
+    const { data: updated, error: updateError } = await supabase
+      .from("queues")
+      .update(updateData)
+      .eq("queue_id", queueId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("❌ Erro ao atualizar:", updateError);
+      return res.status(400).json({
+        error: "Erro ao atualizar fila",
+        details: updateError.message,
+      });
+    }
+
+    console.log("✅ Fila atualizada:", updated);
+
+    // Buscar organização para broadcast
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    // 📡 Notificar via broadcast se status mudou
+    if (status) {
+      broadcastQueueUpdate(org.id, queueId, {
+        type: "queue_status_changed",
+        status,
+        message: `Fila agora está ${status}`,
+      });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Erro em updateQueue:", error);
+    res.status(500).json({ error: "Internal server error", message: error.message });
+  }
+};
+
+/**
+ * PUT /api/queues/:slug/:queueId (OLD - DEPRECATED)
  * Atualizar status da fila (open, closed, paused)
+ * ⚠️ Mantido para compatibilidade, use updateQueue
  */
 export const updateQueueStatus = async (req, res) => {
   try {
