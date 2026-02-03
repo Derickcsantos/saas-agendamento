@@ -914,14 +914,6 @@ const sendWhatsappConfirmation = async () => {
               >
                 
               </div>
-              <p
-                style={{color: palette?.strong_color}}
-                className={`text-xs mt-2 ${
-                  i + 1 <= step ? " font-semibold" : "text-gray-400"
-                }`}
-              >
-                {s}
-              </p>
             </div>
           ))}
         </div>
