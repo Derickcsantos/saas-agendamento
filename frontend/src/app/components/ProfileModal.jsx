@@ -16,12 +16,20 @@ export default function ProfileModal({ user, slug, setUser, onClose }) {
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   useEffect(() => {
+    setForm({
+      username: user?.username || "",
+      email: user?.email || "",
+      phone: user?.phone || "",
+      aniversario: user?.aniversario || "",
+    });
+  }, [user]);
+
+  useEffect(() => {
     async function fetchData() {
       try {
-
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`, {
-            credentials: "include",
-          });
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${slug}`, {
+          credentials: "include",
+        });
 
         const paletteData = await res.json();
 

@@ -542,6 +542,7 @@ export default function EmployeePanel() {
       {showProfile && (
         <ProfileModal
           user={user}
+          slug={slug}
           setUser={setUser}
           onClose={() => setShowProfile(false)}
         />
