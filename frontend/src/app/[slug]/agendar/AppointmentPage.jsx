@@ -1270,7 +1270,7 @@ const sendWhatsappConfirmation = async () => {
             Voltar
           </button>
 
-          {/* Hide "Next" button for steps 1-5 since auto-advance is active */}
+          {/* Show "Next" button only on step 6 (coupon). Steps 1-5 have auto-advance, step 7 has its own confirm button */}
           {step === 6 && (
             <button
               onClick={next}
