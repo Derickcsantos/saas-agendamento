@@ -14,6 +14,9 @@ import {
   completeEntry,
   cancelEntry,
   getQueueStats,
+  updateQueueEntry,
+  updateMyQueueEntry,
+  leaveQueueByToken,
 } from "../controllers/queueController.js";
 import { validateSlugForWebSocket } from "../controllers/websocketController.js";
 
@@ -497,6 +500,90 @@ queueRouter.patch("/:slug/:queueId/:entryId/complete", completeEntry);
  *         description: 'Entrada cancelada'
  */
 queueRouter.patch("/:slug/:queueId/:entryId/cancel", cancelEntry);
+
+/**
+ * @swagger
+ * /api/queues/{slug}/{queueId}/{entryId}/update:
+ *   put:
+ *     tags: ['Queues']
+ *     summary: 'Admin atualiza serviço/funcionário de uma entrada'
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: queueId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: entryId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               service_id:
+ *                 type: integer
+ *               employee_id:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: 'Entrada atualizada'
+ */
+queueRouter.put("/:slug/:queueId/:entryId/update", updateQueueEntry);
+
+/**
+ * @swagger
+ * /api/queues/public/{publicToken}/update:
+ *   put:
+ *     tags: ['Queues']
+ *     summary: 'Cliente atualiza seu serviço/funcionário usando token público'
+ *     parameters:
+ *       - in: path
+ *         name: publicToken
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               service_id:
+ *                 type: integer
+ *               employee_id:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: 'Entrada atualizada'
+ */
+queueRouter.put("/public/:publicToken/update", updateMyQueueEntry);
+
+/**
+ * @swagger
+ * /api/queues/public/{publicToken}/leave:
+ *   delete:
+ *     tags: ['Queues']
+ *     summary: 'Cliente sai da fila usando token público'
+ *     parameters:
+ *       - in: path
+ *         name: publicToken
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: 'Cliente removido da fila'
+ */
+queueRouter.delete("/public/:publicToken/leave", leaveQueueByToken);
 
 /**
  * @swagger

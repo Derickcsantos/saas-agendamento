@@ -34,6 +34,16 @@ export default function QueueTab({ slug }) {
   const qrCodeRef = useRef();
   const { confirm } = useConfirm();
 
+  // Estados para editar entrada
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [editServiceId, setEditServiceId] = useState(null);
+  const [editEmployeeId, setEditEmployeeId] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [services, setServices] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [loadingServices, setLoadingServices] = useState(false);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+
   // ================================
   // HANDLER DE MENSAGENS WEBSOCKET
   // ================================
@@ -79,6 +89,13 @@ export default function QueueTab({ slug }) {
         const updatedActive = data.entries || [];
         return [...inactive, ...updatedActive].sort((a, b) => a.position - b.position);
       });
+    } else if (data.type === "entry_updated") {
+      setQueueEntries((prev) =>
+        prev.map((e) =>
+          e.id === data.entryId ? { ...e, ...data.entry } : e
+        )
+      );
+      toast.info("Entrada atualizada", { autoClose: 2000 });
     }
   };
 
@@ -125,6 +142,8 @@ export default function QueueTab({ slug }) {
 
         if (queueRes.ok) {
           const data = await queueRes.json();
+          console.log('✅ Fila carregada:', data);
+          console.log('📋 Entries:', data.queue_entries);
           setQueue(data);
           setQueueEntries(data.queue_entries || []);
         } else if (queueRes.status === 404) {
@@ -141,6 +160,27 @@ export default function QueueTab({ slug }) {
       }
     };
     fetchQueue();
+  }, [slug]);
+
+  // ================================
+  // 🆕 CARREGAR CATEGORIAS
+  // ================================
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetchWithAuth(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/categories/${slug}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          console.log('✅ Categorias carregadas:', data);
+          setCategories(data);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar categorias:", err);
+      }
+    };
+    fetchCategories();
   }, [slug]);
 
   // ================================
@@ -380,6 +420,131 @@ export default function QueueTab({ slug }) {
     } catch (err) {
       console.error("Erro ao alterar status:", err);
       toast.error("Erro ao alterar status da fila");
+    }
+  };
+
+  // ================================
+  // 🆕 EDITAR ENTRADA (Admin)
+  // ================================
+  const handleOpenEditEntry = async (entry) => {
+    console.log('🔧 Abrindo edição da entrada:', entry);
+    console.log('📋 Category ID:', entry.services?.category_id);
+    console.log('🔧 Service ID:', entry.service_id);
+    
+    setEditingEntry(entry);
+    setEditServiceId(entry.service_id);
+    setEditEmployeeId(entry.employee_id);
+    
+    // Carregar serviços da categoria do serviço atual
+    if (entry.services?.category_id) {
+      try {
+        setLoadingServices(true);
+        const resServices = await fetchWithAuth(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/services/${entry.services.category_id}/${slug}`
+        );
+        if (resServices.ok) {
+          const dataServices = await resServices.json();
+          console.log('✅ Serviços carregados:', dataServices);
+          setServices(dataServices);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar serviços:", err);
+      } finally {
+        setLoadingServices(false);
+      }
+    } else {
+      console.warn('⚠️ Categoria não encontrada no entry.services');
+    }
+    
+    // Carregar funcionários para o serviço atual
+    if (entry.service_id) {
+      try {
+        setLoadingEmployees(true);
+        const res = await fetchWithAuth(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/employees/${entry.service_id}/${slug}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          console.log('✅ Funcionários carregados:', data);
+          setEmployees(data);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar funcionários:", err);
+      } finally {
+        setLoadingEmployees(false);
+      }
+    }
+  };
+
+  const loadServicesForCategory = async (categoryId) => {
+    try {
+      setLoadingServices(true);
+      const res = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/services/${categoryId}/${slug}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setServices(data);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar serviços:", err);
+      toast.error("Erro ao carregar serviços");
+    } finally {
+      setLoadingServices(false);
+    }
+  };
+
+  const loadEmployeesForService = async (serviceId) => {
+    try {
+      setLoadingEmployees(true);
+      const res = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/employees/${serviceId}/${slug}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setEmployees(data);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar funcionários:", err);
+      toast.error("Erro ao carregar funcionários");
+    } finally {
+      setLoadingEmployees(false);
+    }
+  };
+
+  const handleUpdateEntry = async () => {
+    if (!editingEntry || (!editServiceId && !editEmployeeId)) {
+      toast.error("Selecione um serviço ou funcionário");
+      return;
+    }
+
+    try {
+      const res = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/queues/${slug}/${queue.queue_id}/${editingEntry.id}/update`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            service_id: editServiceId,
+            employee_id: editEmployeeId,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Erro ao atualizar");
+      }
+
+      toast.success("Entrada atualizada com sucesso!", { autoClose: 2000 });
+      setEditingEntry(null);
+      setEditServiceId(null);
+      setEditEmployeeId(null);
+      setServices([]);
+      setEmployees([]);
+    } catch (err) {
+      console.error("Erro ao atualizar entrada:", err);
+      toast.error(err.message || "Erro ao atualizar entrada");
     }
   };
 
@@ -760,6 +925,16 @@ export default function QueueTab({ slug }) {
                                 </svg>
                               </button>
                               <button
+                                onClick={() => handleOpenEditEntry(entry)}
+                                style={{ borderColor: palette?.strong_color || "#4f46e5", color: palette?.strong_color || "#4f46e5" }}
+                                className="flex-1 sm:flex-none px-3 py-2 rounded-lg border bg-white hover:opacity-80 text-xs font-semibold transition"
+                                title="Editar"
+                              >
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              <button
                                 onClick={() => setSelectedEntry(entry)}
                                 className="flex-1 sm:flex-none px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold transition"
                                 title="Detalhes"
@@ -847,7 +1022,7 @@ export default function QueueTab({ slug }) {
 
       {/* Entry Details Modal */}
       <AnimatePresence>
-        {selectedEntry && (
+        {selectedEntry && !editingEntry && (
           <div
             className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             onClick={() => setSelectedEntry(null)}
@@ -894,12 +1069,151 @@ export default function QueueTab({ slug }) {
                   <p className="font-semibold text-gray-900">{selectedEntry.services?.duration} minutos</p>
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedEntry(null)}
-                className="mt-6 w-full px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold transition"
-              >
-                Fechar
-              </button>
+              <div className="mt-6 flex gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedEntry(null);
+                    handleOpenEditEntry(selectedEntry);
+                  }}
+                  style={{ backgroundColor: palette?.strong_color || "#4f46e5" }}
+                  className="flex-1 px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition"
+                >
+                  Editar
+                </button>
+                <button
+                  onClick={() => setSelectedEntry(null)}
+                  className="flex-1 px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold transition"
+                >
+                  Fechar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Entry Modal */}
+      <AnimatePresence>
+        {editingEntry && (
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => {
+              setEditingEntry(null);
+              setEditServiceId(null);
+              setEditEmployeeId(null);
+              setServices([]);
+              setEmployees([]);
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Editar Atendimento</h3>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-700 mb-2">
+                    <span className="font-semibold">Cliente:</span> {editingEntry.clients?.client_name}
+                  </p>
+                </div>
+
+                {/* Categoria */}
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">Categoria</label>
+                  <select
+                    onChange={(e) => {
+                      const categoryId = e.target.value;
+                      if (categoryId) {
+                        loadServicesForCategory(categoryId);
+                        setEditServiceId(null);
+                        setEditEmployeeId(null);
+                        setEmployees([]);
+                      }
+                    }}
+                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                  >
+                    <option value="">Selecione uma categoria</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Serviço */}
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">Serviço</label>
+                  <select
+                    value={editServiceId || ""}
+                    onChange={(e) => {
+                      const serviceId = e.target.value;
+                      setEditServiceId(serviceId);
+                      if (serviceId) {
+                        loadEmployeesForService(serviceId);
+                        setEditEmployeeId(null);
+                      }
+                    }}
+                    disabled={loadingServices || services.length === 0}
+                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm disabled:bg-gray-100"
+                  >
+                    <option value="">
+                      {loadingServices ? "Carregando..." : services.length === 0 ? "Selecione uma categoria primeiro" : "Selecione um serviço"}
+                    </option>
+                    {services.map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.name} - R$ {service.price?.toFixed(2)} ({service.duration}min)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Funcionário */}
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">Profissional</label>
+                  <select
+                    value={editEmployeeId || ""}
+                    onChange={(e) => setEditEmployeeId(e.target.value)}
+                    disabled={loadingEmployees || employees.length === 0}
+                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm disabled:bg-gray-100"
+                  >
+                    <option value="">
+                      {loadingEmployees ? "Carregando..." : employees.length === 0 ? "Selecione um serviço primeiro" : "Selecione um profissional"}
+                    </option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-2">
+                <button
+                  onClick={handleUpdateEntry}
+                  disabled={!editServiceId || !editEmployeeId}
+                  style={{ backgroundColor: palette?.strong_color || "#4f46e5" }}
+                  className="flex-1 px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Salvar Alterações
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingEntry(null);
+                    setEditServiceId(null);
+                    setEditEmployeeId(null);
+                    setServices([]);
+                    setEmployees([]);
+                  }}
+                  className="flex-1 px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold transition"
+                >
+                  Cancelar
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

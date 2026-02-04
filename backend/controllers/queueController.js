@@ -82,8 +82,9 @@ export const getTodayQueue = async (req, res) => {
           employee_id,
           original_price,
           final_price,
+          public_token,
           clients (client_name, client_phone),
-          services (name),
+          services (name, price, duration, category_id),
           employees (name)
         )
       `
@@ -201,8 +202,9 @@ export const getQueueEntries = async (req, res) => {
         final_price,
         coupon_code,
         created_at,
+        public_token,
         clients (client_name, client_phone, client_email),
-        services (name, price),
+        services (name, price, duration, category_id),
         employees (name, imagem_funcionario)
       `
       )
@@ -460,6 +462,7 @@ export const joinQueue = async (req, res) => {
         employee_id,
         original_price,
         final_price,
+        public_token,
         clients (client_name, client_phone),
         services (name),
         employees (name)
@@ -1032,6 +1035,221 @@ export const cancelEntry = async (req, res) => {
   } catch (error) {
     console.error("Erro ao cancelar entrada:", error);
     res.status(500).json({ error: "Erro ao cancelar entrada" });
+  }
+};
+
+/**
+ * PUT /api/queues/:slug/:queueId/:entryId/update
+ * Admin atualiza serviço e/ou funcionário de uma entrada
+ */
+export const updateQueueEntry = async (req, res) => {
+  try {
+    const { slug, queueId, entryId } = req.params;
+    const { service_id, employee_id } = req.body;
+
+    if (!service_id && !employee_id) {
+      return res.status(400).json({ error: "Informe service_id ou employee_id" });
+    }
+
+    // Buscar organização
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (!org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
+    // Construir update
+    const updateData = {};
+    if (service_id) updateData.service_id = Number(service_id);
+    if (employee_id) updateData.employee_id = Number(employee_id);
+
+    // Atualizar entrada
+    const { data: updated, error: updateError } = await supabase
+      .from("queue_entries")
+      .update(updateData)
+      .eq("id", entryId)
+      .eq("queue_id", queueId)
+      .select(
+        `
+        id,
+        position,
+        status,
+        client_id,
+        service_id,
+        employee_id,
+        original_price,
+        final_price,
+        clients (client_name, client_phone),
+        services (name, price),
+        employees (name)
+      `
+      )
+      .single();
+
+    if (updateError) {
+      console.error("Erro ao atualizar entry:", updateError);
+      return res.status(500).json({ error: "Erro ao atualizar entrada" });
+    }
+
+    // Broadcast
+    broadcastQueueUpdate(org.id, queueId, {
+      type: "entry_updated",
+      entryId,
+      entry: updated,
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Erro em updateQueueEntry:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+/**
+ * PUT /api/queues/public/:publicToken/update
+ * Cliente atualiza seu próprio serviço/funcionário usando token público
+ */
+export const updateMyQueueEntry = async (req, res) => {
+  try {
+    const { publicToken } = req.params;
+    const { service_id, employee_id } = req.body;
+
+    if (!publicToken) {
+      return res.status(400).json({ error: "Token público não informado" });
+    }
+
+    if (!service_id && !employee_id) {
+      return res.status(400).json({ error: "Informe service_id ou employee_id" });
+    }
+
+    // Buscar entrada pelo public_token
+    const { data: entry, error: entryError } = await supabase
+      .from("queue_entries")
+      .select("id, queue_id, status")
+      .eq("public_token", publicToken)
+      .single();
+
+    if (entryError || !entry) {
+      return res.status(404).json({ error: "Entrada não encontrada" });
+    }
+
+    if (entry.status !== "confirmed") {
+      return res.status(400).json({ error: "Não é possível editar esta entrada" });
+    }
+
+    // Construir update
+    const updateData = {};
+    if (service_id) updateData.service_id = Number(service_id);
+    if (employee_id) updateData.employee_id = Number(employee_id);
+
+    // Atualizar
+    const { data: updated, error: updateError } = await supabase
+      .from("queue_entries")
+      .update(updateData)
+      .eq("id", entry.id)
+      .select(
+        `
+        id,
+        position,
+        status,
+        queue_id,
+        client_id,
+        service_id,
+        employee_id,
+        original_price,
+        final_price,
+        public_token,
+        clients (client_name, client_phone),
+        services (name, price),
+        employees (name)
+      `
+      )
+      .single();
+
+    if (updateError) {
+      console.error("Erro ao atualizar entrada:", updateError);
+      return res.status(500).json({ error: "Erro ao atualizar entrada" });
+    }
+
+    // Buscar organização para broadcast
+    const { data: queue } = await supabase
+      .from("queues")
+      .select("organization_id")
+      .eq("queue_id", entry.queue_id)
+      .single();
+
+    if (queue) {
+      broadcastQueueUpdate(queue.organization_id, entry.queue_id, {
+        type: "entry_updated",
+        entryId: entry.id,
+        entry: updated,
+      });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Erro em updateMyQueueEntry:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+/**
+ * DELETE /api/queues/public/:publicToken/leave
+ * Cliente sai da fila usando token público
+ */
+export const leaveQueueByToken = async (req, res) => {
+  try {
+    const { publicToken } = req.params;
+
+    if (!publicToken) {
+      return res.status(400).json({ error: "Token público não informado" });
+    }
+
+    // Buscar entrada pelo public_token
+    const { data: entry, error: entryError } = await supabase
+      .from("queue_entries")
+      .select("id, queue_id, status")
+      .eq("public_token", publicToken)
+      .single();
+
+    if (entryError || !entry) {
+      return res.status(404).json({ error: "Entrada não encontrada" });
+    }
+
+    // Deletar entry
+    const { error: deleteError } = await supabase
+      .from("queue_entries")
+      .delete()
+      .eq("id", entry.id);
+
+    if (deleteError) {
+      console.error("Erro ao remover:", deleteError);
+      return res.status(500).json({ error: "Erro ao sair da fila" });
+    }
+
+    // Buscar organização para broadcast
+    const { data: queue } = await supabase
+      .from("queues")
+      .select("organization_id")
+      .eq("queue_id", entry.queue_id)
+      .single();
+
+    if (queue) {
+      broadcastQueueUpdate(queue.organization_id, entry.queue_id, {
+        type: "entry_removed",
+        entryId: entry.id,
+        message: "Cliente saiu da fila",
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erro em leaveQueueByToken:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 

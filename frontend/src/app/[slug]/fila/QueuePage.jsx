@@ -21,6 +21,17 @@ export default function QueuePage({ slug }) {
   const [queueOpen, setQueueOpen] = useState(false);
   const [myQueueEntry, setMyQueueEntry] = useState(null);
   const [removingFromQueue, setRemovingFromQueue] = useState(false);
+  const [publicToken, setPublicToken] = useState(null);
+
+  // Estados para edição
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingMyEntry, setEditingMyEntry] = useState(false);
+  const [editServiceId, setEditServiceId] = useState(null);
+  const [editEmployeeId, setEditEmployeeId] = useState(null);
+  const [editServices, setEditServices] = useState([]);
+  const [editEmployees, setEditEmployees] = useState([]);
+  const [loadingEditServices, setLoadingEditServices] = useState(false);
+  const [loadingEditEmployees, setLoadingEditEmployees] = useState(false);
 
   // Modal de Entrada
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -144,6 +155,17 @@ export default function QueuePage({ slug }) {
       if (data.status !== "open") {
         setShowJoinModal(false);
       }
+    } else if (data.type === "entry_updated") {
+      console.log('🔄 Entrada atualizada:', { entryId: data.entryId, entry: data.entry });
+      setQueueEntries((prev) =>
+        prev.map((e) =>
+          e.id === data.entryId ? { ...e, ...data.entry } : e
+        )
+      );
+      // Atualizar myQueueEntry se for a entrada do usuário
+      if (myQueueEntry && myQueueEntry.id === data.entryId) {
+        setMyQueueEntry({ ...myQueueEntry, ...data.entry });
+      }
     }
   };
 
@@ -256,15 +278,67 @@ export default function QueuePage({ slug }) {
   }, [slug]);
 
   // ================================
-  // 4️⃣ MONITORAR ENTRADA DO USUÁRIO
+  // 4️⃣✨ CARREGAR TOKEN DO LOCALSTORAGE (PRIMEIRO)
   // ================================
   useEffect(() => {
-    // Verificar se usuário logado está na fila
-    if (authenticated && user?.client_id && queueEntries.length > 0) {
-      const myEntry = queueEntries.find(e => e.client_id === user.client_id);
-      setMyQueueEntry(myEntry || null);
+    const storedToken = localStorage.getItem(`queue_token_${slug}`);
+    if (storedToken) {
+      setPublicToken(storedToken);
+      console.log('🔑 Token carregado do localStorage:', storedToken);
     }
-  }, [queueEntries, authenticated, user?.client_id]);
+  }, [slug]);
+
+  // ================================
+  // 4️⃣ MONITORAR ENTRADA DO USUÁRIO (APENAS POR TOKEN)
+  // ================================
+  useEffect(() => {
+    if (queueEntries.length === 0 || !publicToken) return;
+
+    console.log('🔍 Procurando entrada por token...', {
+      publicToken,
+      queueEntriesCount: queueEntries.length
+    });
+
+    const myEntry = queueEntries.find(e => e.public_token === publicToken);
+    
+    if (myEntry) {
+      console.log('✅ Entrada encontrada:', myEntry.id, 'Posição:', myEntry.position);
+    } else {
+      console.log('❌ Nenhuma entrada encontrada para este token');
+    }
+
+    setMyQueueEntry(myEntry || null);
+  }, [queueEntries, publicToken]);
+
+  // ================================
+  // 4️⃣B SINCRONIZAR ENTRADA QUANDO FILA MUDA (WEBSOCKET)
+  // ================================
+  useEffect(() => {
+    if (!publicToken || !myQueueEntry) return;
+    
+    // Se já encontramos uma entrada, verificar se ela ainda existe na fila com dados atualizados
+    const updatedEntry = queueEntries.find(e => e.id === myQueueEntry.id);
+    
+    if (updatedEntry) {
+      // Garantir que a entrada local sempre tem os dados mais recentes
+      if (JSON.stringify(updatedEntry) !== JSON.stringify(myQueueEntry)) {
+        console.log('🔄 Sincronizando entrada com dados do WebSocket:', {
+          id: updatedEntry.id,
+          positionBefore: myQueueEntry.position,
+          positionAfter: updatedEntry.position
+        });
+        setMyQueueEntry(updatedEntry);
+      }
+    } else {
+      // Se a entrada não existe mais, tentar encontrar por token novamente
+      console.log('⚠️ Entrada não encontrada por ID, procurando por token');
+      const entryByToken = queueEntries.find(e => e.public_token === publicToken);
+      if (entryByToken && entryByToken.id !== myQueueEntry.id) {
+        console.log('✅ Entrada encontrada com novo ID:', entryByToken.id);
+        setMyQueueEntry(entryByToken);
+      }
+    }
+  }, [queueEntries, myQueueEntry, publicToken]);
 
   // ================================
   // 5️⃣ CARREGAR SERVIÇOS
@@ -340,6 +414,13 @@ export default function QueuePage({ slug }) {
         return;
       }
 
+      // 🔑 Armazenar public_token no localStorage
+      if (data.public_token) {
+        localStorage.setItem(`queue_token_${slug}`, data.public_token);
+        setPublicToken(data.public_token);
+        console.log('🔑 Token salvo no localStorage:', data.public_token);
+      }
+
       toast.success(
         `Você está na posição ${data.position}! Serviço: ${joinData.service.name} - R$ ${joinData.service.price?.toFixed(2)}`,
         { autoClose: 5000 }
@@ -411,10 +492,17 @@ export default function QueuePage({ slug }) {
             className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-bold text-white text-lg ${
               entry.status === "calling"
                 ? "bg-gradient-to-br from-amber-500 to-orange-600 animate-pulse"
-                : isMyEntry
-                ? "bg-gradient-to-br from-purple-500 to-pink-600"
-                : "bg-gradient-to-br from-indigo-500 to-purple-600"
+                : "bg-gradient-to-br"
             }`}
+            style={
+              entry.status === "calling"
+                ? undefined
+                : {
+                    background: isMyEntry
+                      ? `linear-gradient(135deg, ${palette?.strong_color}99 0%, ${palette?.strong_color}dd 100%)`
+                      : palette?.strong_color,
+                  }
+            }
           >
             {entry.position}
           </div>
@@ -479,47 +567,201 @@ export default function QueuePage({ slug }) {
   // 8️⃣ SAIR DA FILA
   // ================================
   const handleLeaveQueue = async () => {
-    if (!myQueueEntry || !queue?.queue_id) {
-      toast.error('Você não está na fila');
+    // Priorizar uso do token público
+    const token = publicToken || localStorage.getItem(`queue_token_${slug}`);
+    
+    console.log('🚪 Tentando sair da fila...', {
+      token,
+      myQueueEntry: myQueueEntry?.id,
+      queueId: queue?.queue_id
+    });
+    
+    if (!token && (!myQueueEntry || !queue?.queue_id)) {
+      toast.error('😕 Não foi possível identificar sua entrada na fila');
       return;
     }
 
     const confirmed = window.confirm(
-      `Tem certeza que deseja sair da fila? Você está na posição ${myQueueEntry.position}.`
+      `Tem certeza que deseja sair da fila? ${myQueueEntry ? `Você está na posição ${myQueueEntry.position}.` : ''}`
     );
 
     if (!confirmed) return;
 
     try {
       setRemovingFromQueue(true);
-      console.log('❌ Saindo da fila:', myQueueEntry.id);
-
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/queues/${slug}/${queue.queue_id}/${myQueueEntry.id}`,
-        { method: 'DELETE' }
-      );
-
-      if (!res.ok) {
-        const data = await res.json();
-        toast.error(data.error || 'Erro ao sair da fila');
-        return;
+      
+      let res;
+      // Se tiver token, usar endpoint público
+      if (token) {
+        console.log('❌ Saindo da fila com token público:', token);
+        res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/queues/public/${token}/leave`,
+          { method: "DELETE" }
+        );
+      } else {
+        // Fallback para endpoint antigo (autenticado)
+        console.log('❌ Saindo da fila (método antigo):', myQueueEntry.id);
+        res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/queues/${slug}/${queue.queue_id}/${myQueueEntry.id}`,
+          { method: 'DELETE' }
+        );
       }
 
-      toast.success('Você saiu da fila!', { autoClose: 3000 });
+      console.log('📬 Resposta ao sair:', { status: res.status, ok: res.ok });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Erro ao sair da fila');
+      }
+
+      // Limpar token do localStorage
+      localStorage.removeItem(`queue_token_${slug}`);
+      setPublicToken(null);
       setMyQueueEntry(null);
-      
-      // Atualizar lista imediatamente
-      const updatedEntries = queueEntries.filter(e => e.id !== myQueueEntry.id);
-      setQueueEntries(updatedEntries);
-      console.log('✅ Removido da fila com sucesso');
+
+      console.log('✅ Saída bem-sucedida');
+      toast.success('✅ Você saiu da fila', { autoClose: 3000 });
     } catch (err) {
-      console.error('Erro ao sair da fila:', err);
-      toast.error('Erro ao sair da fila');
+      console.error('❌ Erro ao sair da fila:', err);
+      toast.error(err.message || '😕 Erro ao sair da fila');
     } finally {
       setRemovingFromQueue(false);
     }
   };
 
+  // ================================
+  // 🆕 EDITAR MINHA ENTRADA
+  // ================================
+  const handleOpenEditMyEntry = async () => {
+    if (!myQueueEntry) {
+      toast.error('Você não está na fila');
+      return;
+    }
+
+    setEditServiceId(myQueueEntry.service_id);
+    setEditEmployeeId(myQueueEntry.employee_id);
+    setShowEditModal(true);
+
+    // Carregar funcionários disponíveis para o serviço atual
+    if (myQueueEntry.service_id) {
+      try {
+        setLoadingEditEmployees(true);
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/employees/${myQueueEntry.service_id}/${slug}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setEditEmployees(data);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar funcionários:', err);
+      } finally {
+        setLoadingEditEmployees(false);
+      }
+    }
+  };
+
+  const loadEditServicesForCategory = async (categoryId) => {
+    try {
+      setLoadingEditServices(true);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/services/${categoryId}/${slug}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setEditServices(data);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar serviços:', err);
+      toast.error('Erro ao carregar serviços');
+    } finally {
+      setLoadingEditServices(false);
+    }
+  };
+
+  const loadEditEmployeesForService = async (serviceId) => {
+    try {
+      setLoadingEditEmployees(true);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/employees/${serviceId}/${slug}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setEditEmployees(data);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar funcionários:', err);
+      toast.error('Erro ao carregar funcionários');
+    } finally {
+      setLoadingEditEmployees(false);
+    }
+  };
+
+  const handleUpdateMyEntry = async () => {
+    const token = publicToken || localStorage.getItem(`queue_token_${slug}`);
+    
+    console.log('📝 Tentando atualizar entrada...', {
+      token,
+      editServiceId,
+      editEmployeeId,
+      myQueueEntry: myQueueEntry?.id
+    });
+    
+    if (!token) {
+      toast.error('Token não encontrado. Não é possível atualizar.');
+      return;
+    }
+
+    if (!editServiceId || !editEmployeeId) {
+      toast.error('Selecione um serviço e um profissional');
+      return;
+    }
+
+    try {
+      setEditingMyEntry(true);
+      console.log('🚀 Enviando requisição de atualização...', {
+        url: `${process.env.NEXT_PUBLIC_API_URL}/api/queues/public/${token}/update`,
+        body: { service_id: editServiceId, employee_id: editEmployeeId }
+      });
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/queues/public/${token}/update`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service_id: editServiceId,
+            employee_id: editEmployeeId,
+          }),
+        }
+      );
+
+      console.log('📬 Resposta recebida:', { status: res.status, ok: res.ok });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        console.error('❌ Erro na resposta:', errData);
+        throw new Error(errData.error || 'Erro ao atualizar');
+      }
+
+      const data = await res.json();
+      console.log('✅ Atualização bem-sucedida:', data);
+
+      toast.success('✅ Atendimento atualizado!', { autoClose: 2000 });
+      setShowEditModal(false);
+      setEditServiceId(null);
+      setEditEmployeeId(null);
+      setEditServices([]);
+      setEditEmployees([]);
+    } catch (err) {
+      console.error('❌ Erro ao atualizar:', err);
+      toast.error(err.message || 'Erro ao atualizar atendimento');
+    } finally {
+      setEditingMyEntry(false);
+    }
+  };
+
+  // ================================
   // ================================
   // MODAL: Entrar na Fila
   // ================================
@@ -858,18 +1100,25 @@ export default function QueuePage({ slug }) {
               </span>
             )}
             
-            {/* Se estiver na fila, mostrar botão de sair */}
-            {authenticated && myQueueEntry ? (
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* Se estiver na fila, mostrar botões de ação */}
+            {myQueueEntry ? (
+              <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
                 <span className="text-xs sm:text-sm text-gray-700 bg-indigo-50 px-3 py-1 rounded-full font-medium">
                   Posição: {myQueueEntry.position}
                 </span>
+                <button
+                  onClick={handleOpenEditMyEntry}
+                  style={{ backgroundColor: palette?.strong_color || "#4f46e5" }}
+                  className="flex-1 sm:flex-none px-4 py-2 rounded-lg text-white font-semibold text-sm hover:opacity-90 transition-all"
+                >
+                  Editar
+                </button>
                 <button
                   onClick={handleLeaveQueue}
                   disabled={removingFromQueue}
                   className="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-all disabled:opacity-50"
                 >
-                  {removingFromQueue ? 'Saindo...' : 'Sair da Fila'}
+                  {removingFromQueue ? 'Saindo...' : 'Sair'}
                 </button>
               </div>
             ) : queueOpen ? (
@@ -916,7 +1165,7 @@ export default function QueuePage({ slug }) {
                     key={entry.id} 
                     entry={entry} 
                     idx={idx} 
-                    isMyEntry={authenticated && myQueueEntry?.id === entry.id}
+                    isMyEntry={myQueueEntry?.id === entry.id}
                   />
                 ))}
               </div>
@@ -925,8 +1174,135 @@ export default function QueuePage({ slug }) {
         </div>
       </main>
 
-      {/* Modal */}
+      {/* Modal de Entrar na Fila */}
       {renderJoinQueueModal()}
+
+      {/* Modal de Editar Minha Entrada */}
+      <AnimatePresence>
+        {showEditModal && (
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => {
+              setShowEditModal(false);
+              setEditServiceId(null);
+              setEditEmployeeId(null);
+              setEditServices([]);
+              setEditEmployees([]);
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Editar Atendimento</h3>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-700 mb-4">
+                    Você está na <span className="font-bold">posição {myQueueEntry?.position}</span>
+                  </p>
+                </div>
+
+                {/* Categoria */}
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">Categoria</label>
+                  <select
+                    onChange={(e) => {
+                      const categoryId = e.target.value;
+                      if (categoryId) {
+                        loadEditServicesForCategory(categoryId);
+                        setEditServiceId(null);
+                        setEditEmployeeId(null);
+                        setEditEmployees([]);
+                      }
+                    }}
+                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                  >
+                    <option value="">Selecione uma categoria</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Serviço */}
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">Serviço</label>
+                  <select
+                    value={editServiceId || ""}
+                    onChange={(e) => {
+                      const serviceId = e.target.value;
+                      setEditServiceId(serviceId);
+                      if (serviceId) {
+                        loadEditEmployeesForService(serviceId);
+                        setEditEmployeeId(null);
+                      }
+                    }}
+                    disabled={loadingEditServices || editServices.length === 0}
+                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm disabled:bg-gray-100"
+                  >
+                    <option value="">
+                      {loadingEditServices ? "Carregando..." : editServices.length === 0 ? "Selecione uma categoria primeiro" : "Selecione um serviço"}
+                    </option>
+                    {editServices.map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.name} - R$ {service.price?.toFixed(2)} ({service.duration}min)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Funcionário */}
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">Profissional</label>
+                  <select
+                    value={editEmployeeId || ""}
+                    onChange={(e) => setEditEmployeeId(e.target.value)}
+                    disabled={loadingEditEmployees || editEmployees.length === 0}
+                    className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm disabled:bg-gray-100"
+                  >
+                    <option value="">
+                      {loadingEditEmployees ? "Carregando..." : editEmployees.length === 0 ? "Selecione um serviço primeiro" : "Selecione um profissional"}
+                    </option>
+                    {editEmployees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-2">
+                <button
+                  onClick={handleUpdateMyEntry}
+                  disabled={!editServiceId || !editEmployeeId || editingMyEntry}
+                  style={{ backgroundColor: palette?.strong_color || "#4f46e5" }}
+                  className="flex-1 px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {editingMyEntry ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditServiceId(null);
+                    setEditEmployeeId(null);
+                    setEditServices([]);
+                    setEditEmployees([]);
+                  }}
+                  className="flex-1 px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold transition"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
