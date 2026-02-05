@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 
 export default function WhatsappSendTab() {
   const API = `${process.env.NEXT_PUBLIC_API_URL}/api/whatsapp-send`;
-  const primary = "#711b96";
+  const primary = "#5E3BEE";
 
   const [file, setFile] = useState(null);
   const [message, setMessage] = useState("");

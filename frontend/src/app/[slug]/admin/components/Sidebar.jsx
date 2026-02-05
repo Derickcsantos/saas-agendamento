@@ -46,6 +46,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
     { name: "Galeria", key: "gallery", icon: "bi-image" },
     { name: "Site", key: "site", icon: "bi-browser-chrome" },
     { name: 'Calendário do google', key: 'calendar-google', icon: 'bi-calendar-check' },
+    { name: "Assinatura", key: "organization-subscriptions", icon: "bi-credit-card" },
     { name: "Configurações", key: "settings", icon: "bi-gear" },
     { name: "Sair", key: "exit", icon: "bi bi-door-open" },
   ];

@@ -16,7 +16,7 @@ import {
 import { FaWhatsapp } from "react-icons/fa";
 import WhatsappSendTab from "./components/WhatsappSenderTab";
 
-const PagarmeTab = dynamic(() => import("./components/PagarmeTab"), { ssr: false });
+const StripeTab = dynamic(() => import("./components/StripeTab"), { ssr: false });
 
 export default function AdminDashboard() {
   const [section, setSection] = useState("overview");
@@ -63,7 +63,7 @@ export default function AdminDashboard() {
     { key: "overview", label: "Visão Geral", icon: <FiHome size={18} /> },
     { key: "analytics", label: "Analytics", icon: <FiBarChart2 size={18} /> },
     { key: "whatsapp", label: "Whatsapp", icon: <FaWhatsapp size={18} /> },
-    { key: "pagarme", label: "Pagar.me", icon: <FiCreditCard size={18} /> },
+    { key: "stripe", label: "Stripe", icon: <FiCreditCard size={18} /> },
     { key: "users", label: "Usuários", icon: <FiUsers size={18} /> },
   ];
 
@@ -133,7 +133,7 @@ export default function AdminDashboard() {
                   transition-all
                   ${
                     active
-                      ? "bg-[#711b96] text-white shadow"
+                      ? "bg-[#5E3BEE] text-white shadow"
                       : "text-gray-700 hover:bg-gray-100"
                   }
                 `}
@@ -180,7 +180,7 @@ export default function AdminDashboard() {
         {section === "overview" && <OverviewSection />}
         {section === "analytics" && <AnalyticsSection />}
         {section === "whatsapp" && <WhatsappSendTab />}
-        {section === "pagarme" && <PagarmeTab />}
+        {section === "stripe" && <StripeTab />}
         {section === "users" && <UsersSection />}
       </main>
     </div>
@@ -253,7 +253,7 @@ function RevenueChart() {
         height={300}
         options={{
           chart: { toolbar: { show: false } },
-          colors: ["#711b96"],
+          colors: ["#5E3BEE"],
           stroke: { width: 2, curve: "smooth" },
           dataLabels: { enabled: false },
           xaxis: { categories: ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"] },
@@ -276,7 +276,7 @@ function UsersChart() {
         height={300}
         options={{
           chart: { toolbar: { show: false } },
-          colors: ["#711b96"],
+          colors: ["#5E3BEE"],
           plotOptions: { bar: { borderRadius: 4 } },
           xaxis: { categories: ["Seg", "Ter", "Qua", "Qui", "Sex"] },
         }}

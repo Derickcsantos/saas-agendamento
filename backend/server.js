@@ -32,6 +32,7 @@ import { organizationColorsRouter } from './routes/organizationColorsRoutes.js';
 import { appointmentProcessRouter } from './routes/appointmentsProcessRoutes.js';
 import { organizationPoliciesRouter } from "./routes/organizationPoliciesRoutes.js";
 import { pagarmeRouter } from './routes/pagarmeRoutes.js';
+import { stripeRouter } from './routes/stripeRoutes.js';
 import { userRepresentativeRouter } from './routes/userRepresentativeRoutes.js';
 import { plansRouter } from "./routes/plansRoutes.js";
 import { subscriptionsRouter } from "./routes/subscriptionRoutes.js";
@@ -46,6 +47,7 @@ import { organizationsPaymentsRouter } from './routes/organizationsPaymentsRoute
 import { expensesRouter } from './routes/expensesRoutes.js';
 import queueRouter from './routes/queueRoutes.js';
 import { userInvitesRouter } from './routes/userInvitesRoutes.js';
+import { organizationSubscriptionsRouter } from './routes/organizationSubscriptionsRoutes.js';
 import scheduleJob from './utils/screduleJobs.js';
 import QueueWebSocketManager from './lib/websocket.js';
 import http from 'http';
@@ -100,6 +102,7 @@ app.use('/api/organizations', organizationRouter)
 app.use('/api/organization-colors', organizationColorsRouter)
 app.use("/api/organization-policies", organizationPoliciesRouter);
 app.use('/api/pagarme', pagarmeRouter)
+app.use('/api/stripe', stripeRouter)
 app.use('/api/representative-organization', userRepresentativeRouter)
 app.use("/api/plans", plansRouter);
 app.use("/api/subscriptions", subscriptionsRouter);
@@ -114,6 +117,7 @@ app.use('/api/payments', organizationsPaymentsRouter)
 app.use('/api/admin/expenses', expensesRouter)
 app.use('/api/queues', queueRouter)
 app.use('/api/user-invites', userInvitesRouter)
+app.use('/api/organization-subscriptions', organizationSubscriptionsRouter)
 // app.use("/api/whatsapp-send", sendWhatsappRouter);
 
 server.listen(port, () => {

@@ -10,7 +10,7 @@ const Modal = dynamic(() => import("./PagarmeTabModal"), { ssr: false });
 
 export default function PagarmeTab() {
   const API = `${process.env.NEXT_PUBLIC_API_URL}/api/pagarme`;
-  const primary = "#711b96";
+  const primary = "#5E3BEE";
 
   // ================================
   // STATES
