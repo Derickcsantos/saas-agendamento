@@ -30,6 +30,7 @@ import ExpensesTab from "./components/ExpensesTab";
 import QueueTab from "@/app/[slug]/admin/components/QueueTab";
 import SubscriptionsTab from "./components/SubscriptionsTab";
 import PlansTab from "./components/PlansTab";
+import OrganizationSubscriptionsTab from "./components/OrganizationSubscriptionsTab";
 
 export default function AdminDashboard({ slug }) {
   const router = useRouter();
@@ -185,6 +186,8 @@ export default function AdminDashboard({ slug }) {
         return <PersonalCalendarTab org={org} />;
       case "settings":
         return <SettingsTab org={org} />;
+      case "organization-subscriptions":
+        return <OrganizationSubscriptionsTab org={org} user={user} />;
       case "exit":
         return null;
       

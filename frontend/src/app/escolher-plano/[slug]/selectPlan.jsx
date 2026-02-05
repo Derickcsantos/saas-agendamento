@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { CreditCard, CheckCircle, ArrowRight } from "lucide-react";
-import { CreditCardComponent } from '../../components/CreditCard'
+import { CheckCircle } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
+import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 
 const BRAND = "#5E3BEE";
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY);
 
 export default function EscolherPlano({ slug }) {
-  const router = useRouter();
-
   const [step, setStep] = useState(1);
   const [representante, setRepresentante] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -21,16 +20,8 @@ export default function EscolherPlano({ slug }) {
   const [discountType, setDiscountType] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [selectedBilling, setSelectedBilling] = useState("prepaid");
-
-  const [cardData, setCardData] = useState({
-    holder_name: "",
-    number: "",
-    exp_month: "",
-    exp_year: "",
-    cvv: "",
-  });
-
-  const [processing, setProcessing] = useState(false);
+  const [clientSecret, setClientSecret] = useState(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   // ==========================================
   // 🔎 Carregar planos
@@ -40,15 +31,10 @@ export default function EscolherPlano({ slug }) {
       setLoading(true);
 
       const res = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/pagarme/plans`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/stripe/prices`
       );
 
-      const list = Array.isArray(res.data?.data)
-        ? res.data.data
-        : Array.isArray(res.data)
-          ? res.data
-          : [];
-
+      const list = Array.isArray(res.data?.data) ? res.data.data : [];
       setPlans(list);
 
     } catch (err) {
@@ -107,150 +93,96 @@ export default function EscolherPlano({ slug }) {
     }
   };
 
-  const finalPrice = (() => {
+  const getPlanPrice = (name, billingType) => {
+    const normalized = name.toLowerCase();
+    return plans.find((p) => {
+      const productName = p?.product?.name?.toLowerCase() || "";
+      const metaBilling = p?.metadata?.billing_type;
+      const billingOk = metaBilling ? metaBilling === billingType : true;
+      return productName.includes(normalized) && billingOk;
+    });
+  };
+
+  const finalPrice = useMemo(() => {
     if (!selectedPlan) return 0;
 
-    if (!discountType) return selectedPlan.minimum_price;
+    const base = selectedPlan?.unit_amount || 0;
+
+    if (!discountType) return base;
 
     if (discountType === "percentage") {
-      return selectedPlan.minimum_price - (selectedPlan.minimum_price * discountValue / 100);
+      return Math.max(0, base - (base * discountValue / 100));
     }
 
     if (discountType === "fixed") {
-      return Math.max(0, selectedPlan.minimum_price - discountValue * 100);
+      return Math.max(0, base - discountValue * 100);
     }
 
-    return selectedPlan.minimum_price;
-  })();
+    return base;
+  }, [selectedPlan, discountType, discountValue]);
+
+  const basicPlan = useMemo(() => getPlanPrice("básico", selectedBilling) || getPlanPrice("basico", selectedBilling), [plans, selectedBilling]);
+  const plusPlan = useMemo(() => getPlanPrice("plus", selectedBilling), [plans, selectedBilling]);
+  const premiumPlan = useMemo(() => getPlanPrice("premium", selectedBilling), [plans, selectedBilling]);
 
 
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!selectedPlan) {
-      toast.error("Selecione um plano antes");
-      return;
-    }
+  const createCheckoutSession = async () => {
+    if (!selectedPlan || !slug) return;
+    if (!representante) return;
 
     if (!finalPrice || finalPrice <= 0) {
       toast.error("Valor final inválido");
       return;
     }
 
-    // Validar campos do cartão
-    if (!cardData.holder_name || cardData.holder_name.trim().length < 3) {
-      toast.error("Nome do titular inválido");
-      return;
-    }
-
-    const cleanCardNumber = cardData.number.replace(/\D/g, "");
-    if (cleanCardNumber.length < 13 || cleanCardNumber.length > 19) {
-      toast.error("Número do cartão inválido");
-      return;
-    }
-
-    if (!cardData.exp_month || !cardData.exp_year || !cardData.cvv) {
-      toast.error("Preencha todos os dados do cartão");
-      return;
-    }
-
-    setProcessing(true);
+    setCheckoutLoading(true);
 
     try {
-      // A API retorna um objeto único, não array
       const rep = representante;
-
-      // Extrair organization_id (pode vir diretamente ou dentro de organizations)
       const organizationId = rep?.organization_id || rep?.organizations?.id;
 
       if (!organizationId) {
-        console.error("❌ Estrutura completa do representante:", JSON.stringify(rep, null, 2));
-        toast.error("Não foi possível identificar sua organização. Verifique se o cadastro está completo.");
-        setProcessing(false);
+        toast.error("Não foi possível identificar sua organização.");
         return;
       }
 
-      // Limpar e formatar telefone
-      const cleanPhone = (rep?.users?.phone || "").replace(/\D/g, "");
-      const areaCode = cleanPhone.slice(0, 2) || "11";
-      const phoneNumber = cleanPhone.slice(2) || "999999999";
+      const returnUrl = `${window.location.origin}/${slug}/login?session_id={CHECKOUT_SESSION_ID}`;
+      const useCustomPrice = Boolean(discountType);
 
-      // Limpar número do cartão
-      const cleanCardNumber = cardData.number.replace(/\D/g, "");
-
-      // Normalizar nome do titular
-      const cleanHolderName = cardData.holder_name
-        .toUpperCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim();
-
-      const body = {
-        organization_id: organizationId, // UUID, não precisa converter para Number
-        plan_id: selectedPlan.id,
-        billing_type: selectedBilling,
-        payment_method: "credit_card",
-        amount: Math.round(finalPrice),
-        slug,
-        customer: {
-          name: (rep?.users?.username || "Cliente")
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .trim(),
-          email: rep?.users?.email || "",
-          document: (rep?.organizations?.document_number || "").replace(/\D/g, ""),
-          type: rep?.organizations?.document_type === "cnpj" ? "company" : "individual",
-          phones: {
-            mobile_phone: {
-              country_code: "55",
-              area_code: areaCode,
-              number: phoneNumber,
-            }
-          }
-        },
-        card: {
-          holder_name: cleanHolderName,
-          number: cleanCardNumber,
-          exp_month: parseInt(cardData.exp_month),
-          exp_year: parseInt(cardData.exp_year),
-          cvv: cardData.cvv,
-          billing_address: {
-            line_1: rep?.organizations?.address || "Rua Exemplo, 123",
-            zip_code: (rep?.organizations?.zip_code || "01310100").replace(/\D/g, ""),
-            city: rep?.organizations?.city || "São Paulo",
-            state: rep?.organizations?.state || "SP",
-            country: "BR"
-          }
-        },
+      const payload = {
+        organization_id: organizationId,
+        customer_email: rep?.users?.email || "",
+        return_url: returnUrl,
+        price_id: useCustomPrice ? undefined : selectedPlan.id,
+        amount: useCustomPrice ? Math.round(finalPrice) : undefined,
+        interval: selectedPlan?.recurring?.interval || "month",
+        interval_count: selectedPlan?.recurring?.interval_count || 1,
+        plan_name: selectedPlan?.product?.name || "Plano",
+        plan_description: selectedPlan?.product?.description || "",
       };
 
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/pagarme/subscriptions`,
-        body,
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/stripe/checkout/session`,
+        payload,
         { headers: { "Content-Type": "application/json" } }
       );
 
-      toast.success("Assinatura criada com sucesso!");
-
-      setTimeout(() => {
-        router.push(`/${slug}/login`);
-      }, 800);
-
+      setClientSecret(res.data.client_secret);
     } catch (err) {
-      console.error("❌ Erro completo:", err);
-      console.error("❌ Resposta da API:", err.response?.data);
-      
-      const errorMessage = err.response?.data?.message 
-        || err.response?.data?.errors?.[0]?.message
-        || err.message 
-        || "Erro ao criar assinatura";
-      
-      toast.error(errorMessage);
+      console.error("Erro ao iniciar checkout:", err);
+      toast.error("Erro ao iniciar checkout");
     } finally {
-      setProcessing(false);
+      setCheckoutLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (step === 2) {
+      setClientSecret(null);
+      createCheckoutSession();
+    }
+  }, [step, selectedPlan, discountType, discountValue, representante]);
 
   // ==========================================
   // Helpers
@@ -301,7 +233,7 @@ export default function EscolherPlano({ slug }) {
               {/* =============================== */}
               <div
                 className={`rounded-2xl border p-6 shadow-sm hover:shadow-lg transition bg-white ${
-                  selectedPlan?.name === "Básico"
+                  selectedPlan?.id && basicPlan?.id && selectedPlan.id === basicPlan.id
                     ? "border-purple-500 border-2"
                     : "border-gray-200"
                 }`}
@@ -310,9 +242,7 @@ export default function EscolherPlano({ slug }) {
 
                 {/* PREÇO */}
                 <p className="text-3xl font-bold text-gray-900 mb-1">
-                  {formatPrice(
-                    plans.find((p) => p.name.includes("ásico") && p.billing_type === "prepaid")?.minimum_price ?? 5000
-                  )}
+                  {formatPrice(basicPlan?.unit_amount ?? 5000)}
                   <span className="text-sm text-gray-500">/mês</span>
                 </p>
 
@@ -338,7 +268,7 @@ export default function EscolherPlano({ slug }) {
                 <select
                   className="w-full text-gray-950 border rounded-lg p-2 mb-4"
                   value={
-                    selectedPlan?.name === "Básico"
+                    selectedPlan?.id && basicPlan?.id && selectedPlan.id === basicPlan.id
                       ? selectedBilling
                       : "prepaid"
                   }
@@ -353,18 +283,11 @@ export default function EscolherPlano({ slug }) {
                 {/* BOTÃO */}
                 <button
                   onClick={() => {
-                    const prepaid = plans.find(
-                      (p) => p.name.includes("ásico") && p.billing_type === "prepaid"
-                    );
-                    const postpaid = plans.find(
-                      (p) => p.name.includes("ásico") && p.billing_type === "postpaid"
-                    );
-
-                    const chosenPlan =
-                      selectedBilling === "prepaid"
-                        ? prepaid || postpaid
-                        : postpaid || prepaid;
-                    setSelectedPlan(chosenPlan);
+                    if (!basicPlan) {
+                      toast.error("Plano Básico não encontrado no Stripe");
+                      return;
+                    }
+                    setSelectedPlan(basicPlan);
                     setStep(2);
                   }}
                   className="w-full text-white py-2 rounded-lg font-semibold"
@@ -379,7 +302,7 @@ export default function EscolherPlano({ slug }) {
               {/* =============================== */}
               <div
                 className={`rounded-2xl border p-6 shadow-sm hover:shadow-lg transition bg-white ${
-                  selectedPlan?.name === "Plus"
+                  selectedPlan?.id && plusPlan?.id && selectedPlan.id === plusPlan.id
                     ? "border-purple-500 border-2"
                     : "border-gray-200"
                 }`}
@@ -387,9 +310,7 @@ export default function EscolherPlano({ slug }) {
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Plus</h3>
 
                 <p className="text-3xl font-bold text-gray-900 mb-1">
-                  {formatPrice(
-                    plans.find((p) => p.name.includes("lus") && p.billing_type === "prepaid")?.minimum_price ?? 9990
-                  )}
+                  {formatPrice(plusPlan?.unit_amount ?? 9990)}
                   <span className="text-sm text-gray-500">/mês</span>
                 </p>
 
@@ -413,7 +334,7 @@ export default function EscolherPlano({ slug }) {
                 <select
                   className="w-full text-gray-950 border rounded-lg p-2 mb-4"
                   value={
-                    selectedPlan?.name === "Plus"
+                    selectedPlan?.id && plusPlan?.id && selectedPlan.id === plusPlan.id
                       ? selectedBilling
                       : "prepaid"
                   }
@@ -427,15 +348,11 @@ export default function EscolherPlano({ slug }) {
 
                 <button
                   onClick={() => {
-                    const prepaid = plans.find(
-                      (p) => p.name.includes("lus") && p.billing_type === "prepaid"
-                    );
-                    const postpaid = plans.find(
-                      (p) => p.name.includes("lus") && p.billing_type === "postpaid"
-                    );
-                    const chosenPlan = selectedBilling === "prepaid" ? prepaid : postpaid;
-
-                    setSelectedPlan(chosenPlan);
+                    if (!plusPlan) {
+                      toast.error("Plano Plus não encontrado no Stripe");
+                      return;
+                    }
+                    setSelectedPlan(plusPlan);
                     setStep(2);
                   }}
                   className="w-full text-white py-2 rounded-lg font-semibold"
@@ -450,7 +367,7 @@ export default function EscolherPlano({ slug }) {
               {/* =============================== */}
               <div
                 className={`rounded-2xl border p-6 shadow-sm hover:shadow-lg transition bg-white ${
-                  selectedPlan?.name === "Premium"
+                  selectedPlan?.id && premiumPlan?.id && selectedPlan.id === premiumPlan.id
                     ? "border-purple-500 border-2"
                     : "border-gray-200"
                 }`}
@@ -458,9 +375,7 @@ export default function EscolherPlano({ slug }) {
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Premium</h3>
 
                 <p className="text-3xl font-bold text-gray-900 mb-1">
-                  {formatPrice(
-                    plans.find((p) => p.name.includes("remium") && p.billing_type === "prepaid")?.minimum_price ?? 14990
-                  )}
+                  {formatPrice(premiumPlan?.unit_amount ?? 14990)}
                   <span className="text-sm text-gray-500">/mês</span>
                 </p>
 
@@ -483,7 +398,7 @@ export default function EscolherPlano({ slug }) {
                 <select
                   className="w-full text-gray-950 border rounded-lg p-2 mb-4"
                   value={
-                    selectedPlan?.name === "Premium"
+                    selectedPlan?.id && premiumPlan?.id && selectedPlan.id === premiumPlan.id
                       ? selectedBilling
                       : "prepaid"
                   }
@@ -497,15 +412,11 @@ export default function EscolherPlano({ slug }) {
 
                 <button
                   onClick={() => {
-                    const prepaid = plans.find(
-                      (p) => p.name.includes("remium") && p.billing_type === "prepaid"
-                    );
-                    const postpaid = plans.find(
-                      (p) => p.name.includes("remium") && p.billing_type === "postpaid"
-                    );
-                    const chosenPlan = selectedBilling === "prepaid" ? prepaid : postpaid;
-
-                    setSelectedPlan(chosenPlan);
+                    if (!premiumPlan) {
+                      toast.error("Plano Premium não encontrado no Stripe");
+                      return;
+                    }
+                    setSelectedPlan(premiumPlan);
                     setStep(2);
                   }}
                   className="w-full text-white py-2 rounded-lg font-semibold"
@@ -539,15 +450,15 @@ export default function EscolherPlano({ slug }) {
                 <CheckCircle color={BRAND} size={22} />
                 Plano selecionado
               </h2>
-              <p className="mt-2 text-gray-700">{selectedPlan?.name}</p>
+              <p className="mt-2 text-gray-700">{selectedPlan?.product?.name || "Plano"}</p>
               <p className="font-semibold text-gray-900 mt-1">
-                {selectedPlan?.minimum_price
-                  ? formatPrice(selectedPlan.minimum_price)
+                {selectedPlan?.unit_amount
+                  ? formatPrice(selectedPlan.unit_amount)
                   : "R$ --"}
                 / mês
               </p>
               <p className="text-sm text-gray-600">
-                Pagamento: <strong>{selectedBilling === "prepaid" ? "Pré-pago" : "Pós-pago"}</strong>
+                Tipo: <strong>{selectedPlan?.metadata?.billing_type || selectedBilling}</strong>
               </p>
 
               <button
@@ -557,14 +468,6 @@ export default function EscolherPlano({ slug }) {
                 Trocar plano
               </button>
             </div>
-
-            <div className="flex justify-center">
-              <CreditCardComponent name={cardData.holder_name} number={cardData.number} month={cardData.exp_month} year={cardData.exp_year} cvv={cardData.cvv}/>
-            </div>
-
-            <h2 className="font-bold text-xl text-gray-900 flex items-center gap-2">
-              <CreditCard size={20} /> Dados do Cartão
-            </h2>
 
             <div className="border rounded-xl p-4 bg-gray-50">
               <label className="font-medium text-gray-900 text-sm">
@@ -597,97 +500,20 @@ export default function EscolherPlano({ slug }) {
               )}
             </div>
 
+            <div className="border rounded-xl p-4 bg-white shadow-sm">
+              {checkoutLoading && (
+                <p className="text-sm text-gray-500">Gerando checkout seguro...</p>
+              )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-
-              <div>
-                <label className="font-medium text-gray-900 text-sm">Nome do Titular</label>
-                <input
-                  type="text"
-                  placeholder="ANDRE F SANTOS"
-                  required
-                  value={cardData.holder_name}
-                  onChange={(e) =>
-                    setCardData({ ...cardData, holder_name: e.target.value })
-                  }
-                  className="w-full border rounded-lg p-3 mt-1 text-gray-900"
-                />
-              </div>
-
-              <div>
-                <label className="font-medium text-gray-900 text-sm">Número do Cartão</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="4242 4242 4242 4242"
-                  maxLength={19}
-                  value={cardData.number}
-                  onChange={(e) => {
-                    // Remove tudo que não é número
-                    const value = e.target.value.replace(/\D/g, "");
-                    // Adiciona espaços a cada 4 dígitos para melhor visualização
-                    const formatted = value.replace(/(\d{4})(?=\d)/g, "$1 ");
-                    setCardData({ ...cardData, number: formatted });
-                  }}
-                  className="w-full border rounded-lg p-3 mt-1 text-gray-900"
-                />
-              </div>
-
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="font-medium text-gray-900 text-sm">Mês</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="MM"
-                    maxLength={2}
-                    value={cardData.exp_month}
-                    onChange={(e) =>
-                      setCardData({ ...cardData, exp_month: e.target.value })
-                    }
-                    className="w-full border rounded-lg p-3 mt-1 text-gray-900"
-                  />
-                </div>
-
-                <div className="flex-1">
-                  <label className="font-medium text-gray-900 text-sm">Ano</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="YYYY"
-                    maxLength={4}
-                    value={cardData.exp_year}
-                    onChange={(e) =>
-                      setCardData({ ...cardData, exp_year: e.target.value })
-                    }
-                    className="w-full border rounded-lg p-3 mt-1 text-gray-900"
-                  />
-                </div>
-
-                <div className="flex-1">
-                  <label className="font-medium text-gray-900 text-sm">CVV</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="CVV"
-                    maxLength={4}
-                    value={cardData.cvv}
-                    onChange={(e) =>
-                      setCardData({ ...cardData, cvv: e.target.value })
-                    }
-                    className="w-full border rounded-lg p-3 mt-1 text-gray-900"
-                  />
-                </div>
-              </div>
-
-              <button
-                disabled={processing}
-                className="w-full py-3 rounded-lg text-white font-semibold shadow transition"
-                style={{ backgroundColor: BRAND }}
-              >
-                {processing ? "Processando..." : "Confirmar Assinatura"}
-              </button>
-            </form>
+              {clientSecret && (
+                <EmbeddedCheckoutProvider
+                  stripe={stripePromise}
+                  options={{ clientSecret }}
+                >
+                  <EmbeddedCheckout />
+                </EmbeddedCheckoutProvider>
+              )}
+            </div>
           </div>
         )}
       </div>
