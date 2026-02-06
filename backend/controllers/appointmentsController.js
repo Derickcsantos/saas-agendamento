@@ -733,6 +733,21 @@ export const createAppointment = async (req, res) => {
           ? `💳 *Atenção:* Este agendamento requer pré-pagamento de R$ ${prepaymentAmount.toFixed(2)}.`
           : `✅ *Agendamento confirmado!*`;
 
+        const normalizedFinalPrice = Number.isFinite(Number(finalPriceToUse))
+          ? Number(finalPriceToUse)
+          : Number.isFinite(Number(created?.final_price))
+          ? Number(created.final_price)
+          : Number.isFinite(Number(originalPriceToUse))
+          ? Number(originalPriceToUse)
+          : null;
+
+        const formattedFinalPrice = Number.isFinite(normalizedFinalPrice)
+          ? normalizedFinalPrice.toLocaleString("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            })
+          : "-";
+
         const message = `
 *${paymentInfo}*
 
@@ -743,14 +758,7 @@ Seu agendamento foi realizado com sucesso em *${orgData?.name}*.
 🧑‍💼 Profissional: ${employeeInfo?.name || "-"}
 📅 Data: ${formattedDate}
 ⏰ Horário: ${start_time} - ${end_time}
-💰 Valor: ${
-          finalPriceToUse
-            ? finalPriceToUse.toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })
-            : "-"
-        }
+💰 Valor: ${formattedFinalPrice}
 
 ${
   requiresPrepayment

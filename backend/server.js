@@ -49,6 +49,7 @@ import queueRouter from './routes/queueRoutes.js';
 import { userInvitesRouter } from './routes/userInvitesRoutes.js';
 import { organizationSubscriptionsRouter } from './routes/organizationSubscriptionsRoutes.js';
 import scheduleJob from './utils/screduleJobs.js';
+import { startUnavailableDaysCacheJob } from './utils/unavailableDaysCacheJob.js';
 import QueueWebSocketManager from './lib/websocket.js';
 import http from 'http';
 
@@ -74,6 +75,7 @@ setupSwagger(app)
 app.use(passport.initialize());
 
 scheduleJob("0 8 * * *", "08:00");
+startUnavailableDaysCacheJob({ intervalMs: 180000 });
 
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
 app.use('/api/appointments', appointmentProcessRouter);

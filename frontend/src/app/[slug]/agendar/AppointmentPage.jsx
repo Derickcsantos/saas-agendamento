@@ -1064,6 +1064,32 @@ const sendWhatsappConfirmation = async () => {
                         unavailableDays.includes(iso)
                       );
                     }}
+                    modifiers={{
+                      unavailableDay: (date) => unavailableDays.includes(format(date, "yyyy-MM-dd")),
+                      availableDay: (date) => {
+                        const iso = format(date, "yyyy-MM-dd");
+                        return (
+                          iso >= minDate &&
+                          iso <= maxDateStr &&
+                          !unavailableDays.includes(iso)
+                        );
+                      }
+                    }}
+                    modifiersStyles={{
+                      unavailableDay: {
+                        backgroundImage: "linear-gradient(#dc2626, #dc2626)",
+                        backgroundSize: "70% 3px",
+                        backgroundPosition: "center bottom",
+                        backgroundRepeat: "no-repeat",
+                      }
+                      ,
+                      availableDay: {
+                        backgroundImage: "linear-gradient(#16a34a, #16a34a)",
+                        backgroundSize: "70% 3px",
+                        backgroundPosition: "center bottom",
+                        backgroundRepeat: "no-repeat",
+                      }
+                    }}
                     className="bg-white rounded-xl border p-4 shadow"
                   />
                 </div>
