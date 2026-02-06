@@ -27,6 +27,13 @@ organizationSubscriptionsRouter.post(
   OrganizationSubscriptionsController.createSubscription
 );
 
+// Criar PaymentMethod (backend)
+organizationSubscriptionsRouter.post(
+  "/:organizationId/payment-method",
+  authenticateJWT,
+  OrganizationSubscriptionsController.createPaymentMethod
+);
+
 // Confirmar pagamento
 organizationSubscriptionsRouter.post(
   "/:organizationId/confirm-payment",

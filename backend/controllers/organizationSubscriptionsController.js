@@ -135,12 +135,12 @@ export const OrganizationSubscriptionsController = {
       const subscription = await stripe.subscriptions.create({
         customer: customerId,
         items: [{ price: priceId }],
-        payment_behavior: paymentMethodId ? "default_off_session" : "default_incomplete",
-        off_session: !!paymentMethodId,
+        payment_behavior: "default_incomplete",
         payment_settings: {
           save_default_payment_method: "on_subscription",
           payment_method_types: ["card"],
         },
+        default_payment_method: paymentMethodId || undefined,
         expand: ["latest_invoice.payment_intent", "items.data.price.product"],
         metadata: {
           organization_id: organizationId,
@@ -148,31 +148,87 @@ export const OrganizationSubscriptionsController = {
       });
 
       // Salvar no banco de dados
-      const { error: dbError } = await supabase.from("subscriptions").insert({
+      const latestInvoice = subscription.latest_invoice;
+      const paymentIntent = latestInvoice?.payment_intent;
+      const paymentIntentId =
+        typeof paymentIntent === "string" ? paymentIntent : paymentIntent?.id || null;
+
+      const latestInvoiceId = typeof latestInvoice === "string" ? latestInvoice : latestInvoice?.id || null;
+      const latestInvoiceAmount =
+        typeof latestInvoice === "object" && latestInvoice != null
+          ? latestInvoice.amount_due ?? latestInvoice.total ?? null
+          : null;
+
+      const subscriptionInsertPayload = {
         organization_id: organizationId,
-        stripe_subscription_id: subscription.id,
-        stripe_customer_id: customerId,
+        plan_id: priceId,
         status: subscription.status,
         current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
         current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+        stripe_subscription_id: subscription.id,
+        stripe_status: subscription.status,
+        latest_invoice_id: paymentIntentId || latestInvoiceId,
+        latest_invoice_amount: latestInvoiceAmount,
         cancel_at_period_end: subscription.cancel_at_period_end,
         canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
-        trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-        plan_id: priceId,
+        billing_type: "stripe",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      });
+      };
+
+      console.log("[subscriptions] payload insert:", subscriptionInsertPayload);
+
+      const { error: dbError } = await supabase
+        .from("subscriptions")
+        .insert(subscriptionInsertPayload);
 
       if (dbError) {
         console.error("Erro ao salvar assinatura no banco:", dbError);
       }
 
+      const clientSecret = subscription?.latest_invoice?.payment_intent?.client_secret || null;
+
       return safeJson(res, 201, {
         data: subscription,
-        clientSecret: subscription.latest_invoice.payment_intent.client_secret,
+        clientSecret,
       });
     } catch (error) {
       console.error("Erro ao criar assinatura:", error);
+      return safeJson(res, 500, { error: error.message });
+    }
+  },
+
+  // Criar PaymentMethod no backend (evita Stripe direto no frontend)
+  createPaymentMethod: async (req, res) => {
+    try {
+      const { organizationId } = req.params;
+      const { cardNumber, expiryMonth, expiryYear, cvc, cardholderName, email } = req.body || {};
+
+      if (!cardNumber || !expiryMonth || !expiryYear || !cvc || !cardholderName) {
+        return safeJson(res, 400, { error: "Dados do cartão incompletos" });
+      }
+
+      const paymentMethod = await stripe.paymentMethods.create({
+        type: "card",
+        card: {
+          number: String(cardNumber).replace(/\s+/g, ""),
+          exp_month: String(expiryMonth),
+          exp_year: String(expiryYear),
+          cvc: String(cvc),
+        },
+        billing_details: {
+          name: cardholderName,
+          email: email || undefined,
+        },
+        metadata: {
+          organization_id: organizationId,
+        },
+      });
+
+      return safeJson(res, 201, { data: { id: paymentMethod.id } });
+    } catch (error) {
+      console.error("Erro ao criar PaymentMethod:", error);
       return safeJson(res, 500, { error: error.message });
     }
   },

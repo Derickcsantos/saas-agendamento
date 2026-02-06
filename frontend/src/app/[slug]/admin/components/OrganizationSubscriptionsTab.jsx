@@ -11,6 +11,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, CardElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { toast } from "react-toastify";
 import {
   FiCreditCard,
@@ -20,8 +22,6 @@ import {
   FiRefreshCcw,
   FiAlertCircle,
   FiCheckCircle,
-  FiClock,
-  FiTrendingUp,
   FiLock,
   FiUser,
   FiCalendar,
@@ -29,6 +29,8 @@ import {
 } from "react-icons/fi";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 
 export default function OrganizationSubscriptionsTab({ org, user }) {
   const { palette } = useOrganizationColors(org.slug_organization);
@@ -41,14 +43,6 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [cardData, setCardData] = useState({
-    cardNumber: "",
-    cardholderName: "",
-    expiryMonth: "",
-    expiryYear: "",
-    cvc: "",
-  });
-  const [cardErrors, setCardErrors] = useState({});
 
   // Buscar planos e assinatura ativa
   useEffect(() => {
@@ -82,151 +76,12 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
     setShowPaymentModal(true);
   };
 
-  const validateCard = () => {
-    const errors = {};
-
-    // Validar número do cartão (Luhn)
-    const cardNum = cardData.cardNumber.replace(/\s+/g, "");
-    if (!cardNum || cardNum.length < 13 || cardNum.length > 19) {
-      errors.cardNumber = "Número do cartão inválido";
-    }
-
-    // Validar nome do titular
-    if (!cardData.cardholderName || cardData.cardholderName.trim().length < 3) {
-      errors.cardholderName = "Nome do titular inválido";
-    }
-
-    // Validar expiração
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1;
-    const currentYear = currentDate.getFullYear();
-    const expYear = parseInt(cardData.expiryYear, 10);
-    const expMonth = parseInt(cardData.expiryMonth, 10);
-
-    if (!expMonth || expMonth < 1 || expMonth > 12) {
-      errors.expiryMonth = "Mês inválido";
-    }
-
-    if (!expYear || expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) {
-      errors.expiryYear = "Cartão expirado";
-    }
-
-    // Validar CVC
-    if (!cardData.cvc || cardData.cvc.length < 3 || cardData.cvc.length > 4) {
-      errors.cvc = "CVC inválido";
-    }
-
-    setCardErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleCreateSubscription = async () => {
-    if (!selectedPlan) {
-      toast.error("Selecione um plano");
-      return;
-    }
-
-    if (!user?.email) {
-      toast.error("Email do usuário não encontrado");
-      return;
-    }
-
-    setProcessing(true);
-    try {
-      // 1. Criar PaymentMethod no Stripe
-      const paymentMethodResponse = await fetch(
-        "https://api.stripe.com/v1/payment_methods",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Authorization": `Bearer ${process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}`,
-          },
-          body: new URLSearchParams({
-            type: "card",
-            "card[number]": cardData.cardNumber.replace(/\s+/g, ""),
-            "card[exp_month]": cardData.expiryMonth,
-            "card[exp_year]": cardData.expiryYear,
-            "card[cvc]": cardData.cvc,
-            "billing_details[name]": cardData.cardholderName,
-            "billing_details[email]": user.email,
-          }),
-        }
-      );
-
-      if (!paymentMethodResponse.ok) {
-        const error = await paymentMethodResponse.json();
-        toast.error(error.error?.message || "Erro ao processar cartão");
-        return;
-      }
-
-      const paymentMethod = await paymentMethodResponse.json();
-
-      // 2. Criar assinatura no backend
-      const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            priceId: selectedPlan.id,
-            customerEmail: user.email,
-            paymentMethodId: paymentMethod.id,
-            organizationData: {
-              name: org.name,
-            },
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast.error(data.error || "Erro ao criar assinatura");
-        return;
-      }
-
-      // 3. Se precisar confirmar pagamento (SCA/3D Secure)
-      if (data.client_secret) {
-        const confirmResponse = await fetchWithAuth(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}/confirm-payment`,
-          {
-            method: "POST",
-            body: JSON.stringify({
-              clientSecret: data.client_secret,
-            }),
-          }
-        );
-
-        if (!confirmResponse.ok) {
-          const confirmError = await confirmResponse.json();
-          toast.error(confirmError.error || "Erro ao confirmar pagamento");
-          return;
-        }
-      }
-
-      toast.success("✅ Assinatura criada com sucesso!");
-      setShowPaymentModal(false);
-      setSelectedPlan(null);
-      setCardData({
-        cardNumber: "",
-        cardholderName: "",
-        expiryMonth: "",
-        expiryYear: "",
-        cvc: "",
-      });
-
-      // Recarregar dados
-      const subscriptionRes = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}/active`
-      );
-      const subscriptionData = await subscriptionRes.json();
-      setActiveSubscription(subscriptionData.data || null);
-    } catch (error) {
-      console.error("Erro:", error);
-      toast.error("Erro ao processar assinatura");
-    } finally {
-      setProcessing(false);
-    }
+  const refreshActiveSubscription = async () => {
+    const subscriptionRes = await fetchWithAuth(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}/active`
+    );
+    const subscriptionData = await subscriptionRes.json();
+    setActiveSubscription(subscriptionData.data || null);
   };
 
   const handleChangePlan = async (newPlanId) => {
@@ -240,6 +95,9 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}/change-plan`,
         {
           method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({ newPriceId: newPlanId }),
         }
       );
@@ -281,6 +139,9 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}/cancel`,
         {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({ immediate }),
         }
       );
@@ -547,7 +408,8 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
                     <button
                       onClick={() => handleSelectPlan(plan)}
                       disabled={processing}
-                      className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition flex items-center justify-center gap-2"
+                      className="w-full px-4 py-3 text-white rounded-lg font-medium  disabled:opacity-50 transition flex items-center justify-center gap-2"
+                      style={{backgroundColor: palette?.strong_color}}
                     >
                       <FiArrowRight size={18} />
                       Escolher Plano
@@ -571,288 +433,334 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
 
       {/* Modal de Pagamento */}
       {showPaymentModal && selectedPlan && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-            {/* Header com cor da organização */}
-            <div
-              className="p-8 text-white relative"
-              style={{ background: strong }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-3xl font-bold">Finalizar Compra</h3>
-                <button
-                  onClick={() => setShowPaymentModal(false)}
-                  className="p-2 hover:bg-white/20 rounded-full transition"
-                >
-                  <FiX size={24} />
-                </button>
+        <Elements stripe={stripePromise} options={{ locale: "pt-BR" }}>
+          <PaymentModal
+            org={org}
+            user={user}
+            selectedPlan={selectedPlan}
+            strong={strong}
+            light={light}
+            processing={processing}
+            setProcessing={setProcessing}
+            onClose={() => setShowPaymentModal(false)}
+            onSuccess={async () => {
+              setShowPaymentModal(false);
+              setSelectedPlan(null);
+              await refreshActiveSubscription();
+            }}
+          />
+        </Elements>
+      )}
+    </div>
+  );
+}
+
+function PaymentModal({
+  org,
+  user,
+  selectedPlan,
+  strong,
+  light,
+  processing,
+  setProcessing,
+  onClose,
+  onSuccess,
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+
+  const [cardholderName, setCardholderName] = useState("");
+  const [cardError, setCardError] = useState("");
+  const [cardComplete, setCardComplete] = useState(false);
+
+  const handleCreateSubscription = async () => {
+    if (!selectedPlan) {
+      toast.error("Selecione um plano");
+      return;
+    }
+
+    if (!user?.email) {
+      toast.error("Email do usuário não encontrado");
+      return;
+    }
+
+    if (!stripe || !elements) {
+      toast.error("Stripe não inicializado");
+      return;
+    }
+
+    if (!cardholderName || cardholderName.trim().length < 3) {
+      setCardError("Nome do titular inválido");
+      return;
+    }
+
+    if (!cardComplete) {
+      toast.error("Dados do cartão incompletos");
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        toast.error("Cartão não carregado");
+        return;
+      }
+
+      const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
+        type: "card",
+        card: cardElement,
+        billing_details: {
+          name: cardholderName,
+          email: user.email,
+        },
+      });
+
+      if (pmError || !paymentMethod?.id) {
+        toast.error(pmError?.message || "Erro ao validar cartão");
+        return;
+      }
+
+      const response = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            priceId: selectedPlan.id,
+            customerEmail: user.email,
+            paymentMethodId: paymentMethod.id,
+            organizationData: {
+              name: org.name,
+            },
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.error || "Erro ao criar assinatura");
+        return;
+      }
+
+      const clientSecret = data.clientSecret || data.client_secret;
+
+      if (clientSecret) {
+        const confirmResult = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: paymentMethod.id,
+        });
+
+        if (confirmResult.error) {
+          toast.error(confirmResult.error.message || "Erro ao confirmar pagamento");
+          return;
+        }
+      }
+
+      toast.success("✅ Assinatura criada com sucesso!");
+      await onSuccess();
+    } catch (error) {
+      console.error("Erro:", error);
+      toast.error("Erro ao processar assinatura");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+        {/* Header com cor da organização */}
+        <div className="p-8 text-white relative" style={{ background: strong }}>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-3xl font-bold">Finalizar Compra</h3>
+            <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition">
+              <FiX size={24} />
+            </button>
+          </div>
+          <p className="text-white/80">Complete seus dados para ativar a assinatura</p>
+        </div>
+
+        <div className="p-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Resumo do Plano */}
+            <div className="md:col-span-1 space-y-4">
+              <div className="rounded-xl p-6 text-white" style={{ background: light }}>
+                <p className="text-sm opacity-90 mb-3">Seu Plano</p>
+                <h4 className="text-xl font-bold mb-4">{selectedPlan.productName}</h4>
+
+                <div className="space-y-3 text-sm border-t border-white/20 pt-4">
+                  <div className="flex justify-between">
+                    <span className="opacity-90">Valor mensal:</span>
+                    <span className="font-bold">R$ {(selectedPlan.amount / 100).toFixed(2)}</span>
+                  </div>
+
+                  {selectedPlan.trialDays && (
+                    <div className="flex justify-between bg-white/10 px-3 py-2 rounded">
+                      <span className="opacity-90">Teste grátis:</span>
+                      <span className="font-bold">{selectedPlan.trialDays} dias</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between pt-3 border-t border-white/20 text-base font-bold">
+                    <span>Total hoje:</span>
+                    <span>
+                      {selectedPlan.trialDays ? "R$ 0,00" : `R$ ${(selectedPlan.amount / 100).toFixed(2)}`}
+                    </span>
+                  </div>
+                </div>
+
+                {selectedPlan.trialDays && (
+                  <div className="mt-4 p-3 bg-white/20 rounded-lg text-sm">
+                    <p>🎉 Comece seu período de teste grátis agora</p>
+                  </div>
+                )}
               </div>
-              <p className="text-white/80">Complete seus dados para ativar a assinatura</p>
+
+              {/* Segurança */}
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <FiLock size={16} />
+                <span>Pagamento seguro</span>
+              </div>
             </div>
 
-            <div className="p-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* Resumo do Plano */}
-                <div className="md:col-span-1 space-y-4">
-                  <div
-                    className="rounded-xl p-6 text-white"
-                    style={{ background: light }}
+            {/* Formulário de Pagamento */}
+            <div className="md:col-span-2">
+              <form
+                className="space-y-5"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleCreateSubscription();
+                }}
+              >
+                {/* Informação de Segurança */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+                  <FiShield className="text-green-600 mt-0.5 shrink-0" size={18} />
+                  <div className="text-sm text-green-700">
+                    <p className="font-semibold mb-1">✓ Dados Seguros</p>
+                    <p>Seus dados são transmitidos criptografados ao Stripe e nunca armazenados em nossos servidores.</p>
+                  </div>
+                </div>
+
+                {/* Dados do Usuário (somente leitura) */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-xs text-gray-600 mb-3 font-semibold">Dados da Conta</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <FiUser size={16} className="text-gray-600" />
+                      <span className="text-sm text-gray-700">
+                        <strong>{user?.name || "Usuário"}</strong>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FiCreditCard size={16} className="text-gray-600" />
+                      <span className="text-sm text-gray-700">{user?.email}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Nome do Titular */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Nome do Titular do Cartão
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Como aparece no cartão"
+                    value={cardholderName}
+                    onChange={(e) => {
+                      setCardholderName(e.target.value);
+                      if (cardError) setCardError("");
+                    }}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:outline-none transition ${
+                      cardError ? "border-red-500 focus:ring-red-200" : "border-gray-300 focus:ring-blue-200"
+                    }`}
+                  />
+                  {cardError && <p className="text-xs text-red-600 mt-1">{cardError}</p>}
+                </div>
+
+                {/* Cartão via Stripe Elements */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Dados do Cartão</label>
+                  <div className="w-full px-4 py-3 border rounded-lg focus-within:ring-2 focus-within:ring-blue-200 border-gray-300">
+                    <CardElement
+                      options={{
+                        style: {
+                          base: {
+                            fontSize: "16px",
+                            color: "#111827",
+                            "::placeholder": { color: "#9CA3AF" },
+                          },
+                          invalid: { color: "#DC2626" },
+                        },
+                        hidePostalCode: true,
+                      }}
+                      onChange={(event) => {
+                        setCardComplete(event.complete);
+                        if (event.error?.message) {
+                          setCardError(event.error.message);
+                        } else if (cardError) {
+                          setCardError("");
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Informação de Cobrança */}
+                <div className="border-2 rounded-lg p-4" style={{ borderColor: strong }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <FiCheckCircle size={18} style={{ color: strong }} />
+                    <span className="font-semibold text-gray-900">
+                      {selectedPlan.trialDays
+                        ? `Teste grátis por ${selectedPlan.trialDays} dias, depois R$ ${(selectedPlan.amount / 100).toFixed(2)}/mês`
+                        : `Cobrança de R$ ${(selectedPlan.amount / 100).toFixed(2)}/mês`}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Seu cartão será cobrado automaticamente. Você pode cancelar a qualquer momento.
+                  </p>
+                </div>
+
+                {/* Botões */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition"
                   >
-                    <p className="text-sm opacity-90 mb-3">Seu Plano</p>
-                    <h4 className="text-xl font-bold mb-4">{selectedPlan.productName}</h4>
-                    
-                    <div className="space-y-3 text-sm border-t border-white/20 pt-4">
-                      <div className="flex justify-between">
-                        <span className="opacity-90">Valor mensal:</span>
-                        <span className="font-bold">
-                          R$ {(selectedPlan.amount / 100).toFixed(2)}
-                        </span>
-                      </div>
-
-                      {selectedPlan.trialDays && (
-                        <div className="flex justify-between bg-white/10 px-3 py-2 rounded">
-                          <span className="opacity-90">Teste grátis:</span>
-                          <span className="font-bold">{selectedPlan.trialDays} dias</span>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between pt-3 border-t border-white/20 text-base font-bold">
-                        <span>Total hoje:</span>
-                        <span>
-                          {selectedPlan.trialDays ? "R$ 0,00" : `R$ ${(selectedPlan.amount / 100).toFixed(2)}`}
-                        </span>
-                      </div>
-                    </div>
-
-                    {selectedPlan.trialDays && (
-                      <div className="mt-4 p-3 bg-white/20 rounded-lg text-sm">
-                        <p>🎉 Comece seu período de teste grátis agora</p>
-                      </div>
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={processing}
+                    className="flex-1 px-4 py-3 text-white rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 transition flex items-center justify-center gap-2"
+                    style={{ background: strong }}
+                  >
+                    {processing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Processando...
+                      </>
+                    ) : (
+                      <>
+                        <FiLock size={18} />
+                        Ativar Assinatura
+                      </>
                     )}
-                  </div>
-
-                  {/* Segurança */}
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <FiLock size={16} />
-                    <span>Pagamento seguro</span>
-                  </div>
+                  </button>
                 </div>
 
-                {/* Formulário de Pagamento */}
-                <div className="md:col-span-2">
-                  <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); handleCreateSubscription(); }}>
-                    {/* Informação de Segurança */}
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
-                      <FiShield className="text-green-600 mt-0.5 shrink-0" size={18} />
-                      <div className="text-sm text-green-700">
-                        <p className="font-semibold mb-1">✓ Dados Seguros</p>
-                        <p>Seus dados são transmitidos criptografados ao Stripe e nunca armazenados em nossos servidores.</p>
-                      </div>
-                    </div>
-
-                    {/* Dados do Usuário (somente leitura) */}
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 mb-3 font-semibold">Dados da Conta</p>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <FiUser size={16} className="text-gray-600" />
-                          <span className="text-sm text-gray-700">
-                            <strong>{user?.name || "Usuário"}</strong>
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <FiCreditCard size={16} className="text-gray-600" />
-                          <span className="text-sm text-gray-700">
-                            {user?.email}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Número do Cartão */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-900 mb-2">
-                        Número do Cartão
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="1234 5678 9012 3456"
-                        maxLength="19"
-                        value={cardData.cardNumber}
-                        onChange={(e) => {
-                          let value = e.target.value.replace(/\D/g, "");
-                          value = value.replace(/(\d{4})/g, "$1 ").trim();
-                          setCardData({ ...cardData, cardNumber: value });
-                          if (cardErrors.cardNumber) setCardErrors({ ...cardErrors, cardNumber: "" });
-                        }}
-                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:outline-none transition ${
-                          cardErrors.cardNumber
-                            ? "border-red-500 focus:ring-red-200"
-                            : "border-gray-300 focus:ring-blue-200"
-                        }`}
-                      />
-                      {cardErrors.cardNumber && (
-                        <p className="text-xs text-red-600 mt-1">{cardErrors.cardNumber}</p>
-                      )}
-                    </div>
-
-                    {/* Nome do Titular */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-900 mb-2">
-                        Nome do Titular do Cartão
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Como aparece no cartão"
-                        value={cardData.cardholderName}
-                        onChange={(e) => {
-                          setCardData({ ...cardData, cardholderName: e.target.value });
-                          if (cardErrors.cardholderName) setCardErrors({ ...cardErrors, cardholderName: "" });
-                        }}
-                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:outline-none transition ${
-                          cardErrors.cardholderName
-                            ? "border-red-500 focus:ring-red-200"
-                            : "border-gray-300 focus:ring-blue-200"
-                        }`}
-                      />
-                      {cardErrors.cardholderName && (
-                        <p className="text-xs text-red-600 mt-1">{cardErrors.cardholderName}</p>
-                      )}
-                    </div>
-
-                    {/* Linha com Validade e CVC */}
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Validade */}
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-900 mb-2">
-                          <FiCalendar size={14} className="inline mr-1" />
-                          Validade
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="MM"
-                            maxLength="2"
-                            value={cardData.expiryMonth}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, "").slice(0, 2);
-                              setCardData({ ...cardData, expiryMonth: value });
-                              if (cardErrors.expiryMonth) setCardErrors({ ...cardErrors, expiryMonth: "" });
-                            }}
-                            className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:outline-none transition text-center ${
-                              cardErrors.expiryMonth
-                                ? "border-red-500 focus:ring-red-200"
-                                : "border-gray-300 focus:ring-blue-200"
-                            }`}
-                          />
-                          <span className="flex items-center text-gray-400">/</span>
-                          <input
-                            type="text"
-                            placeholder="YY"
-                            maxLength="2"
-                            value={cardData.expiryYear}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, "").slice(0, 2);
-                              setCardData({ ...cardData, expiryYear: value });
-                              if (cardErrors.expiryYear) setCardErrors({ ...cardErrors, expiryYear: "" });
-                            }}
-                            className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:outline-none transition text-center ${
-                              cardErrors.expiryYear
-                                ? "border-red-500 focus:ring-red-200"
-                                : "border-gray-300 focus:ring-blue-200"
-                            }`}
-                          />
-                        </div>
-                        {(cardErrors.expiryMonth || cardErrors.expiryYear) && (
-                          <p className="text-xs text-red-600 mt-1">
-                            {cardErrors.expiryMonth || cardErrors.expiryYear}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* CVC */}
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-900 mb-2">
-                          <FiShield size={14} className="inline mr-1" />
-                          CVC
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="123"
-                          maxLength="4"
-                          value={cardData.cvc}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/\D/g, "");
-                            setCardData({ ...cardData, cvc: value });
-                            if (cardErrors.cvc) setCardErrors({ ...cardErrors, cvc: "" });
-                          }}
-                          className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:outline-none transition text-center ${
-                            cardErrors.cvc
-                              ? "border-red-500 focus:ring-red-200"
-                              : "border-gray-300 focus:ring-blue-200"
-                          }`}
-                        />
-                        {cardErrors.cvc && (
-                          <p className="text-xs text-red-600 mt-1">{cardErrors.cvc}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Informação de Cobrança */}
-                    <div
-                      className="border-2 rounded-lg p-4"
-                      style={{ borderColor: strong }}
-                    >
-                      <div className="flex items-center gap-2 mb-3">
-                        <FiCheckCircle size={18} style={{ color: strong }} />
-                        <span className="font-semibold text-gray-900">
-                          {selectedPlan.trialDays ? `Teste grátis por ${selectedPlan.trialDays} dias, depois R$ ${(selectedPlan.amount / 100).toFixed(2)}/mês` : `Cobrança de R$ ${(selectedPlan.amount / 100).toFixed(2)}/mês`}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        Seu cartão será cobrado automaticamente. Você pode cancelar a qualquer momento.
-                      </p>
-                    </div>
-
-                    {/* Botões */}
-                    <div className="flex gap-3 pt-4">
-                      <button
-                        type="button"
-                        onClick={() => setShowPaymentModal(false)}
-                        className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={processing}
-                        className="flex-1 px-4 py-3 text-white rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 transition flex items-center justify-center gap-2"
-                        style={{ background: strong }}
-                      >
-                        {processing ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            Processando...
-                          </>
-                        ) : (
-                          <>
-                            <FiLock size={18} />
-                            Ativar Assinatura
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    <p className="text-xs text-center text-gray-500 mt-4">
-                      Ao continuar, você concorda com nossos Termos de Serviço
-                    </p>
-                  </form>
-                </div>
-              </div>
+                <p className="text-xs text-center text-gray-500 mt-4">
+                  Ao continuar, você concorda com nossos Termos de Serviço
+                </p>
+              </form>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
