@@ -4,69 +4,63 @@ import { authenticateJWT } from "../middlewares/authMiddleware.js";
 
 export const organizationSubscriptionsRouter = Router();
 
-/**
- * ================================
- * Organization Subscriptions Routes
- * ================================
- */
-
 // Listar planos disponíveis
 organizationSubscriptionsRouter.get("/plans", OrganizationSubscriptionsController.listPlans);
 
 // Obter assinatura ativa da organização
 organizationSubscriptionsRouter.get(
-  "/:organizationId/active",
+  "/:slug/active",
   authenticateJWT,
   OrganizationSubscriptionsController.getActiveSubscription
 );
 
 // Criar nova assinatura
 organizationSubscriptionsRouter.post(
-  "/:organizationId",
+  "/:slug",
   authenticateJWT,
   OrganizationSubscriptionsController.createSubscription
 );
 
 // Criar PaymentMethod (backend)
 organizationSubscriptionsRouter.post(
-  "/:organizationId/payment-method",
+  "/:slug/payment-method",
   authenticateJWT,
   OrganizationSubscriptionsController.createPaymentMethod
 );
 
 // Confirmar pagamento
 organizationSubscriptionsRouter.post(
-  "/:organizationId/confirm-payment",
+  "/:slug/confirm-payment",
   authenticateJWT,
   OrganizationSubscriptionsController.confirmSubscriptionPayment
 );
 
 // Trocar de plano
 organizationSubscriptionsRouter.patch(
-  "/:organizationId/change-plan",
+  "/:slug/change-plan",
   authenticateJWT,
   OrganizationSubscriptionsController.changePlan
 );
 
 // Cancelar assinatura
 organizationSubscriptionsRouter.post(
-  "/:organizationId/cancel",
+  "/:slug/cancel",
   authenticateJWT,
   OrganizationSubscriptionsController.cancelSubscription
 );
 
 // Processar pagamento atrasado
 organizationSubscriptionsRouter.post(
-  "/:organizationId/pay-overdue",
+  "/:slug/pay-overdue",
   authenticateJWT,
   OrganizationSubscriptionsController.processOverduePayment
 );
 
 // Reativar assinatura
 organizationSubscriptionsRouter.post(
-  "/:organizationId/reactivate",
+  "/:slug/reactivate",
   authenticateJWT,
   OrganizationSubscriptionsController.reactivateSubscription
 );
 
-export default organizationSubscriptionsRouter;
+
