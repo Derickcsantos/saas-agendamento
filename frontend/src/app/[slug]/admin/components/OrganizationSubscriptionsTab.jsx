@@ -29,6 +29,7 @@ import {
 } from "react-icons/fi";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 
@@ -43,6 +44,7 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const { confirm } = useConfirm();
 
   // Buscar planos e assinatura ativa
   useEffect(() => {
@@ -51,7 +53,7 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
         const [plansRes, subscriptionRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/plans`),
           fetchWithAuth(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}/active`
+            `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.slug_organization}/active`
           ),
         ]);
 
@@ -69,7 +71,7 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
     };
 
     fetchData();
-  }, [org.id]);
+  }, [org.slug_organization]);
 
   const handleSelectPlan = async (plan) => {
     setSelectedPlan(plan);
@@ -78,21 +80,25 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
 
   const refreshActiveSubscription = async () => {
     const subscriptionRes = await fetchWithAuth(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}/active`
+      `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.slug_organization}/active`
     );
     const subscriptionData = await subscriptionRes.json();
     setActiveSubscription(subscriptionData.data || null);
   };
 
   const handleChangePlan = async (newPlanId) => {
-    if (!window.confirm("Tem certeza que deseja trocar de plano?")) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: "Trocar de plano",
+      message: "Deseja trocar seu plano?",
+      confirmColor: strong,
+    });
+
+    if (!confirmed) return
 
     setProcessing(true);
     try {
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}/change-plan`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.slug_organization}/change-plan`,
         {
           method: "PATCH",
           headers: {
@@ -112,7 +118,7 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
 
       // Recarregar dados
       const subscriptionRes = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}/active`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.slug_organization}/active`
       );
       const subscriptionData = await subscriptionRes.json();
       setActiveSubscription(subscriptionData.data || null);
@@ -129,14 +135,19 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
       ? "Cancelar assinatura imediatamente?"
       : "Cancelar assinatura ao final do período?";
 
-    if (!window.confirm(message)) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: "Cancelar assinatura",
+      message: message,
+      confirmVariant: "danger",
+      confirmColor: strong,
+    });
+
+    if (!confirmed) return
 
     setProcessing(true);
     try {
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}/cancel`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.slug_organization}/cancel`,
         {
           method: "POST",
           headers: {
@@ -156,7 +167,7 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
 
       // Recarregar dados
       const subscriptionRes = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}/active`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.slug_organization}/active`
       );
       const subscriptionData = await subscriptionRes.json();
       setActiveSubscription(subscriptionData.data || null);
@@ -169,14 +180,19 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
   };
 
   const handleReactivateSubscription = async () => {
-    if (!window.confirm("Reativar assinatura?")) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: "Reativar a assinatura",
+      message: "Deseja reativar sua assinatura?",
+      confirmVariant: "primary",
+      confirmColor: strong,
+    });
+
+    if (!confirmed) return
 
     setProcessing(true);
     try {
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}/reactivate`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.slug_organization}/reactivate`,
         {
           method: "POST",
         }
@@ -192,7 +208,7 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
 
       // Recarregar dados
       const subscriptionRes = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}/active`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.slug_organization}/active`
       );
       const subscriptionData = await subscriptionRes.json();
       setActiveSubscription(subscriptionData.data || null);
@@ -215,6 +231,19 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
     );
   }
 
+  const periodStart = activeSubscription?.current_period_start
+    ? new Date(activeSubscription.current_period_start)
+    : null;
+  const periodEnd = activeSubscription?.current_period_end
+    ? new Date(activeSubscription.current_period_end)
+    : null;
+  const isActiveByPeriod = !!(
+    periodStart &&
+    periodEnd &&
+    new Date() >= periodStart &&
+    new Date() <= periodEnd
+  );
+
   return (
     <div className="space-y-8">
       {/* Assinatura Ativa */}
@@ -234,13 +263,13 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
             <div className="text-right">
               <p className="text-sm text-gray-600">Status</p>
               <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                activeSubscription.status === "active"
+                activeSubscription.status === "active" || isActiveByPeriod
                   ? "bg-green-100 text-green-800"
                   : activeSubscription.status === "trialing"
                   ? "bg-blue-100 text-blue-800"
                   : "bg-yellow-100 text-yellow-800"
               }`}>
-                {activeSubscription.status === "active"
+                {activeSubscription.status === "active" || isActiveByPeriod
                   ? "Ativa"
                   : activeSubscription.status === "trialing"
                   ? "Em Teste"
@@ -262,7 +291,15 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-600 mb-1">Próxima Cobrança</p>
               <p className="text-lg font-semibold text-gray-900">
-                {new Date(activeSubscription.current_period_end * 1000).toLocaleDateString("pt-BR")}
+                {periodEnd ? periodEnd.toLocaleDateString("pt-BR") : "-"}
+              </p>
+            </div>
+
+            {/* Período Atual */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm text-gray-600 mb-1">Período Atual</p>
+              <p className="text-sm font-semibold text-gray-900">
+                {periodStart ? periodStart.toLocaleDateString("pt-BR") : "-"} — {periodEnd ? periodEnd.toLocaleDateString("pt-BR") : "-"}
               </p>
             </div>
 
@@ -296,21 +333,30 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
           </div>
 
           {/* Ações */}
-          <div className="flex flex-col gap-3 md:flex-row">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <button
               onClick={() => setShowPaymentModal(true)}
               disabled={processing}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition font-medium"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:opacity-95 disabled:opacity-50 transition font-semibold shadow-sm"
             >
               <FiArrowRight size={18} />
               Trocar de Plano
+            </button>
+
+            <button
+              type="button"
+              disabled={processing}
+              className="flex items-center justify-center gap-2 px-6 py-3 border border-gray-300 text-gray-800 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition font-semibold"
+            >
+              <FiCreditCard size={18} />
+              Atualizar Forma de Pagamento
             </button>
 
             {activeSubscription.cancel_at_period_end ? (
               <button
                 onClick={handleReactivateSubscription}
                 disabled={processing}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition font-medium"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition font-semibold"
               >
                 <FiRefreshCcw size={18} />
                 Reativar
@@ -319,21 +365,12 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
               <button
                 onClick={() => handleCancelSubscription(false)}
                 disabled={processing}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 transition font-medium"
+                className="flex items-center justify-center gap-2 px-6 py-3 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50 transition font-semibold"
               >
                 <FiX size={18} />
-                Cancelar ao Final do Período
+                Solicitar Cancelamento
               </button>
             )}
-
-            <button
-              onClick={() => handleCancelSubscription(true)}
-              disabled={processing}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border-2 border-orange-600 text-orange-600 rounded-lg hover:bg-orange-50 disabled:opacity-50 transition font-medium"
-            >
-              <FiAlertCircle size={18} />
-              Cancelar Agora
-            </button>
           </div>
         </div>
       ) : (
@@ -522,7 +559,7 @@ function PaymentModal({
       }
 
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.slug_organization}`,
         {
           method: "POST",
           headers: {

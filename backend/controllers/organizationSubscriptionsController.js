@@ -50,14 +50,31 @@ export const OrganizationSubscriptionsController = {
   // Obter assinatura ativa da organização
   getActiveSubscription: async (req, res) => {
     try {
-      const { organizationId } = req.params;
+      const { slug } = req.params;
+     
+      const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+      if (orgError || !org) {
+        return res.status(404).json({ error: "Organização não encontrada" });
+      }
+
+      let orgId = org.id;
+
+      const nowIso = new Date().toISOString();
 
       const { data, error } = await supabase
         .from("subscriptions")
         .select("*")
-        .eq("organization_id", organizationId)
-        .in("status", ["active", "trialing", "paused"])
-        .single();
+        .eq("organization_id", orgId)
+        .lte("current_period_start", nowIso)
+        .gte("current_period_end", nowIso)
+        .order("current_period_end", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (error && error.code !== "PGRST116") {
         throw error;
@@ -90,8 +107,18 @@ export const OrganizationSubscriptionsController = {
   // Criar nova assinatura para organização
   createSubscription: async (req, res) => {
     try {
-      const { organizationId } = req.params;
       const { priceId, customerEmail, paymentMethodId, organizationData } = req.body;
+      const { slug } = req.params;
+     
+      const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+      if (orgError || !org) {
+        return res.status(404).json({ error: "Organização não encontrada" });
+      }
 
       if (!priceId || !customerEmail) {
         return safeJson(res, 400, { error: "priceId e customerEmail são obrigatórios" });
@@ -110,7 +137,7 @@ export const OrganizationSubscriptionsController = {
         const customer = await stripe.customers.create({
           email: customerEmail,
           metadata: {
-            organization_id: organizationId,
+            organization_id: org.id,
             organization_name: organizationData?.name || "",
           },
         });
@@ -143,7 +170,7 @@ export const OrganizationSubscriptionsController = {
         default_payment_method: paymentMethodId || undefined,
         expand: ["latest_invoice.payment_intent", "items.data.price.product"],
         metadata: {
-          organization_id: organizationId,
+          organization_id: org.id,
         },
       });
 
@@ -160,7 +187,7 @@ export const OrganizationSubscriptionsController = {
           : null;
 
       const subscriptionInsertPayload = {
-        organization_id: organizationId,
+        organization_id: org.id,
         plan_id: priceId,
         status: subscription.status,
         current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
@@ -202,11 +229,21 @@ export const OrganizationSubscriptionsController = {
   // Criar PaymentMethod no backend (evita Stripe direto no frontend)
   createPaymentMethod: async (req, res) => {
     try {
-      const { organizationId } = req.params;
+      const { slug } = req.params;
       const { cardNumber, expiryMonth, expiryYear, cvc, cardholderName, email } = req.body || {};
 
       if (!cardNumber || !expiryMonth || !expiryYear || !cvc || !cardholderName) {
         return safeJson(res, 400, { error: "Dados do cartão incompletos" });
+      }
+
+      const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+      if (orgError || !org) {
+        return res.status(404).json({ error: "Organização não encontrada" });
       }
 
       const paymentMethod = await stripe.paymentMethods.create({
@@ -222,7 +259,7 @@ export const OrganizationSubscriptionsController = {
           email: email || undefined,
         },
         metadata: {
-          organization_id: organizationId,
+          organization_id: org.id,
         },
       });
 
@@ -236,15 +273,23 @@ export const OrganizationSubscriptionsController = {
   // Confirmar pagamento da assinatura
   confirmSubscriptionPayment: async (req, res) => {
     try {
-      const { organizationId } = req.params;
+      const { slug } = req.params;
       const { clientSecret, paymentIntentId } = req.body;
 
       if (!clientSecret && !paymentIntentId) {
         return safeJson(res, 400, { error: "clientSecret ou paymentIntentId é obrigatório" });
       }
 
-      // Extrair ID do PaymentIntent do clientSecret se fornecido
-      // clientSecret formato: pi_xxxxx_secret_yyyyyyy
+      const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+      if (orgError || !org) {
+        return res.status(404).json({ error: "Organização não encontrada" });
+      }
+
       let piId = paymentIntentId;
       if (clientSecret && !piId) {
         piId = clientSecret.split("_secret_")[0];
@@ -260,7 +305,7 @@ export const OrganizationSubscriptionsController = {
             status: "active",
             updated_at: new Date().toISOString() 
           })
-          .eq("organization_id", organizationId);
+          .eq("organization_id", org.id);
 
         if (dbError) {
           console.error("Erro ao atualizar assinatura:", dbError);
@@ -279,18 +324,28 @@ export const OrganizationSubscriptionsController = {
   // Trocar de plano
   changePlan: async (req, res) => {
     try {
-      const { organizationId } = req.params;
+      const { slug } = req.params;
       const { newPriceId } = req.body;
 
       if (!newPriceId) {
         return safeJson(res, 400, { error: "newPriceId é obrigatório" });
       }
 
+      const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+      if (orgError || !org) {
+        return res.status(404).json({ error: "Organização não encontrada" });
+      }
+
       // Obter assinatura atual
       const { data: subscriptionData, error: dbError } = await supabase
         .from("subscriptions")
         .select("stripe_subscription_id")
-        .eq("organization_id", organizationId)
+        .eq("organization_id", org.id)
         .in("status", ["active", "trialing", "paused"])
         .single();
 
@@ -319,7 +374,7 @@ export const OrganizationSubscriptionsController = {
       await supabase
         .from("subscriptions")
         .update({ plan_id: newPriceId, updated_at: new Date().toISOString() })
-        .eq("organization_id", organizationId);
+        .eq("organization_id", org.id);
 
       return safeJson(res, 200, { data: subscription });
     } catch (error) {
@@ -331,14 +386,24 @@ export const OrganizationSubscriptionsController = {
   // Cancelar assinatura
   cancelSubscription: async (req, res) => {
     try {
-      const { organizationId } = req.params;
+      const { slug } = req.params;
       const { immediate = false } = req.body;
+
+    const { data: org, orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
 
       // Obter assinatura
       const { data: subscriptionData, error: dbError } = await supabase
         .from("subscriptions")
         .select("stripe_subscription_id")
-        .eq("organization_id", organizationId)
+        .eq("organization_id", org.id)
         .in("status", ["active", "trialing", "paused"])
         .single();
 
@@ -367,7 +432,7 @@ export const OrganizationSubscriptionsController = {
           canceled_at: immediate ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
         })
-        .eq("organization_id", organizationId);
+        .eq("organization_id", org.id);
 
       return safeJson(res, 200, { data: canceledSubscription });
     } catch (error) {
@@ -379,8 +444,18 @@ export const OrganizationSubscriptionsController = {
   // Processar pagamento atrasado
   processOverduePayment: async (req, res) => {
     try {
-      const { organizationId } = req.params;
+      const { slug } = req.params;
       const { paymentMethodId } = req.body;
+
+      const { data: org, orgError } = await supabase
+        .from("organizations")
+        .select("id")
+        .eq("slug_organization", slug)
+        .single();
+
+      if (orgError || !org) {
+        return res.status(404).json({ error: "Organização não encontrada" });
+      }
 
       if (!paymentMethodId) {
         return safeJson(res, 400, { error: "paymentMethodId é obrigatório" });
@@ -390,7 +465,7 @@ export const OrganizationSubscriptionsController = {
       const { data: subscriptionData, error: dbError } = await supabase
         .from("subscriptions")
         .select("stripe_subscription_id")
-        .eq("organization_id", organizationId)
+        .eq("organization_id", org.id)
         .single();
 
       if (dbError || !subscriptionData) {
@@ -428,13 +503,23 @@ export const OrganizationSubscriptionsController = {
   // Reativar assinatura cancelada
   reactivateSubscription: async (req, res) => {
     try {
-      const { organizationId } = req.params;
+      const { slug } = req.params;
+
+      const { data: org, orgError } = await supabase
+        .from("organizations")
+        .select("id")
+        .eq("slug_organization", slug)
+        .single();
+
+      if (orgError || !org) {
+        return res.status(404).json({ error: "Organização não encontrada" });
+      }
 
       // Obter assinatura cancelada
       const { data: subscriptionData, error: dbError } = await supabase
         .from("subscriptions")
         .select("stripe_subscription_id")
-        .eq("organization_id", organizationId)
+        .eq("organization_id", org.id)
         .eq("status", "canceled")
         .single();
 
@@ -467,7 +552,7 @@ export const OrganizationSubscriptionsController = {
           canceled_at: null,
           updated_at: new Date().toISOString(),
         })
-        .eq("organization_id", organizationId);
+        .eq("organization_id", org.id);
 
       return safeJson(res, 200, { data: newSubscription });
     } catch (error) {
