@@ -27,8 +27,8 @@ export const getAdminAppointments = async (req, res) => {
         employees:employee_id (name)
       `)
       .eq('organization_id', org.id)
-      .order('appointment_date', { ascending: true })
-      .order('start_time', { ascending: true });
+      .order('appointment_date', { ascending: false })
+      .order('start_time', { ascending: false });
 
     if (search) {
       query = query.or(`client_name.ilike.%${search}%,client_email.ilike.%${search}%,client_phone.ilike.%${search}%`);
