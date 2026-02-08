@@ -648,7 +648,7 @@ export const createAppointment = async (req, res) => {
             }
 
             const eventBody = {
-              summary: `Agendamento: ${client_name}`,
+              summary: `Agendamento: ${client_name} - ${serviceData?.name || "Serviço"}`,
               description: `Serviço: ${serviceData?.name}\nProfissional: ${employee?.name}\nPreço original: R$ ${originalPriceToUse?.toFixed(2) || original_price}\nPreço final: R$ ${finalPriceToUse?.toFixed(2) || final_price}\nCliente: ${client_name}\nTelefone: ${normalizedClientPhone}`,
               start: { dateTime: eventStart, timeZone: "America/Sao_Paulo" },
               end: { dateTime: eventEnd, timeZone: "America/Sao_Paulo" },
