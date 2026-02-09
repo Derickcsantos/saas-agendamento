@@ -124,6 +124,7 @@ export default function AppointmentsTab({ org }) {
     employee: null,
     date: "",
     time: "",
+    price: "",
   });
   const [filters, setFilters] = useState({
     search: "",
@@ -338,6 +339,7 @@ export default function AppointmentsTab({ org }) {
         employee: data.employees,
         date: data.appointment_date,
         time: { start: data.start_time.slice(0,5), end: data.end_time.slice(0,5) },
+        price: data.price?.final_price ?? data.price?.original_price ?? "",
       });
 
       // Carregar horários disponíveis (apenas se houver serviço com duração)
@@ -363,6 +365,13 @@ export default function AppointmentsTab({ org }) {
         start_time: editData.time.start,
         end_time: editData.time.end,
       };
+
+      if (editData.price !== "" && editData.price !== null && editData.price !== undefined) {
+        const parsedPrice = Number(editData.price);
+        if (!Number.isNaN(parsedPrice)) {
+          body.final_price = parsedPrice;
+        }
+      }
 
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}/${editingAppointment.id}`,
@@ -550,7 +559,7 @@ export default function AppointmentsTab({ org }) {
           <h2 className="text-xl font-bold mb-4">Editar Agendamento</h2>
 
           {/* infos */}
-          <p><strong>Cliente:</strong> {a.client_name}</p>
+          <p><strong>Cliente:</strong> {a.client_name || a.client?.name || "—"}</p>
           <p><strong>Serviço:</strong> {a.services?.name || 'Não informado'}</p>
 
           {/* LINK DO MEET */}
@@ -626,6 +635,17 @@ export default function AppointmentsTab({ org }) {
               ))}
             </div>
           )}
+
+          {/* VALOR */}
+          <label className="block mt-4 font-medium">Valor do agendamento</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            className="w-full border p-2 rounded"
+            value={editData.price}
+            onChange={(e) => setEditData({ ...editData, price: e.target.value })}
+          />
 
           {/* Botões */}
           <div className="flex justify-end mt-6 gap-3">
