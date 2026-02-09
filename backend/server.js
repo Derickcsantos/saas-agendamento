@@ -41,6 +41,7 @@ import { marcafyMarketingRouter } from './routes/geminiMarcafyMarketingRoutes.js
 import { marcafyInstagramStatsRouter } from './routes/marcafyInstagramStatsRoutes.js';
 import { closedPeriodsRouter } from './routes/closedPeriodsRoutes.js';
 import { calendarColorsRouter } from './routes/calendarColorsRoutes.js';
+import { employeeCalendarColorsRouter } from './routes/employeeCalendarColorsRoutes.js';
 import { whatsappOrganizationRouter } from './routes/whatsappOrganizationRoutes.js';
 import { clientRouter } from './routes/clientRoutes.js';
 import { organizationsPaymentsRouter } from './routes/organizationsPaymentsRoutes.js';
@@ -113,6 +114,7 @@ app.use('/api/marketing/instagram/marcafy', marcafyMarketingRouter)
 app.use('/api/marcafy-instagram', marcafyInstagramStatsRouter)
 app.use('/api/closed-periods', closedPeriodsRouter);
 app.use('/api/calendar-colors', calendarColorsRouter);
+app.use('/api/employee-calendar-colors', employeeCalendarColorsRouter);
 app.use('/api/whatsapp-organization', whatsappOrganizationRouter);
 app.use('/api/clients', clientRouter)
 app.use('/api/payments', organizationsPaymentsRouter)

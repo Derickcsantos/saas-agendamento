@@ -105,7 +105,6 @@ export default function AppointmentsTab({ org }) {
   const [appointments, setAppointments] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [employees, setEmployees] = useState([]);
-  const [calendarColors, setCalendarColors] = useState([]);
   const [employeeColorMap, setEmployeeColorMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("calendar");
@@ -170,7 +169,7 @@ export default function AppointmentsTab({ org }) {
     []
   );
 
-  const loadEmployeeColors = async () => {
+  const loadEmployees = async () => {
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/admin/employees/${org.slug_organization}`,
@@ -178,18 +177,30 @@ export default function AppointmentsTab({ org }) {
       );
       const data = await res.json();
       setEmployees(data);
-      
-      // Criar mapa de cores dos funcionários
+    } catch (err) {
+      console.log('Erro ao carregar funcionários:', err);
+    }
+  };
+
+  const loadEmployeeColors = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/employee-calendar-colors/${org.slug_organization}`,
+        { credentials: 'include' }
+      );
+      const data = await res.json();
+
       const colorMap = {};
-      data.forEach(emp => {
-        if (emp.calendar_color_id) {
-          colorMap[emp.id] = emp.calendar_color_id;
+      (Array.isArray(data) ? data : []).forEach((item) => {
+        if (item.employee_id && item.hex_color) {
+          colorMap[item.employee_id] = item.hex_color;
         }
       });
+
       setEmployeeColorMap(colorMap);
       return colorMap;
     } catch (err) {
-      console.log('Erro ao carregar cores dos funcionários:', err);
+      console.log('Erro ao carregar cores por funcionário:', err);
       return {};
     }
   };
@@ -198,6 +209,10 @@ export default function AppointmentsTab({ org }) {
   async function loadAppointments(customFilters = filters) {
     setLoading(true);
     try {
+      if (!employees.length) {
+        await loadEmployees();
+      }
+
       // Recarregar cores dos funcionários
       const colorMap = await loadEmployeeColors();
       
@@ -234,11 +249,7 @@ export default function AppointmentsTab({ org }) {
             backgroundColor = "#059669";
           } else if (a.status === "confirmed" && colorMap[a.employee_id]) {
             // Se está confirmado E o funcionário tem cor, usar a cor do funcionário
-            const colorId = colorMap[a.employee_id];
-            const colorObj = calendarColors.find(c => c.id === colorId);
-            if (colorObj?.hex_color) {
-              backgroundColor = colorObj.hex_color;
-            }
+            backgroundColor = colorMap[a.employee_id];
           }
           
           return {
@@ -260,15 +271,10 @@ export default function AppointmentsTab({ org }) {
   }
 
   useEffect(() => {
-    loadAppointments();
-    
-    // Carregar cores disponíveis
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/calendar-colors/${org.slug_organization}`, {
-      credentials: 'include'
-    })
-      .then((r) => r.json())
-      .then((data) => setCalendarColors(data))
-      .catch(err => console.log('Erro ao carregar cores:', err));
+    (async () => {
+      await loadEmployees();
+      await loadAppointments();
+    })();
   }, []);
 
   const updateFilter = (field, value) => {
@@ -764,11 +770,7 @@ export default function AppointmentsTab({ org }) {
                   } else if (a.status === "completed") {
                     employeeColor = "#059669";
                   } else if (a.status === "confirmed" && employeeColorMap[a.employee_id]) {
-                    const colorId = employeeColorMap[a.employee_id];
-                    const colorObj = calendarColors.find(c => c.id === colorId);
-                    if (colorObj?.hex_color) {
-                      employeeColor = colorObj.hex_color;
-                    }
+                    employeeColor = employeeColorMap[a.employee_id];
                   }
                   
                   return (
