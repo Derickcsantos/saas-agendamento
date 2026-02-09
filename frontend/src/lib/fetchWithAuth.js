@@ -1,13 +1,13 @@
-/**
- * fetchWithAuth - Wrapper universal para fetch que:
- * 1. Tenta usar cookie (credentials: 'include')
- * 2. Se token existe em sessionStorage (fallback iOS/Safari), injeta no header Authorization
- * 3. Funciona para TODAS as requisições, autenticadas ou não
- */
+
 export async function fetchWithAuth(url, options = {}) {
   if (!url) {
     throw new Error('fetchWithAuth: url é obrigatório');
   }
+
+  const isMapboxUrl = (target) => {
+    const raw = typeof target === 'string' ? target : target?.url;
+    return typeof raw === 'string' && (raw.includes('api.mapbox.com') || raw.includes('events.mapbox.com'));
+  };
 
   const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
 
@@ -15,12 +15,11 @@ export async function fetchWithAuth(url, options = {}) {
     ...options.headers,
   };
 
-  // Se houver token em sessionStorage (fallback para iOS/Safari), injeta no header
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Resolve URL relativa para evitar erros de origem / mixed content
   const base =
     process.env.NEXT_PUBLIC_API_URL ||
     (typeof window !== 'undefined' && window.location?.origin) ||
@@ -42,20 +41,31 @@ export async function fetchWithAuth(url, options = {}) {
   }
 }
 
-/**
- * Monkey-patch fetch global para injetar token automaticamente em TODAS as requisições
- * sem precisar alterar cada chamada individualmente
- */
+
 if (typeof window !== 'undefined' && !window.__fetchAuthPatched) {
   const originalFetch = window.fetch;
+
+  const isMapboxUrl = (target) => {
+    const raw = typeof target === 'string' ? target : target?.url;
+    return typeof raw === 'string' && (raw.includes('api.mapbox.com') || raw.includes('events.mapbox.com'));
+  };
 
   window.fetch = async function(...args) {
     const url = args[0];
     const options = args[1] || {};
 
-    // Evita loop infinito - não patcha requisições já tratadas
     if (options.__fetchAuthApplied) {
       return originalFetch.apply(this, args);
+    }
+
+    if (isMapboxUrl(url)) {
+      if (url instanceof Request) {
+        const safeRequest = new Request(url, { credentials: 'omit' });
+        return originalFetch.apply(this, [safeRequest]);
+      }
+
+      const safeOptions = { ...options, credentials: 'omit' };
+      return originalFetch.apply(this, [url, safeOptions]);
     }
 
     const token = sessionStorage.getItem('token');
