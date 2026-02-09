@@ -666,6 +666,7 @@ export default function ClientLanding({
               <a href="#beneficios" className="hover:text-gray-900 transition">Benefícios</a>
               <a href="#contato" className="hover:text-gray-900 transition">Contato</a>
               <a href={`/${slug}/agendar`} className="hover:text-gray-900 transition">Agendar</a>
+              <a href={`/${slug}/rota`} className="hover:text-gray-900 transition">Endereço</a>
             </div>
           </div>
           
