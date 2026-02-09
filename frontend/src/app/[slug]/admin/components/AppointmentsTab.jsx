@@ -342,7 +342,6 @@ export default function AppointmentsTab({ org }) {
         price: data.price?.final_price ?? data.price?.original_price ?? "",
       });
 
-      // Carregar horários disponíveis (apenas se houver serviço com duração)
       if (data.services?.duration) {
         await loadEditAvailableTimes(
           data.employees.id,
@@ -395,9 +394,7 @@ export default function AppointmentsTab({ org }) {
     }
   };
 
-  // 🆕 Handlers para swipe horizontal no mobile
   const handleTouchStart = (e) => {
-    // Ignorar se clicou em botão ou evento
     const target = e.target;
     if (target.closest('.fc-button') || target.closest('.fc-event')) {
       return;
@@ -417,7 +414,6 @@ export default function AppointmentsTab({ org }) {
     const deltaX = Math.abs(touchEndX.current - touchStartX.current);
     const deltaY = Math.abs(touchEndY - touchStartY.current);
     
-    // Considerar swipe apenas se movimento horizontal for maior que vertical
     if (deltaX > deltaY && deltaX > 10) {
       isSwiping.current = true;
     }
@@ -426,7 +422,6 @@ export default function AppointmentsTab({ org }) {
   const handleTouchEnd = () => {
     if (!calendarRef.current || touchStartX.current === 0) return;
     
-    // Só processar swipe se realmente houve movimento horizontal significativo
     if (!isSwiping.current) {
       touchStartX.current = 0;
       touchEndX.current = 0;
@@ -439,23 +434,20 @@ export default function AppointmentsTab({ org }) {
 
     const api = calendarRef.current.getApi();
 
-    // Swipe para a esquerda (próximo dia)
     if (swipeDistance > minSwipeDistance) {
       api.next();
     }
-    // Swipe para a direita (dia anterior)
+
     else if (swipeDistance < -minSwipeDistance) {
       api.prev();
     }
 
-    // Reset
     touchStartX.current = 0;
     touchEndX.current = 0;
     touchStartY.current = 0;
     isSwiping.current = false;
   };
 
-  // Adicionar event listeners quando o calendário for montado
   useEffect(() => {
     if (!calendarRef.current) return;
 
@@ -473,7 +465,6 @@ export default function AppointmentsTab({ org }) {
     };
   }, [calendarRef.current]);
 
-  // 🆕 Handler para arrastar e soltar eventos (reagendar)
   const handleEventDrop = async (info) => {
     const eventId = info.event.id;
     const newStart = info.event.start;
@@ -484,20 +475,17 @@ export default function AppointmentsTab({ org }) {
       return;
     }
 
-    // Formatar data e horários
     const appointmentDate = newStart.toISOString().split('T')[0];
     const startTime = newStart.toTimeString().slice(0, 5);
     const endTime = newEnd.toTimeString().slice(0, 5);
 
     try {
-      // Buscar dados completos do agendamento
       const fetchRes = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}/${eventId}`,
         { credentials: "include" }
       );
       const appointmentData = await fetchRes.json();
 
-      // Atualizar no backend
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}/${eventId}`,
         {
@@ -517,32 +505,25 @@ export default function AppointmentsTab({ org }) {
         throw new Error("Erro ao atualizar agendamento");
       }
 
-      // Recarregar agendamentos
       await loadAppointments(filters);
     } catch (error) {
       console.error("Erro ao reagendar:", error);
-      info.revert(); // Reverter a mudança visual
+      info.revert(); 
       alert("Erro ao reagendar o agendamento. Tente novamente.");
     }
   };
 
-  // 🆕 Handler para clique duplo no evento (abrir modal de edição)
   const handleEventClick = (info) => {
-    // Prevenir comportamento padrão
     info.jsEvent.preventDefault();
     info.jsEvent.stopPropagation();
     
-    // Detectar clique duplo
     if (clickTimer.current) {
-      // É um clique duplo
       clearTimeout(clickTimer.current);
       clickTimer.current = null;
       openEditModal(info.event.id);
     } else {
-      // Primeiro clique - aguardar para ver se há um segundo
       clickTimer.current = setTimeout(() => {
         clickTimer.current = null;
-        // Opcional: fazer algo no clique simples (ex: mostrar tooltip)
       }, 300);
     }
   };
