@@ -81,7 +81,7 @@ export async function getOrganizationBySlug(req, res) {
 export async function getOrganizationRoute(req, res) {
   try {
     const { slug } = req.params;
-    const { start_lng, start_lat, mode } = req.query;
+    const { start_lng, start_lat, mode, origin_address } = req.query;
 
     if (!slug) {
       return res.status(400).json({ error: 'Slug não fornecido' });
@@ -110,10 +110,10 @@ export async function getOrganizationRoute(req, res) {
 
     const encodedAddress = encodeURIComponent(org.address);
 
-    const geocodeWithToken = async (token, useHeader = false) => {
+    const geocodeWithToken = async (token, useHeader = false, encoded = encodedAddress) => {
       const geoUrl = useHeader
-        ? `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?limit=1`
-        : `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?limit=1&access_token=${token}`;
+        ? `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?limit=1`
+        : `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?limit=1&access_token=${token}`;
       const response = await fetch(geoUrl, useHeader ? {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -163,7 +163,30 @@ export async function getOrganizationRoute(req, res) {
 
     const [endLng, endLat] = feature.center;
 
-    if (!start_lng || !start_lat) {
+    let originLng = start_lng;
+    let originLat = start_lat;
+
+    if ((!originLng || !originLat) && origin_address) {
+      const encodedOrigin = encodeURIComponent(origin_address);
+      let originData = null;
+
+      if (secretToken) {
+        const result = await geocodeWithToken(secretToken, true, encodedOrigin);
+        if (result.ok) originData = result.data;
+      }
+
+      if (!originData && publicToken) {
+        const result = await geocodeWithToken(publicToken, false, encodedOrigin);
+        if (result.ok) originData = result.data;
+      }
+
+      const originFeature = originData?.features?.[0];
+      if (originFeature?.center) {
+        [originLng, originLat] = originFeature.center;
+      }
+    }
+
+    if (!originLng || !originLat) {
       return res.json({
         organization: {
           id: org.id,
@@ -178,20 +201,54 @@ export async function getOrganizationRoute(req, res) {
     const profile = ['driving', 'walking', 'cycling', 'driving-traffic'].includes(mode)
       ? mode
       : 'driving';
-    const directionsUrl = secretToken
-      ? `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start_lng},${start_lat};${endLng},${endLat}?geometries=geojson&overview=full`
-      : `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start_lng},${start_lat};${endLng},${endLat}?geometries=geojson&overview=full&access_token=${publicToken}`;
-    const dirRes = await fetch(directionsUrl, secretToken ? {
-      headers: {
-        Authorization: `Bearer ${secretToken}`,
-      },
-    } : undefined);
 
-    if (!dirRes.ok) {
-      return res.status(502).json({ error: 'Falha ao obter rota' });
+    const directionsWithToken = async (token, useHeader = false) => {
+      const url = useHeader
+        ? `https://api.mapbox.com/directions/v5/mapbox/${profile}/${originLng},${originLat};${endLng},${endLat}?geometries=geojson&overview=full`
+        : `https://api.mapbox.com/directions/v5/mapbox/${profile}/${originLng},${originLat};${endLng},${endLat}?geometries=geojson&overview=full&access_token=${token}`;
+      const response = await fetch(url, useHeader ? {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      } : undefined);
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        return { ok: false, status: response.status, body };
+      }
+
+      const data = await response.json();
+      return { ok: true, data };
+    };
+
+    let dirData = null;
+    let dirError = null;
+
+    if (secretToken) {
+      const result = await directionsWithToken(secretToken, true);
+      if (result.ok) {
+        dirData = result.data;
+      } else {
+        dirError = result;
+      }
     }
 
-    const dirData = await dirRes.json();
+    if (!dirData && publicToken) {
+      const result = await directionsWithToken(publicToken, false);
+      if (result.ok) {
+        dirData = result.data;
+      } else {
+        dirError = result;
+      }
+    }
+
+    if (!dirData) {
+      console.error('Falha ao obter rota:', dirError);
+      return res.status(502).json({
+        error: 'Falha ao obter rota',
+        details: dirError?.status ? `HTTP ${dirError.status}` : undefined,
+      });
+    }
     const route = dirData?.routes?.[0]?.geometry || null;
 
     return res.json({
