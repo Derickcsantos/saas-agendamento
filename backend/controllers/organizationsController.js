@@ -102,20 +102,60 @@ export async function getOrganizationRoute(req, res) {
       return res.status(400).json({ error: 'Endereço não cadastrado' });
     }
 
-    const mapboxToken = process.env.MAPBOX_SECRET_KEY;
-    if (!mapboxToken) {
+    const secretToken = process.env.MAPBOX_SECRET_KEY;
+    const publicToken = process.env.MAPBOX_PUBLIC_KEY;
+    if (!secretToken && !publicToken) {
       return res.status(500).json({ error: 'MAPBOX_SECRET_KEY não configurada' });
     }
 
     const encodedAddress = encodeURIComponent(org.address);
-    const geoUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?limit=1&access_token=${mapboxToken}`;
 
-    const geoRes = await fetch(geoUrl);
-    if (!geoRes.ok) {
-      return res.status(502).json({ error: 'Falha ao geocodificar endereço' });
+    const geocodeWithToken = async (token, useHeader = false) => {
+      const geoUrl = useHeader
+        ? `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?limit=1`
+        : `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?limit=1&access_token=${token}`;
+      const response = await fetch(geoUrl, useHeader ? {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      } : undefined);
+      if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        return { ok: false, status: response.status, body };
+      }
+      const data = await response.json();
+      return { ok: true, data };
+    };
+
+    let geoData = null;
+    let geoError = null;
+
+    if (secretToken) {
+      const result = await geocodeWithToken(secretToken, true);
+      if (result.ok) {
+        geoData = result.data;
+      } else {
+        geoError = result;
+      }
     }
 
-    const geoData = await geoRes.json();
+    if (!geoData && publicToken) {
+      const result = await geocodeWithToken(publicToken);
+      if (result.ok) {
+        geoData = result.data;
+      } else {
+        geoError = result;
+      }
+    }
+
+    if (!geoData) {
+      console.error('Falha ao geocodificar endereço:', geoError);
+      return res.status(502).json({
+        error: 'Falha ao geocodificar endereço',
+        details: geoError?.status ? `HTTP ${geoError.status}` : undefined,
+      });
+    }
+
     const feature = geoData?.features?.[0];
     if (!feature?.center) {
       return res.status(404).json({ error: 'Não foi possível localizar o endereço' });
@@ -138,8 +178,14 @@ export async function getOrganizationRoute(req, res) {
     const profile = ['driving', 'walking', 'cycling', 'driving-traffic'].includes(mode)
       ? mode
       : 'driving';
-    const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start_lng},${start_lat};${endLng},${endLat}?geometries=geojson&overview=full&access_token=${mapboxToken}`;
-    const dirRes = await fetch(directionsUrl);
+    const directionsUrl = secretToken
+      ? `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start_lng},${start_lat};${endLng},${endLat}?geometries=geojson&overview=full`
+      : `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start_lng},${start_lat};${endLng},${endLat}?geometries=geojson&overview=full&access_token=${publicToken}`;
+    const dirRes = await fetch(directionsUrl, secretToken ? {
+      headers: {
+        Authorization: `Bearer ${secretToken}`,
+      },
+    } : undefined);
 
     if (!dirRes.ok) {
       return res.status(502).json({ error: 'Falha ao obter rota' });
