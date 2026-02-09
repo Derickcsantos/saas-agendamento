@@ -26,7 +26,9 @@ export default function RotaPage({ slug }) {
 
     const sourceId = "route";
     if (mapInstance.getSource(sourceId)) {
-      mapInstance.removeLayer("route-line");
+      if (mapInstance.getLayer("route-line")) {
+        mapInstance.removeLayer("route-line");
+      }
       mapInstance.removeSource(sourceId);
     }
 
@@ -131,6 +133,8 @@ export default function RotaPage({ slug }) {
 
     const load = async () => {
       try {
+        setLoading(true);
+        setError("");
         if (!process.env.NEXT_PUBLIC_MAPBOX_PUBLIC_KEY) {
           throw new Error("MAPBOX_PUBLIC_KEY não configurada");
         }

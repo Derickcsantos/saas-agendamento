@@ -110,10 +110,10 @@ export async function getOrganizationRoute(req, res) {
 
     const encodedAddress = encodeURIComponent(org.address);
 
-    const geocodeWithToken = async (token, useHeader = false, encoded = encodedAddress) => {
+    const geocodeWithToken = async (token, useHeader = false, encoded = encodedAddress, extraParams = '') => {
       const geoUrl = useHeader
-        ? `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?limit=1`
-        : `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?limit=1&access_token=${token}`;
+        ? `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?limit=1${extraParams}`
+        : `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?limit=1${extraParams}&access_token=${token}`;
       const response = await fetch(geoUrl, useHeader ? {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -130,8 +130,10 @@ export async function getOrganizationRoute(req, res) {
     let geoData = null;
     let geoError = null;
 
+    const destinationParams = '&country=br&types=address,place,postcode';
+
     if (secretToken) {
-      const result = await geocodeWithToken(secretToken, true);
+      const result = await geocodeWithToken(secretToken, true, encodedAddress, destinationParams);
       if (result.ok) {
         geoData = result.data;
       } else {
@@ -140,7 +142,7 @@ export async function getOrganizationRoute(req, res) {
     }
 
     if (!geoData && publicToken) {
-      const result = await geocodeWithToken(publicToken);
+      const result = await geocodeWithToken(publicToken, false, encodedAddress, destinationParams);
       if (result.ok) {
         geoData = result.data;
       } else {
@@ -169,14 +171,67 @@ export async function getOrganizationRoute(req, res) {
     if ((!originLng || !originLat) && origin_address) {
       const encodedOrigin = encodeURIComponent(origin_address);
       let originData = null;
+      const originParams = `&country=br&types=address,place,postcode&proximity=${endLng},${endLat}`;
 
-      if (secretToken) {
-        const result = await geocodeWithToken(secretToken, true, encodedOrigin);
+      const cepMatch = origin_address.match(/(\d{5}-?\d{3})/);
+      const cepOnly = cepMatch ? cepMatch[1].replace(/\D/g, '') : null;
+
+      if (cepOnly) {
+        try {
+          const cepRes = await fetch(`https://brasilapi.com.br/api/cep/v1/${cepOnly}`);
+          const cepData = await cepRes.json();
+
+          if (cepData?.street || cepData?.city) {
+            const numberMatch = origin_address.match(/(\d+)/g);
+            const number = numberMatch ? numberMatch[numberMatch.length - 1] : '';
+            const street = cepData.street || '';
+            const neighborhood = cepData.neighborhood || '';
+            const city = cepData.city || '';
+            const state = cepData.state || '';
+            const fullAddress = `${street} ${number}, ${neighborhood}, ${city} - ${state}, Brasil, CEP ${cepOnly}`
+              .replace(/\s+/g, ' ')
+              .trim();
+            const encodedFromCep = encodeURIComponent(fullAddress);
+
+            const cepAddressParams = `&country=br&types=address&autocomplete=false&fuzzy_match=false`;
+
+            if (secretToken) {
+              const result = await geocodeWithToken(secretToken, true, encodedFromCep, cepAddressParams);
+              if (result.ok) originData = result.data;
+            }
+
+            if (!originData && publicToken) {
+              const result = await geocodeWithToken(publicToken, false, encodedFromCep, cepAddressParams);
+              if (result.ok) originData = result.data;
+            }
+          }
+
+          if (!originData) {
+            const cepParams = '&country=br&types=postcode&autocomplete=false&fuzzy_match=false';
+            const encodedCep = encodeURIComponent(cepOnly);
+
+            if (secretToken) {
+              const result = await geocodeWithToken(secretToken, true, encodedCep, cepParams);
+              if (result.ok) originData = result.data;
+            }
+
+            if (!originData && publicToken) {
+              const result = await geocodeWithToken(publicToken, false, encodedCep, cepParams);
+              if (result.ok) originData = result.data;
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao buscar CEP na BrasilAPI:', err);
+        }
+      }
+
+      if (!originData && secretToken) {
+        const result = await geocodeWithToken(secretToken, true, encodedOrigin, originParams);
         if (result.ok) originData = result.data;
       }
 
       if (!originData && publicToken) {
-        const result = await geocodeWithToken(publicToken, false, encodedOrigin);
+        const result = await geocodeWithToken(publicToken, false, encodedOrigin, originParams);
         if (result.ok) originData = result.data;
       }
 
