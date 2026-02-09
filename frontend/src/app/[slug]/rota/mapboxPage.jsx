@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import { Router } from "lucide-react";
 
 export default function RotaPage({ slug }) {
   const mapContainerRef = useRef(null);
@@ -226,6 +227,7 @@ export default function RotaPage({ slug }) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 dark:from-gray-950 dark:via-gray-950 dark:to-gray-900 px-3 py-5 sm:px-6 lg:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-120px)] w-full max-w-6xl flex-col gap-5">
+        
         <div
           className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/90 p-5 sm:p-6 shadow-[0_16px_50px_rgba(15,23,42,0.12)] backdrop-blur dark:border-gray-800 dark:bg-gray-900/80"
           style={{
@@ -244,17 +246,38 @@ export default function RotaPage({ slug }) {
 
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={handleUseLocation}
-                className="rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-lg transition"
-                style={{ backgroundColor: palette?.strong_color || "#7c3aed" }}
+                onClick={() => window.location.href=`/${slug}`}
+                className="rounded-xl px-4 py-2 text-sm border border-gray-200 font-semibold text-white shadow-lg transition"
+                style={{ backgroundColor: "#ffffff"|| "#7c3aed" }}
               >
-                Usar minha localização
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="15"
+                  height="15"
+                  viewBox="-19.04 0 75.803 75.803"
+                >
+                  <g
+                    id="Group_64"
+                    data-name="Group 64"
+                    transform="translate(-624.082 -383.588)"
+                  >
+                    <path
+                      id="Path_56"
+                      fill={palette?.strong_color || "#7c3aed"}
+                      d="M660.313 383.588a1.5 1.5 0 0 1 1.06 2.561l-33.556 33.56a2.53 2.53 0 0 0 0 3.564l33.556 33.558a1.5 1.5 0 0 1-2.121 2.121L625.7 425.394a5.527 5.527 0 0 1 0-7.807l33.556-33.559a1.5 1.5 0 0 1 1.057-.44"
+                      data-name="Path 56"
+                    ></path>
+                  </g>
+                </svg>
               </button>
               <button
                 onClick={handleCopy}
                 className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
               >
-                {copied ? "Endereço copiado" : "Copiar endereço"}
+                
+                <svg className="w-5 h-5 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
               </button>
               <a
                 href={googleMapsUrl}
@@ -263,7 +286,35 @@ export default function RotaPage({ slug }) {
                 className="rounded-xl px-4 py-2 text-sm font-medium text-white shadow-lg transition"
                 style={{ backgroundColor: palette?.strong_color || "#7c3aed" }}
               >
-                Abrir no Google Maps
+                <div className="flex">
+                  <span className="px-2">Google Maps</span> <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 48 48"
+                    >
+                      <path
+                        fill="#48b564"
+                        d="M35.76 26.36h.01S32 31.89 28.83 36c-2.74 3.55-3.54 6.59-3.77 8.06-.09.54-.53.94-1.06.94s-.97-.4-1.06-.94c-.23-1.47-1.03-4.51-3.77-8.06-.42-.55-.85-1.12-1.28-1.7L28.24 22l8.33-9.88c.92 1.93 1.43 4.09 1.43 6.38 0 2.9-.83 5.59-2.24 7.86"
+                      ></path>
+                      <path
+                        fill="#fcc60e"
+                        d="M28.24 22 17.89 34.3c-2.82-3.78-5.66-7.94-5.66-7.94h.01c-.3-.48-.57-.97-.8-1.48L19.76 15c-.79.95-1.26 2.17-1.26 3.5 0 3.04 2.46 5.5 5.5 5.5 1.71 0 3.24-.78 4.24-2"
+                      ></path>
+                      <path
+                        fill="#2c85eb"
+                        d="m28.4 4.74-8.57 10.18-6.56-5.72C15.83 6.02 19.69 4 24 4c1.54 0 3.02.26 4.4.74"
+                      ></path>
+                      <path
+                        fill="#ed5748"
+                        d="m19.83 14.92-.07.08-8.32 9.88C10.52 22.95 10 20.79 10 18.5c0-3.54 1.23-6.79 3.27-9.3z"
+                      ></path>
+                      <path
+                        fill="#5695f6"
+                        d="M28.24 22c.79-.95 1.26-2.17 1.26-3.5 0-3.04-2.46-5.5-5.5-5.5-1.71 0-3.24.78-4.24 2L28.4 4.74c3.59 1.22 6.53 3.91 8.17 7.38z"
+                      ></path>
+                    </svg>
+                </div>
               </a>
             </div>
           </div>
