@@ -78,6 +78,91 @@ export async function getOrganizationBySlug(req, res) {
   }
 }
 
+export async function getOrganizationRoute(req, res) {
+  try {
+    const { slug } = req.params;
+    const { start_lng, start_lat, mode } = req.query;
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug não fornecido' });
+    }
+
+    const { data: org, error: orgError } = await supabase
+      .from('organizations')
+      .select('id, name, address, slug_organization')
+      .eq('slug_organization', slug)
+      .maybeSingle();
+
+    if (orgError) throw orgError;
+    if (!org) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
+    if (!org.address) {
+      return res.status(400).json({ error: 'Endereço não cadastrado' });
+    }
+
+    const mapboxToken = process.env.MAPBOX_SECRET_KEY;
+    if (!mapboxToken) {
+      return res.status(500).json({ error: 'MAPBOX_SECRET_KEY não configurada' });
+    }
+
+    const encodedAddress = encodeURIComponent(org.address);
+    const geoUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?limit=1&access_token=${mapboxToken}`;
+
+    const geoRes = await fetch(geoUrl);
+    if (!geoRes.ok) {
+      return res.status(502).json({ error: 'Falha ao geocodificar endereço' });
+    }
+
+    const geoData = await geoRes.json();
+    const feature = geoData?.features?.[0];
+    if (!feature?.center) {
+      return res.status(404).json({ error: 'Não foi possível localizar o endereço' });
+    }
+
+    const [endLng, endLat] = feature.center;
+
+    if (!start_lng || !start_lat) {
+      return res.json({
+        organization: {
+          id: org.id,
+          name: org.name,
+          address: org.address,
+        },
+        destination: { lng: endLng, lat: endLat },
+        route: null,
+      });
+    }
+
+    const profile = ['driving', 'walking', 'cycling', 'driving-traffic'].includes(mode)
+      ? mode
+      : 'driving';
+    const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start_lng},${start_lat};${endLng},${endLat}?geometries=geojson&overview=full&access_token=${mapboxToken}`;
+    const dirRes = await fetch(directionsUrl);
+
+    if (!dirRes.ok) {
+      return res.status(502).json({ error: 'Falha ao obter rota' });
+    }
+
+    const dirData = await dirRes.json();
+    const route = dirData?.routes?.[0]?.geometry || null;
+
+    return res.json({
+      organization: {
+        id: org.id,
+        name: org.name,
+        address: org.address,
+      },
+      destination: { lng: endLng, lat: endLat },
+      route,
+    });
+  } catch (error) {
+    console.error('Error fetching organization route:', error);
+    return res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+}
+
 
 export async function createOrganization(req, res) {
   try {

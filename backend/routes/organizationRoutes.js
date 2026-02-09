@@ -4,6 +4,7 @@ import {
   getOrganizations,
   getOrganizationById,
   getOrganizationBySlug,
+  getOrganizationRoute,
   createOrganization,
   updateOrganization,
   deleteOrganization,
@@ -136,6 +137,7 @@ organizationRouter.get('/:id', getOrganizationById);
  *         description: Erro interno do servidor
  */
 organizationRouter.get('/slug/:slug', getOrganizationBySlug);
+organizationRouter.get('/slug/:slug/route', getOrganizationRoute);
 
 /**
  * @swagger
