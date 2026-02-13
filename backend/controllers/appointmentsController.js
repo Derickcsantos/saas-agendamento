@@ -3,6 +3,7 @@ import { google } from "googleapis";
 import axios from "axios";
 import { sendWhatsAppMessage } from "../lib/whatsapp.js";
 import { isUserAdmin } from '../middlewares/authMiddleware.js';
+import createGoogleCalendarEvent from "../utils/createGoogleCalendarEvent.js";
 
 // Garante que a linha de saldo exista para a organização
 async function ensureOrganizationBalance(organizationId) {
@@ -355,7 +356,7 @@ export const createAppointment = async (req, res) => {
 
     const { data: policy, error: policyError } = await supabase
       .from("organization_policies")
-      .select("sync_google_calendar, appointment_prepayment, prepayment_type, prepayment_value, pix_key")
+      .select("sync_google_calendar, appointment_prepayment, prepayment_type, prepayment_value, pix_key, user_main_calendar, show_all_appointments_in_google")
       .eq("organization_id", orgData.id)
       .maybeSingle();
 
@@ -479,9 +480,9 @@ export const createAppointment = async (req, res) => {
           appointment_date: date,
           start_time,
           end_time,
-          final_price: finalPriceToUse, // ✅ Usando preço validado
+          final_price: finalPriceToUse, 
           coupon_code,
-          original_price: originalPriceToUse, // ✅ Usando preço validado
+          original_price: originalPriceToUse,
           status: requiresPrepayment ? "pending" : "confirmed",
         },
       ])
@@ -492,7 +493,6 @@ export const createAppointment = async (req, res) => {
 
     console.log("✅ Agendamento criado:", created);
 
-    // Se exigir pré-pagamento (e não for admin), gerar cobrança PIX e retornar
     if (requiresPrepayment) {
       try {
         const pixCharge = await createPixCharge({
@@ -556,154 +556,70 @@ export const createAppointment = async (req, res) => {
       if (employeeError || !employee) {
         console.error("❌ Funcionário não encontrado para Google Calendar");
       } else {
-        const { data: serviceInfo, error: serviceInfoError } = await supabase
-          .from("services")
-          .select("id, name, price")
-          .eq("id", service_id)
-          .single();
+        const employeeEvent = await createGoogleCalendarEvent({
+          calendarUserId: employee.user_id,
+          appointmentId: created?.id,
+          appointmentDate: date,
+          startTime: start_time,
+          endTime: end_time,
+          clientName: client_name,
+          employeeId: employee_id,
+          employeeName: employee?.name || "-",
+          serviceId: service_id,
+          originalPrice: originalPriceToUse,
+          finalPrice: finalPriceToUse,
+          normalizedClientPhone,
+          organizationName: orgData?.name,
+          includeConference: true,
+        });
 
-        if (serviceInfoError || !serviceInfo) {
-          console.error("❌ Serviço não encontrado para Google Calendar");
+        if (employeeEvent?.created) {
+          meetingUrl = employeeEvent.meetingUrl || null;
+
+          await supabase
+            .from("appointments")
+            .update({
+              meeting_url: meetingUrl,
+              meeting_provider: meetingUrl ? "google_meet" : null,
+              google_event_id: employeeEvent.googleEventId,
+            })
+            .eq("id", created.id);
+
+          console.log("✅ Evento criado no Google Calendar (funcionário) - ID:", employeeEvent.googleEventId);
         } else {
-          const { data: googleData } = await supabase
-            .from("organization_google_calendar")
-            .select("*")
-            .eq("user_id", employee.user_id)
-            .maybeSingle();
+          console.log("⚠️ Falha ao criar evento no Google Calendar (funcionário):", employeeEvent?.reason);
+        }
 
-          if (!googleData) {
-            console.log("🔕 Funcionário não tem Google Calendar conectado.");
+        const shouldCreateMainCalendarEvent =
+          policy?.show_all_appointments_in_google === true &&
+          !!policy?.user_main_calendar &&
+          policy.user_main_calendar !== employee.user_id;
+
+        if (shouldCreateMainCalendarEvent) {
+          const mainEvent = await createGoogleCalendarEvent({
+            calendarUserId: policy.user_main_calendar,
+            appointmentId: created?.id,
+            appointmentDate: date,
+            startTime: start_time,
+            endTime: end_time,
+            clientName: client_name,
+            employeeId: employee_id,
+            employeeName: employee?.name || "-",
+            serviceId: service_id,
+            originalPrice: originalPriceToUse,
+            finalPrice: finalPriceToUse,
+            normalizedClientPhone,
+            organizationName: orgData?.name,
+            includeConference: true,
+          });
+
+          if (mainEvent?.created) {
+            console.log("✅ Evento criado no Google Calendar (usuário principal) - ID:", mainEvent.googleEventId);
           } else {
-            console.log("📌 Tokens encontrados:", googleData);
-
-            const oauth2Client = new google.auth.OAuth2(
-              process.env.GOOGLE_CLIENT_ID,
-              process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_SECRET_KEY,
-              process.env.GOOGLE_REDIRECT_URI
-            );
-
-            oauth2Client.setCredentials({
-              access_token: googleData.access_token,
-              refresh_token: googleData.refresh_token,
-              token_type: googleData.token_type,
-              scope: googleData.scope,
-              expiry_date: googleData.expiry_date,
-            });
-
-            const calendar = google.calendar({ version: "v3", auth: oauth2Client });
-
-            const eventStart = new Date(`${date}T${start_time}:00-03:00`).toISOString();
-            const eventEnd = new Date(`${date}T${end_time}:00-03:00`).toISOString();
-
-            // ✅ Buscar cor do funcionário: employee_calendar_color -> google_calendar_colors
-            console.log("🎨 Buscando cor do funcionário ID:", employee_id);
-            
-            let googleColorId = "1"; // ✅ Cor padrão como fallback (Google Calendar aceita 1-11)
-            
-            try {
-              // 1º: Buscar calendar_color_id do funcionário
-              const { data: employeeColor, error: empColorErr } = await supabase
-                .from('employee_calendar_color')
-                .select('calendar_color_id')
-                .eq('employee_id', employee_id)
-                .maybeSingle();
-
-              console.log("📌 employee_calendar_color:", { employeeColor, empColorErr });
-
-              if (employeeColor?.calendar_color_id) {
-                // 2º: Buscar google_color_id usando calendar_color_id
-                const { data: googleColor, error: googleColorErr } = await supabase
-                  .from('google_calendar_colors')
-                  .select('google_color_id')
-                  .eq('calendar_color_id', employeeColor.calendar_color_id)
-                  .single();
-
-                console.log("📌 google_calendar_colors:", { googleColor, googleColorErr });
-
-                if (googleColor?.google_color_id) {
-                  googleColorId = String(googleColor.google_color_id);
-                  console.log("✅ Cor do Google Calendar encontrada:", googleColorId);
-                } else {
-                  console.log("⚠️ google_color_id não encontrado, usando padrão (1)");
-                  googleColorId = "1";
-                }
-              } else {
-                console.log("⚠️ Funcionário sem cor atribuída, usando padrão (1)");
-                googleColorId = "1";
-              }
-            } catch (colorErr) {
-              console.error("⚠️ Erro ao buscar cor, usando padrão (1):", colorErr.message);
-              googleColorId = "1";
-            }
-
-            // Buscar dados do serviço para saber se é online
-            const { data: serviceData, error: serviceError } = await supabase
-              .from("services")
-              .select("is_online, name")
-              .eq("id", service_id)
-              .single();
-
-            if (serviceError) {
-              console.warn("⚠️ Erro ao buscar dados do serviço:", serviceError);
-            }
-
-            const eventBody = {
-              summary: `Agendamento: ${client_name} - ${serviceData?.name || "Serviço"}`,
-              description: `Serviço: ${serviceData?.name}\nProfissional: ${employee?.name}\nPreço original: R$ ${originalPriceToUse?.toFixed(2) || original_price}\nPreço final: R$ ${finalPriceToUse?.toFixed(2) || final_price}\nCliente: ${client_name}\nTelefone: ${normalizedClientPhone}`,
-              start: { dateTime: eventStart, timeZone: "America/Sao_Paulo" },
-              end: { dateTime: eventEnd, timeZone: "America/Sao_Paulo" },
-              colorId: googleColorId, // ✅ Sempre com valor (nunca null)
-            };
-
-            // Só adiciona conferenceData se for online
-            if (serviceData?.is_online) {
-              eventBody.conferenceData = {
-                createRequest: {
-                  requestId: `${created?.id}-${Date.now()}`,
-                  conferenceSolutionKey: { type: "hangoutsMeet" },
-                },
-              };
-            }
-
-            console.log("📌 Enviando evento ao Google Calendar:", {
-              summary: eventBody.summary,
-              colorId: eventBody.colorId,
-              isOnline: serviceData?.is_online,
-              eventStart,
-              eventEnd,
-            });
-
-            try {
-              const result = await calendar.events.insert({
-                calendarId: "primary",
-                requestBody: eventBody,
-                conferenceDataVersion: serviceData?.is_online ? 1 : 0,
-              });
-
-              const googleEvent = result.data;
-
-              if (serviceData?.is_online) {
-                meetingUrl =
-                  googleEvent?.conferenceData?.entryPoints?.find(
-                    (e) => e.entryPointType === "video"
-                  )?.uri || null;
-              }
-
-              await supabase
-                .from("appointments")
-                .update({
-                  meeting_url: meetingUrl,
-                  meeting_provider: meetingUrl ? "google_meet" : null,
-                  google_event_id: googleEvent.id,
-                })
-                .eq("id", created.id);
-
-              console.log("✅ Evento criado no Google Calendar - ID:", googleEvent.id);
-            } catch (googleErr) {
-              console.error("❌ Erro ao criar evento no Google Calendar:", googleErr);
-              console.log("⚠️ Agendamento permanece no banco, mas evento do Google falhou");
-            }
+            console.log("⚠️ Falha ao criar evento no Google Calendar (usuário principal):", mainEvent?.reason);
           }
+        } else {
+          console.log("ℹ️ Evento no calendário principal não será criado (configuração ou usuário igual).");
         }
       }
     }
