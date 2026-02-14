@@ -493,55 +493,13 @@ export const createAppointment = async (req, res) => {
 
     console.log("✅ Agendamento criado:", created);
 
-    if (requiresPrepayment) {
-      try {
-        const pixCharge = await createPixCharge({
-          organizationId: orgData.id,
-          appointmentId: created.id,
-          amountInCents: Math.round(prepaymentAmount * 100),
-        });
-
-        console.log("💳 PIX gerado para pré-pagamento:", {
-          transactionId: pixCharge.transactionId,
-          amount: pixCharge.grossAmount,
-        });
-
-        return res.status(201).json({
-          appointment: { ...created, status: "pending" },
-          payment_required: true,
-          payment: {
-            transaction_id: pixCharge.transactionId,
-            qr_code: pixCharge.qrCode,
-            copy_paste: pixCharge.copyPaste,
-            amount: prepaymentAmount,
-          },
-          validated_prices: {
-            final: finalPriceToUse,
-            original: originalPriceToUse,
-            is_admin: isAdminUser,
-          },
-        });
-      } catch (pixErr) {
-        console.error("❌ Erro ao gerar PIX de pré-pagamento:", pixErr.message);
-        // Mesmo com erro de cobrança, retorna agendamento pendente (para não quebrar fluxo)
-        return res.status(201).json({
-          appointment: { ...created, status: "pending" },
-          payment_required: true,
-          payment: null,
-          error: "Falha ao gerar PIX. Tente novamente ou contate o suporte.",
-          validated_prices: {
-            final: finalPriceToUse,
-            original: originalPriceToUse,
-            is_admin: isAdminUser,
-          },
-        });
-      }
-    }
-
     // ✅ meetingUrl precisa existir para o return final mesmo se não sincronizar
     let meetingUrl = null;
+    let pixPaymentData = null;
 
-    // ✅ NÃO RETORNA MAIS AQUI (para garantir WhatsApp sempre)
+    // ===============================
+    // 🔄 SINCRONIZAR COM GOOGLE CALENDAR (ANTES do pré-pagamento)
+    // ===============================
     if (!policy?.sync_google_calendar) {
       console.log("🔕 Organização não sincroniza com Google Calendar.");
     } else {
@@ -556,6 +514,10 @@ export const createAppointment = async (req, res) => {
       if (employeeError || !employee) {
         console.error("❌ Funcionário não encontrado para Google Calendar");
       } else {
+        // Verificar se funcionário é o mesmo que usuário principal
+        const isSameAsMainUser = policy?.user_main_calendar === employee.user_id;
+        
+        // Criar evento para o funcionário
         const employeeEvent = await createGoogleCalendarEvent({
           calendarUserId: employee.user_id,
           appointmentId: created?.id,
@@ -590,10 +552,14 @@ export const createAppointment = async (req, res) => {
           console.log("⚠️ Falha ao criar evento no Google Calendar (funcionário):", employeeEvent?.reason);
         }
 
+        // Criar evento no calendário principal APENAS se:
+        // 1. Política estiver ativada
+        // 2. Usuário principal estiver definido
+        // 3. Usuário principal for diferente do funcionário
         const shouldCreateMainCalendarEvent =
           policy?.show_all_appointments_in_google === true &&
           !!policy?.user_main_calendar &&
-          policy.user_main_calendar !== employee.user_id;
+          !isSameAsMainUser;
 
         if (shouldCreateMainCalendarEvent) {
           const mainEvent = await createGoogleCalendarEvent({
@@ -618,9 +584,39 @@ export const createAppointment = async (req, res) => {
           } else {
             console.log("⚠️ Falha ao criar evento no Google Calendar (usuário principal):", mainEvent?.reason);
           }
+        } else if (isSameAsMainUser) {
+          console.log("ℹ️ Evento no calendário principal não será criado (funcionário é o mesmo usuário).");
         } else {
-          console.log("ℹ️ Evento no calendário principal não será criado (configuração ou usuário igual).");
+          console.log("ℹ️ Evento no calendário principal não será criado (configuração desativada).");
         }
+      }
+    }
+
+    // ===============================
+    // 💳 GERAR PIX (se necessário)
+    // ===============================
+    if (requiresPrepayment) {
+      try {
+        const pixCharge = await createPixCharge({
+          organizationId: orgData.id,
+          appointmentId: created.id,
+          amountInCents: Math.round(prepaymentAmount * 100),
+        });
+
+        console.log("💳 PIX gerado para pré-pagamento:", {
+          transactionId: pixCharge.transactionId,
+          amount: pixCharge.grossAmount,
+        });
+
+        pixPaymentData = {
+          transaction_id: pixCharge.transactionId,
+          qr_code: pixCharge.qrCode,
+          copy_paste: pixCharge.copyPaste,
+          amount: prepaymentAmount,
+        };
+      } catch (pixErr) {
+        console.error("❌ Erro ao gerar PIX de pré-pagamento:", pixErr.message);
+        // Continua mesmo com erro de cobrança (não quebra fluxo)
       }
     }
 
@@ -779,16 +775,28 @@ Qualquer dúvida, entre em contato conosco! 💬
       console.error("❌ Erro ao notificar representante:", notifyErr);
     }
 
-    return res.status(201).json({
+    // ===============================
+    // 📤 RETORNAR RESPOSTA FINAL
+    // ===============================
+    const responsePayload = {
       ...created,
       meeting_url: meetingUrl,
-      payment_required: false,
+      payment_required: !!requiresPrepayment,
       validated_prices: {
         final: finalPriceToUse,
         original: originalPriceToUse,
         is_admin: isAdminUser,
       },
-    });
+    };
+
+    if (requiresPrepayment) {
+      responsePayload.payment = pixPaymentData || null;
+      if (!pixPaymentData) {
+        responsePayload.error = "Falha ao gerar PIX. Tente novamente ou contate o suporte.";
+      }
+    }
+
+    return res.status(201).json(responsePayload);
   } catch (error) {
     console.error("Error creating appointment:", error);
     res.status(500).json({ error: "Internal server error" });

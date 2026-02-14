@@ -47,6 +47,40 @@ export default async function createGoogleCalendarEvent({
       expiry_date: googleData.expiry_date,
     });
 
+    // ✅ Verificar se token está expirado e fazer refresh se necessário
+    try {
+      const isTokenExpired = googleData.expiry_date && new Date() >= new Date(googleData.expiry_date);
+      if (isTokenExpired && googleData.refresh_token) {
+        console.log(`🔄 Token expirado para user ${calendarUserId}. Renovando...`);
+        await oauth2Client.refreshAccessToken();
+        
+        const newCredentials = oauth2Client.credentials;
+        
+        // Salvar tokens renovados no banco
+        const { error: updateErr } = await supabase
+          .from("organization_google_calendar")
+          .update({
+            access_token: newCredentials.access_token,
+            expiry_date: newCredentials.expiry_date,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", calendarUserId);
+
+        if (updateErr) {
+          console.warn("⚠️ Erro ao atualizar token no banco:", updateErr.message);
+        } else {
+          console.log("✅ Token renovado e salvo com sucesso");
+        }
+      }
+    } catch (refreshErr) {
+      console.error("❌ Erro ao renovar token:", refreshErr.message);
+      return {
+        created: false,
+        reason: "token_refresh_failed",
+        error: refreshErr,
+      };
+    }
+
     const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
     const eventStart = new Date(`${appointmentDate}T${startTime}:00-03:00`).toISOString();
@@ -123,6 +157,26 @@ export default async function createGoogleCalendarEvent({
         googleEvent?.conferenceData?.entryPoints?.find(
           (entry) => entry.entryPointType === "video"
         )?.uri || null;
+    }
+
+    // ✅ Atualizar token se Google o renovou
+    try {
+      const newCreds = oauth2Client.credentials;
+      if (newCreds.access_token && newCreds.access_token !== googleData.access_token) {
+        await supabase
+          .from("organization_google_calendar")
+          .update({
+            access_token: newCreds.access_token,
+            expiry_date: newCreds.expiry_date,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", calendarUserId);
+
+        console.log("🔄 Token atualizado após criar evento");
+      }
+    } catch (updateErr) {
+      console.warn("⚠️ Erro ao atualizar token após criar evento:", updateErr.message);
+      // Não falha a operação se não conseguir atualizar token
     }
 
     return {
