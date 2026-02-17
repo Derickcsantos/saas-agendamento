@@ -53,6 +53,7 @@ import scheduleJob from './utils/screduleJobs.js';
 import { startUnavailableDaysCacheJob } from './utils/unavailableDaysCacheJob.js';
 import QueueWebSocketManager from './lib/websocket.js';
 import http from 'http';
+import { salariesRouter } from './routes/salaryRoutes.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -87,7 +88,7 @@ app.use('/api/register', registerUserRouter);
 app.use('/api/login', loginRouter) 
 app.use('/auth/google', googleRouter);
 app.use('/api/verifica-usuario', verifyUserRouter); 
-app.use('/api/appointments', appointmentsRouter); 
+app.use('/api/appointments', appointmentsRouter);
 app.use('/api/minha-conta', loggedInUserRouter);
 app.use('/api/admin/categories', categoryRouter);
 app.use('/api/admin/services', serviceRouter);
@@ -98,7 +99,7 @@ app.use('/api/admin/galeria', galleryRouter);
 app.use("/api/schedules", employeeScheduleRouter)
 app.use('/api/admin/dashboard', dashboardDataRouter) 
 app.use('/api/coupons', couponRouter); 
-app.use('/api/admin/revenue', revenueRouter) 
+app.use('/api/admin/revenue', revenueRouter)
 app.use('/api/landing-page', landingPageRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/organizations', organizationRouter)
@@ -122,6 +123,7 @@ app.use('/api/admin/expenses', expensesRouter)
 app.use('/api/queues', queueRouter)
 app.use('/api/user-invites', userInvitesRouter)
 app.use('/api/organization-subscriptions', organizationSubscriptionsRouter)
+app.use('/api/salaries', salariesRouter)
 // app.use("/api/whatsapp-send", sendWhatsappRouter);
 
 server.listen(port, () => {
