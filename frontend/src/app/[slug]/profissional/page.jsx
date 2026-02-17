@@ -12,6 +12,7 @@ import AppointmentsChart from "./components/AppointmentsChart";
 import StatusPieChart from "./components/StatusPieChart";
 import ProfileModal from "../../components/ProfileModal";
 import PersonalCalendarTab from "./calendario/page";
+import SalaryChart from "./components/salaryChart";
 
 export default function EmployeePanel() {
   const router = useRouter();
@@ -40,6 +41,10 @@ export default function EmployeePanel() {
     statusData: { labels: [], values: [] },
   });
   const perPage = 10;
+  const [salaryData, setSalaryData] = useState({
+    labels: [],
+    values: []
+  })
 
   // 1) AUTH
   useEffect(() => {
@@ -110,8 +115,8 @@ export default function EmployeePanel() {
         const appsArray = Array.isArray(appsData)
           ? appsData
           : Array.isArray(appsData?.appointments)
-          ? appsData.appointments
-          : [];
+            ? appsData.appointments
+            : [];
 
         setAppointments(appsArray);
         setFilteredAppointments(appsArray);
@@ -124,6 +129,39 @@ export default function EmployeePanel() {
     };
 
     fetchAppointments();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchSalary = async () => {
+      try {
+        const res = await fetchWithAuth(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/salaries/by-employee/${user.id}`
+        );
+
+        const salary = await res.json();
+
+        // nomes dos meses
+        const monthNames = [
+          "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+          "Jul", "Ago", "Set", "Out", "Nov", "Dez"
+        ];
+
+        const currentMonth = new Date().getMonth();
+        const filteredSalary = salary.slice(0, currentMonth + 1);
+
+        const labels = filteredSalary.map(item => monthNames[item.month - 1]);
+        const values = filteredSalary.map(item => item.total);
+
+        setSalaryData({ labels, values });
+
+      } catch (err) {
+        console.error("Erro ao buscar salários:", err);
+      }
+    };
+
+    fetchSalary();
   }, [user]);
 
   // CALCULAR ESTATÍSTICAS E CLIENTE TOP
@@ -412,10 +450,14 @@ export default function EmployeePanel() {
               />
             </section>
 
+            <section>
+              <SalaryChart dataSalary={salaryData} palette={palette} />
+            </section>
+
             {/* CLIENTE TOP */}
             {topClient && (
               <section className="mt-6">
-                <div 
+                <div
                   className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl shadow-md border p-6"
                   style={{ borderColor: `${palette?.medium_color}30` }}
                 >
@@ -525,7 +567,7 @@ export default function EmployeePanel() {
 
       {/* CONTEÚDO */}
       <div className="flex-1 flex flex-col max-w-full overflow-hidden">
-        <EmployeeTopbar 
+        <EmployeeTopbar
           user={user}
           slug={slug}
           palette={palette}
