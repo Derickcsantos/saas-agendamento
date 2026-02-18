@@ -13,6 +13,7 @@ import StatusPieChart from "./components/StatusPieChart";
 import ProfileModal from "../../components/ProfileModal";
 import PersonalCalendarTab from "./calendario/page";
 import SalaryChart from "./components/salaryChart";
+import WorkDaysChart from "./components/workingDaysChart";
 
 export default function EmployeePanel() {
   const router = useRouter();
@@ -41,10 +42,31 @@ export default function EmployeePanel() {
     statusData: { labels: [], values: [] },
   });
   const perPage = 10;
-  const [salaryData, setSalaryData] = useState({
-    labels: [],
-    values: []
-  })
+
+  const [data, setData] = useState([])
+  const chartSalaryData = {
+    labels: data.map(item => item.mes),
+    salary: data.map(item => item.salario_base),
+    commission: data.map(item => item.comissao),
+    total: data.map(item => item.total_recebido)
+  };
+
+  const chartAppointmentsData = data.reduce((acc, item) => {
+    const hasAppointments =
+      item.agendamentos_por_dia &&
+      Object.keys(item.agendamentos_por_dia).length > 0;
+
+    if (!hasAppointments) return acc;
+
+    acc[`${item.mes}-${item.ano}`] = {
+      month: item.mes,
+      year: item.ano,
+      days: 31,
+      appointments: item.agendamentos_por_dia
+    };
+
+    return acc;
+  }, {});
 
   // 1) AUTH
   useEffect(() => {
@@ -142,19 +164,7 @@ export default function EmployeePanel() {
 
         const salary = await res.json();
 
-        // nomes dos meses
-        const monthNames = [
-          "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
-          "Jul", "Ago", "Set", "Out", "Nov", "Dez"
-        ];
-
-        const currentMonth = new Date().getMonth();
-        const filteredSalary = salary.slice(0, currentMonth + 1);
-
-        const labels = filteredSalary.map(item => monthNames[item.month - 1]);
-        const values = filteredSalary.map(item => item.total);
-
-        setSalaryData({ labels, values });
+        setData(salary)
 
       } catch (err) {
         console.error("Erro ao buscar salários:", err);
@@ -451,7 +461,11 @@ export default function EmployeePanel() {
             </section>
 
             <section>
-              <SalaryChart dataSalary={salaryData} palette={palette} />
+              <SalaryChart dataSalary={chartSalaryData} palette={palette} />
+            </section>
+
+            <section>
+              <WorkDaysChart dataAppointments={chartAppointmentsData} palette={palette} />
             </section>
 
             {/* CLIENTE TOP */}

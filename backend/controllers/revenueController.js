@@ -20,11 +20,10 @@ export const getRevenues = async (req, res) => {
     // 1. Buscar todos os agendamentos concluídos
     let appointmentsQuery = supabase
       .from('appointments')
-      .select('id, final_price, appointment_date, employee_id, employees(id, name, comissao)')
+      .select('id, final_price, appointment_date, employee_id')
       .eq('status', 'completed')
-      .eq('organization_id', org.id); // Considerar apenas agendamentos confirmados
+      .eq('organization_id', org.id);
     
-    // Aplicar filtro de datas se existir (corrigido para usar appointment_date)
     if (start_date && end_date) {
       appointmentsQuery = appointmentsQuery
         .gte('appointment_date', start_date)
@@ -34,30 +33,35 @@ export const getRevenues = async (req, res) => {
     const { data: appointments, error: appointmentsError } = await appointmentsQuery;
     if (appointmentsError) throw appointmentsError;
     
-    // 2. Buscar todos os funcionários para garantir que apareçam mesmo sem agendamentos
+    // 2. Buscar todos os funcionários
     const { data: employees, error: employeesError } = await supabase
       .from('employees')
-      .select('id, name, comissao')
+      .select('id, name, comissao, salary')
       .eq('organization_id', org.id);
     
     if (employeesError) throw employeesError;
     
-    // 3. Processar os dados para calcular métricas
+    // 3. Processar dados
     const employeesMap = new Map();
     let totalAppointments = 0;
     let totalRevenue = 0;
     let totalCommissions = 0;
-    
-    // Inicializar mapa com todos os funcionários
+    let totalToPayAllEmployees = 0;
+
+    // Inicializar mapa com funcionários
     employees.forEach(employee => {
       employeesMap.set(employee.id, {
         id: employee.id,
         name: employee.name,
         commission_rate: employee.comissao || 0,
+        salary: employee.salary || 0, // valor do dia
         appointments_count: 0,
         total_revenue: 0,
         commission_value: 0,
-        net_profit: 0
+        net_profit: 0,
+        worked_days: 0,
+        total_to_receive: 0,
+        worked_days_set: new Set() // controle interno (não vai pro frontend)
       });
     });
     
@@ -68,7 +72,7 @@ export const getRevenues = async (req, res) => {
       const finalPrice = appointment.final_price || 0;
       totalRevenue += finalPrice;
       
-      const employeeId = appointment.employee_id; // Usando employee_id diretamente
+      const employeeId = appointment.employee_id;
       if (!employeeId) return;
       
       const employee = employeesMap.get(employeeId);
@@ -76,24 +80,41 @@ export const getRevenues = async (req, res) => {
       
       employee.appointments_count++;
       employee.total_revenue += finalPrice;
+
+      // Calcular dias trabalhados (1 por dia, independente da quantidade)
+      const day = appointment.appointment_date?.split('T')[0];
+      if (day) {
+        employee.worked_days_set.add(day);
+      }
     });
     
-    // Calcular comissões e lucro líquido para cada funcionário
+    // Calcular comissões, dias trabalhados e total a receber
     employeesMap.forEach(employee => {
+      // Dias trabalhados
+      employee.worked_days = employee.worked_days_set.size;
+
+      // Comissão
       employee.commission_value = employee.total_revenue * (employee.commission_rate / 100);
       employee.net_profit = employee.total_revenue - employee.commission_value;
-      
       totalCommissions += employee.commission_value;
+
+      // Total a receber = (salário do dia * dias trabalhados) + comissões
+      employee.total_to_receive =
+        (employee.salary * employee.worked_days) + employee.commission_value;
+
+      totalToPayAllEmployees += employee.total_to_receive;
+
+      // remover campo interno
+      delete employee.worked_days_set;
     });
     
-    // Converter o Map para array e ordenar por maior faturamento
+    // Ordenar por faturamento
     const details = Array.from(employeesMap.values())
       .sort((a, b) => b.total_revenue - a.total_revenue);
     
-    // Calcular ticket médio
     const averageTicket = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
     
-    // 4. Retornar os dados
+    // 4. Retorno para o frontend
     res.json({
       period: start_date && end_date 
         ? `${start_date} a ${end_date}` 
@@ -102,6 +123,7 @@ export const getRevenues = async (req, res) => {
       total_revenue: totalRevenue,
       total_commissions: totalCommissions,
       average_ticket: averageTicket,
+      total_to_pay_all_employees: totalToPayAllEmployees,
       details: details
     });
     
@@ -113,6 +135,7 @@ export const getRevenues = async (req, res) => {
     });
   }
 };
+
 
 export const getRevenuesLast12Months = async (req, res) => {
   try {
