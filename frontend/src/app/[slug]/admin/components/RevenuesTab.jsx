@@ -55,6 +55,7 @@ export default function RevenueTab({ org }) {
         credentials: 'include'
       });
       const json = await res.json();
+
       if (!res.ok) throw new Error(json.error || "Erro ao carregar dados");
       setData(json);
     } catch (err) {
@@ -446,6 +447,9 @@ export default function RevenueTab({ org }) {
                   <th className="px-3 py-2 text-left">Comissão %</th>
                   <th className="px-3 py-2 text-left">Valor Comissão</th>
                   <th className="px-3 py-2 text-left">Lucro Líquido</th>
+                  <th className="px-3 py-2 text-left">Dias trabalhados</th>
+                  <th className="px-3 py-2 text-left">Valor do dia</th>
+                  <th className="px-3 py-2 text-left">Valor total à receber</th>
                 </tr>
               </thead>
               <tbody>
@@ -457,6 +461,9 @@ export default function RevenueTab({ org }) {
                     <td className="px-3 py-2">{d.commission_rate}%</td>
                     <td className="px-3 py-2">{formatCurrency(d.commission_value)}</td>
                     <td className="px-3 py-2">{formatCurrency(d.net_profit)}</td>
+                    <td className="px-3 py-2">{d.worked_days}</td>
+                    <td className="px-3 py-2">{formatCurrency(d.salary)}</td>
+                    <td className="px-3 py-2">{formatCurrency(d.total_to_receive)}</td>
                   </tr>
                 ))}
               </tbody>

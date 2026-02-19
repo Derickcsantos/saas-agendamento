@@ -270,7 +270,7 @@ export default function EmployeesTab({ org }) {
 
 
           <div className="w-full md:basis-[calc(50%-0.5rem)]">
-            <label className="text-gray-800 text-sm" htmlFor="username">Salário</label>
+            <label className="text-gray-800 text-sm" htmlFor="username">Salário diário</label>
             <input type="number" placeholder="Salário" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
             value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} />
           </div>
@@ -415,7 +415,7 @@ export default function EmployeesTab({ org }) {
                 <th className="px-3 py-2 text-left">Nome</th>
                 <th className="px-3 py-2 text-left">Email</th>
                 <th className="px-3 py-2 text-left">Telefone</th>
-                <th className="px-3 py-2 text-left">Salário</th>
+                <th className="px-3 py-2 text-left">Salário diário</th>
                 <th className="px-3 py-2 text-left">Comissão</th>
                 <th className="px-3 py-2 text-left">Status</th>
                 <th className="px-3 py-2 text-left">Ações</th>
