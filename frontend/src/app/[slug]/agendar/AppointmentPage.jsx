@@ -1223,7 +1223,7 @@ const sendWhatsappConfirmation = async () => {
                   <p><strong>Categoria:</strong> {selected.category?.name}</p>
                   <p><strong>Serviço:</strong> {selected.service?.name}</p>
                   <p><strong>Profissional:</strong> {selected.employee?.name}</p>
-                  <p><strong>Data:</strong> {selected.date}</p>
+                  <p><strong>Data:</strong> {selected.date ? format(new Date(selected.date), "dd/MM/yyyy") : ""}</p>
                   <p>
                     <strong>Horário:</strong>{" "}
                     {selected.time ? `${selected.time.start} - ${selected.time.end}` : ""}
