@@ -98,9 +98,10 @@ export default function AppointmentPage({ slug }) {
 
   const formatDateBR = (iso) => {
     if (!iso) return "";
+    // Corrige para UTC para evitar erro de fuso
     const [y, m, d] = String(iso).split("-");
-    if (!y || !m || !d) return String(iso);
-    return `${d}/${m}/${y}`;
+    if (!y || !m || !d) return iso;
+    return `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`;
   };
 
 
@@ -1223,7 +1224,7 @@ const sendWhatsappConfirmation = async () => {
                   <p><strong>Categoria:</strong> {selected.category?.name}</p>
                   <p><strong>Serviço:</strong> {selected.service?.name}</p>
                   <p><strong>Profissional:</strong> {selected.employee?.name}</p>
-                  <p><strong>Data:</strong> {selected.date ? format(new Date(selected.date), "dd/MM/yyyy") : ""}</p>
+                  <p><strong>Data:</strong> {selected.date ? formatDateBR(selected.date) : ""}</p>
                   <p>
                     <strong>Horário:</strong>{" "}
                     {selected.time ? `${selected.time.start} - ${selected.time.end}` : ""}

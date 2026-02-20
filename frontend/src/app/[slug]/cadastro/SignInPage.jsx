@@ -108,6 +108,14 @@ export default function SignInPage({ slug }) {
       return setErrorMsg("As senhas não coincidem.");
     }
 
+    // Normaliza data para YYYY-MM-DD
+    let aniversarioFinal = aniversario;
+    if (aniversario && aniversario.includes("/")) {
+      // Converte DD/MM/AAAA para YYYY-MM-DD
+      const [d, m, y] = aniversario.split("/");
+      aniversarioFinal = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    }
+
     setLoading(true);
     try {
       // 🆕 Se houver convite, resgatar via endpoint especial
@@ -120,7 +128,7 @@ export default function SignInPage({ slug }) {
             body: JSON.stringify({
               username,
               email,
-              aniversario,
+              aniversario: aniversarioFinal,
               phone,
               password,
             }),
@@ -147,7 +155,7 @@ export default function SignInPage({ slug }) {
           body: JSON.stringify({
             username,
             email,
-            aniversario,
+            aniversario: aniversarioFinal,
             phone,
             password_plaintext: password,
           }),
@@ -232,14 +240,33 @@ export default function SignInPage({ slug }) {
                 placeholder="(11) 99999-9999"
               />
             </div>
-            <div className="w-1/2">
-              <label className="block text-sm text-gray-900 font-medium mb-1">Data de nascimento</label>
+            <div className="w-1/2 flex items-center gap-2">
+              <label className="block text-sm text-gray-900 font-medium mb-1 w-full">Data de nascimento</label>
               <input
-                type="date"
+                type={form._showDatePicker ? "date" : "text"}
                 value={form.aniversario}
-                onChange={(e) => setForm({ ...form, aniversario: e.target.value })}
+                onChange={(e) => {
+                  let val = e.target.value;
+                  // Se for date, garantir formato YYYY-MM-DD
+                  if (e.target.type === "date" && val) {
+                    val = val.slice(0, 10);
+                  }
+                  setForm({ ...form, aniversario: val });
+                }}
                 className="w-full text-gray-900 border border-gray-300 rounded-md p-2"
+                placeholder="DD/MM/AAAA"
+                pattern="\d{2}/\d{2}/\d{4}|\d{4}-\d{2}-\d{2}"
+                onBlur={() => setForm({ ...form, _showDatePicker: false })}
               />
+              <button
+                type="button"
+                title="Selecionar no calendário"
+                className="ml-1 px-2 py-1 border rounded text-gray-600 border-gray-300 bg-gray-50 hover:bg-gray-100"
+                onClick={() => setForm({ ...form, _showDatePicker: true })}
+                tabIndex={-1}
+              >
+                📅
+              </button>
             </div>
           </div>
 

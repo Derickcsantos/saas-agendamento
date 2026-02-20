@@ -12,6 +12,7 @@ export default function ProfileModal({ user, slug, setUser, onClose }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [palette, setPalette] = useState(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -46,12 +47,18 @@ export default function ProfileModal({ user, slug, setUser, onClose }) {
     e.preventDefault();
     try {
       setLoading(true);
+      // Normaliza data para YYYY-MM-DD
+      let aniversarioFinal = form.aniversario;
+      if (aniversarioFinal && aniversarioFinal.includes("/")) {
+        const [d, m, y] = aniversarioFinal.split("/");
+        aniversarioFinal = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+      }
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/users/${slug}/${user.id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify({ ...form, aniversario: aniversarioFinal }),
           credentials: 'include'
         }
       );
@@ -101,13 +108,33 @@ export default function ProfileModal({ user, slug, setUser, onClose }) {
             className="w-full p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700"
           />
           <label className="text-gray-800 text-sm" htmlFor="aniversario">Data de nascimento</label>
-          <input
-            type="date"
-            name="aniversario"
-            value={form.aniversario}
-            onChange={handleChange}
-            className="w-full p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type={showDatePicker ? "date" : "text"}
+              name="aniversario"
+              value={form.aniversario}
+              onChange={e => {
+                let val = e.target.value;
+                if (e.target.type === "date" && val) {
+                  val = val.slice(0, 10);
+                }
+                setForm({ ...form, aniversario: val });
+              }}
+              className="w-full p-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700"
+              placeholder="DD/MM/AAAA"
+              pattern="\d{2}/\d{2}/\d{4}|\d{4}-\d{2}-\d{2}"
+              onBlur={() => setShowDatePicker(false)}
+            />
+            <button
+              type="button"
+              title="Selecionar no calendário"
+              className="ml-1 px-2 py-1 border rounded text-gray-600 border-gray-300 bg-gray-50 hover:bg-gray-100"
+              onClick={() => setShowDatePicker(true)}
+              tabIndex={-1}
+            >
+              📅
+            </button>
+          </div>
 
           <div className="flex justify-end gap-3 mt-4">
             <button
