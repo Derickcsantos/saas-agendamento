@@ -3,12 +3,13 @@
 export const corsOptions = {
   origin: [
     'http://localhost:3000', 
-    'https://ubiquitous-train-v6pw96wx6v64h664v-3000.app.github.dev', 
+    'https://reimagined-zebra-r47wq4wj4ggq3p5jj-3000.app.github.dev', 
     'https://marcafy.com.br', 
     'https://www.marcafy.com.br', 
     'https://www.marcafy.com.br', 
     'http://localhost:3001',
-    'https://marcafy.vercel.app'
+    'https://marcafy.vercel.app',
+    'https://reimagined-zebra-r47wq4wj4ggq3p5jj-3001.app.github.dev'
   ], 
   methods: [
     'GET', 

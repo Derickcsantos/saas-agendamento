@@ -223,17 +223,8 @@ export const getAvailableTimes = async (req, res) => {
       throw closedError;
     }
 
-    const selectedDate = new Date(`${date}T00:00:00`);
-
-    const isClosedDay = closedPeriods?.some(period => {
-      const start = new Date(period.start_day);
-      const end = new Date(period.end_day);
-      return selectedDate >= start && selectedDate <= end;
-    });
-
-    if (isClosedDay) {
-      return res.json([]);
-    }
+    // Não bloqueia o dia inteiro, bloqueia apenas horários que colidem
+    // A lógica de bloqueio será aplicada nos slots abaixo
 
     // interpreta a data como local, sem UTC implícito
     const [year, month, day] = date.split("-").map(Number);
@@ -369,7 +360,7 @@ export const getAvailableTimes = async (req, res) => {
     while (currentSlot.getTime() + durationMs <= workEnd.getTime()) {
       const slotStart = new Date(currentSlot);
       const slotEnd = new Date(slotStart.getTime() + durationMs);
-      
+
       function rangesOverlap(aStart, aEnd, bStart, bEnd) {
         return (
           (aStart >= bStart && aStart < bEnd) ||
@@ -387,8 +378,14 @@ export const getAvailableTimes = async (req, res) => {
       // Transformar eventos do Google
       const googleBusy = googleEvents;
 
+      // Transformar períodos fechados em busy
+      const closedBusy = (closedPeriods || []).map((period) => ({
+        start: new Date(period.start_day),
+        end: new Date(period.end_day),
+      }));
+
       // Unificar ocupações
-      const allBusy = [...dbBusy, ...googleBusy];
+      const allBusy = [...dbBusy, ...googleBusy, ...closedBusy];
 
       const isAvailable = !allBusy.some((busy) =>
         rangesOverlap(slotStart, slotEnd, busy.start, busy.end)
@@ -400,7 +397,7 @@ export const getAvailableTimes = async (req, res) => {
           end: slotEnd.toTimeString().substring(0, 5)
         });
       }
-      
+
       currentSlot = new Date(currentSlot.getTime() + interval);
     }
 
