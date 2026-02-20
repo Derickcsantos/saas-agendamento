@@ -166,19 +166,16 @@ export default function ClosedPeriodsTab({ org }) {
 
   const handleEditPeriod = async () => {
     if (!editingPeriod) return;
-    
+    const periodId = editingPeriod.period_id || editingPeriod.id;
     const validationErrors = validatePeriod(editData.start_day, editData.end_day);
-    
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
-    
     setErrors({});
-    
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/closed-periods/${org.slug_organization}/${editingPeriod.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/closed-periods/${org.slug_organization}/${periodId}`,
         {
           method: "PUT",
           credentials: "include",
@@ -191,12 +188,10 @@ export default function ClosedPeriodsTab({ org }) {
           }),
         }
       );
-
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Erro ao atualizar período");
       }
-
       setShowEditModal(false);
       setEditingPeriod(null);
       loadPeriods();
@@ -208,31 +203,25 @@ export default function ClosedPeriodsTab({ org }) {
   };
 
   const handleDeletePeriod = async (id) => {
-    // if (!confirm("Tem certeza que deseja excluir este período fechado?")) return;
-
     const confirmed = await confirm({
       title: "Excluir período fechado",
       message: "Deseja realmente excluir este período fechado?",
       confirmVariant: "danger"
     });
-
-    if (!confirmed) return
-    
+    if (!confirmed) return;
     setDeletingId(id);
-    
+    const periodId = id && id.period_id ? id.period_id : id;
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/closed-periods/${org.slug_organization}/${id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/closed-periods/${org.slug_organization}/${periodId}`,
         {
           method: "DELETE",
           credentials: "include",
         }
       );
-
       if (!res.ok) {
         throw new Error("Erro ao excluir período");
       }
-
       loadPeriods();
       toast.success("Período fechado excluído com sucesso!");
     } catch (error) {
