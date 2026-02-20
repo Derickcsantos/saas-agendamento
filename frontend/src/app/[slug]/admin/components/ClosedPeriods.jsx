@@ -125,14 +125,14 @@ export default function ClosedPeriodsTab({ org }) {
 
   const handleCreatePeriod = async () => {
     const validationErrors = validatePeriod(newPeriod.start_day, newPeriod.end_day);
-    
+    if (newPeriod.start_day && newPeriod.end_day && newPeriod.start_day.getTime() === newPeriod.end_day.getTime()) {
+      validationErrors.date_range = "Data e hora de início e término não podem ser iguais.";
+    }
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
-    
     setErrors({});
-    
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/closed-periods/${org.slug_organization}`,
@@ -148,19 +148,17 @@ export default function ClosedPeriodsTab({ org }) {
           }),
         }
       );
-
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Erro ao criar período");
       }
-
       setShowCreateModal(false);
       setNewPeriod({ start_day: null, end_day: null });
       loadPeriods();
       toast.success("Período fechado criado com sucesso!");
     } catch (error) {
       console.error("Erro ao criar período:", error);
-      toast.error("Erro ao criar período fechado");
+      toast.error(error.message || "Erro ao criar período fechado");
     }
   };
 
@@ -168,6 +166,9 @@ export default function ClosedPeriodsTab({ org }) {
     if (!editingPeriod) return;
     const periodId = editingPeriod.period_id || editingPeriod.id;
     const validationErrors = validatePeriod(editData.start_day, editData.end_day);
+    if (editData.start_day && editData.end_day && editData.start_day.getTime() === editData.end_day.getTime()) {
+      validationErrors.date_range = "Data e hora de início e término não podem ser iguais.";
+    }
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -198,7 +199,7 @@ export default function ClosedPeriodsTab({ org }) {
       toast.success("Período fechado atualizado com sucesso!");
     } catch (error) {
       console.error("Erro ao atualizar período:", error);
-      toast.error("Erro ao atualizar período fechado");
+      toast.error(error.message || "Erro ao atualizar período fechado");
     }
   };
 
@@ -210,6 +211,10 @@ export default function ClosedPeriodsTab({ org }) {
     });
     if (!confirmed) return;
     const periodId = typeof id === 'object' ? id.period_id || id.id : id;
+    if (!periodId) {
+      toast.error("ID do período inválido. Não foi possível excluir.");
+      return;
+    }
     setDeletingId(periodId);
     try {
       const res = await fetch(
@@ -220,13 +225,14 @@ export default function ClosedPeriodsTab({ org }) {
         }
       );
       if (!res.ok) {
-        throw new Error("Erro ao excluir período");
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erro ao excluir período");
       }
       loadPeriods();
       toast.success("Período fechado excluído com sucesso!");
     } catch (error) {
       console.error("Erro ao excluir período:", error);
-      toast.error("Erro ao excluir período fechado");
+      toast.error(error.message || "Erro ao excluir período fechado");
     } finally {
       setDeletingId(null);
     }
@@ -544,8 +550,20 @@ export default function ClosedPeriodsTab({ org }) {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {periods.map((period) => {
+            if (!period.start_day || !period.end_day) {
+              return null;
+            }
             const isCurrent = isCurrentPeriod(period.start_day, period.end_day);
             const isFuture = isFuturePeriod(period.start_day);
+            const durationMs = parseISO(period.end_day) - parseISO(period.start_day);
+            let durationText;
+            if (durationMs < 1000 * 60 * 60) {
+              durationText = `${Math.ceil(durationMs / (1000 * 60))} minuto(s)`;
+            } else if (durationMs < 1000 * 60 * 60 * 24) {
+              durationText = `${Math.ceil(durationMs / (1000 * 60 * 60))} hora(s)`;
+            } else {
+              durationText = `${Math.ceil(durationMs / (1000 * 60 * 60 * 24))} dia(s)`;
+            }
             return (
               <div
                 key={period.id}
@@ -615,11 +633,7 @@ export default function ClosedPeriodsTab({ org }) {
                   
                   <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                     <p className="text-sm text-gray-600 dark:text-gray-400">Duração</p>
-                    <p className="font-medium">
-                      {Math.ceil(
-                        (parseISO(period.end_day) - parseISO(period.start_day)) / (1000 * 60 * 60 * 24)
-                      )} dia(s)
-                    </p>
+                    <p className="font-medium">{durationText}</p>
                   </div>
                   
                   <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
