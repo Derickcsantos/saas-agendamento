@@ -677,6 +677,16 @@ export default function ClientLanding({
                 Desenvolvido com tecnologia moderna para sua melhor experiência.
               </span>
             </p>
+            {/* Texto Marcafy no bottom */}
+            <div className="w-full flex justify-center mt-2">
+              <a
+                href="/"
+                className="text-[6px] text-gray-500 hover:text-gray-900 transition"
+                style={{ opacity: 0.6 }}
+              >
+                Criado por Marcafy
+              </a>
+            </div>
           </div>
         </div>
       </footer>

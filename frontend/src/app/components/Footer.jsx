@@ -144,6 +144,16 @@ export default function Footer({ slug }) {
             <a rel="noopener noreferrer" href="https://www.marcafy.com.br" className="hover:text-white transition">Termos de uso</a>
           </div>
         </div>
+        {/* Texto Marcafy no bottom */}
+        <div className="w-full flex justify-center mt-2">
+          <a
+            href="/"
+            className="text-[6px] text-white/60 hover:text-white transition"
+            style={{ opacity: 0.6 }}
+          >
+            Criado por Marcafy
+          </a>
+        </div>
       </div>
     </footer>
   );

@@ -178,7 +178,7 @@ export async function updateClosedPeriod(req, res) {
     const { data, error } = await supabase
       .from('closed_periods')
       .update(updateData)
-      .eq('id', id)
+      .eq('period_id', id)
       .eq('organization_id', org.id)
       .select();
 
@@ -211,7 +211,7 @@ export async function deleteClosedPeriod(req, res) {
     const { error } = await supabase
       .from('closed_periods')
       .delete()
-      .eq('id', id)
+      .eq('period_id', id)
       .eq('organization_id', org.id);
 
     if (error) throw error;
