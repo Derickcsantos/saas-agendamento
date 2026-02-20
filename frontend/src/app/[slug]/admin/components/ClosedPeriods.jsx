@@ -209,8 +209,8 @@ export default function ClosedPeriodsTab({ org }) {
       confirmVariant: "danger"
     });
     if (!confirmed) return;
-    setDeletingId(id);
-    const periodId = id && id.period_id ? id.period_id : id;
+    const periodId = typeof id === 'object' ? id.period_id || id.id : id;
+    setDeletingId(periodId);
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/closed-periods/${org.slug_organization}/${periodId}`,
@@ -543,94 +543,89 @@ export default function ClosedPeriodsTab({ org }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {periods.map((period) => {
-            const isCurrent = isCurrentPeriod(period.start_day, period.end_day);
-            const isFuture = isFuturePeriod(period.start_day);
-            
-            return (
-              <div
-                key={period.id}
-                className={`rounded-xl border p-5 transition-all hover:shadow-lg ${
-                  isCurrent
-                    ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20"
-                    : isFuture
-                    ? "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20"
-                    : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
-                }`}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                      isCurrent
-                        ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                        : isFuture
-                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                        : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                    }`}>
-                      {isCurrent
-                        ? "ATIVO AGORA"
-                        : isFuture
-                        ? "FUTURO"
-                        : "PASSADO"}
-                    </span>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => openEditModal(period)}
-                      className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition"
-                      title="Editar"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </button>
-                    
-                    <button
-                      onClick={() => handleDeletePeriod(period.id)}
-                      disabled={deletingId === period.id}
-                      className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition disabled:opacity-50"
-                      title="Excluir"
-                    >
-                      {deletingId === period.id ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-red-600"></div>
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
+          {periods.map((period) => (
+            <div
+              key={period.id}
+              className={`rounded-xl border p-5 transition-all hover:shadow-lg ${
+                isCurrent
+                  ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20"
+                  : isFuture
+                  ? "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20"
+                  : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+              }`}
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                    isCurrent
+                      ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                      : isFuture
+                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                      : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                  }`}>
+                    {isCurrent
+                      ? "ATIVO AGORA"
+                      : isFuture
+                      ? "FUTURO"
+                      : "PASSADO"}
+                  </span>
                 </div>
-
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Início</p>
-                    <p className="font-medium">{formatDateTime(period.start_day)}</p>
-                  </div>
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => openEditModal(period)}
+                    className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition"
+                    title="Editar"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
                   
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Término</p>
-                    <p className="font-medium">{formatDateTime(period.end_day)}</p>
-                  </div>
-                  
-                  <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Duração</p>
-                    <p className="font-medium">
-                      {Math.ceil(
-                        (parseISO(period.end_day) - parseISO(period.start_day)) / (1000 * 60 * 60 * 24)
-                      )} dia(s)
-                    </p>
-                  </div>
-                  
-                  <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Período</p>
-                    <p className="font-medium">{formatDateOnly(period.start_day)} - {formatDateOnly(period.end_day)}</p>
-                  </div>
+                  <button
+                    onClick={() => handleDeletePeriod(period.period_id || period.id)}
+                    disabled={deletingId === (period.period_id || period.id)}
+                    className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition disabled:opacity-50"
+                    title="Excluir"
+                  >
+                    {deletingId === (period.period_id || period.id) ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-red-600"></div>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    )}
+                  </button>
                 </div>
               </div>
-            );
-          })}
+
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Início</p>
+                  <p className="font-medium">{formatDateTime(period.start_day)}</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Término</p>
+                  <p className="font-medium">{formatDateTime(period.end_day)}</p>
+                </div>
+                
+                <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Duração</p>
+                  <p className="font-medium">
+                    {Math.ceil(
+                      (parseISO(period.end_day) - parseISO(period.start_day)) / (1000 * 60 * 60 * 24)
+                    )} dia(s)
+                  </p>
+                </div>
+                
+                <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Período</p>
+                  <p className="font-medium">{formatDateOnly(period.start_day)} - {formatDateOnly(period.end_day)}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
