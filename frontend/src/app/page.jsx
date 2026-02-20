@@ -191,13 +191,13 @@ export default function MarcafyLanding() {
         >
           <Chip>O sistema que trabalha por você.</Chip>
 
-          <h1 className="mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight md:text-6xl">
-            Otimize sua agenda e aumente seus {" "}
-            <span style={{ color: BRAND }}>resultados.</span>
+          <h1 className="mt-5 text-5xl font-extrabold leading-[1.1] tracking-tight md:text-6xl">
+            O sistema integrado ao seu {" "}
+            <span style={{ color: BRAND }}>negócio.</span>
           </h1>
 
           <p className="mt-6 max-w-xl text-sm leading-7 text-neutral-700">
-            Nosso sistema de agendamento online foi feito para simplificar sua rotina e aumentar seus resultados. Comece agora e assine depois, leva só 2 minutos
+           Cansado de aprender a utilizar um novo sistema? A Marcafy foi feita para se integrar ao seu negócio, com suas ferramentas favoritas dentro do seu sistema favorito.
           </p>
 
           <div className="mt-8 flex items-center gap-3">
@@ -221,15 +221,15 @@ export default function MarcafyLanding() {
           <div className="mt-10 grid grid-cols-2 gap-4 max-w-md">
             <SoftCard className="p-4 text-center">
               <div className="text-2xl font-extrabold" style={{ color: BRAND }}>
-                Rápido
+                Integrado
               </div>
-              <div className="text-xs text-neutral-500">Velocidade para você e para seu cliente</div>
+              <div className="text-xs text-neutral-500">Integramos as ferramentas que você precisa</div>
             </SoftCard>
             <SoftCard className="p-4 text-center">
               <div className="text-2xl font-extrabold" style={{ color: BRAND }}>
                 Completo
               </div>
-              <div className="text-xs text-neutral-500">Criado para o seu negócio</div>
+              <div className="text-xs text-neutral-500">Tudo que seu negócio precisa</div>
             </SoftCard>
           </div>
         </motion.div>
@@ -287,19 +287,19 @@ export default function MarcafyLanding() {
               desc: "Cores da marca, landing page com CMS e identidade visual.",
             },
             {
+              icon: Calendar,
+              title: "Fila em tempo real",
+              desc: "Controle de filas e agendamentos em tempo real.",
+            },
+            {
+              icon: Calendar,
+              title: "Google calendar integrado",
+              desc: "Sincronize seu calendário Google com o sistema.",
+            },
+            {
               icon: BarChart2,
-              title: "Relatórios avançados",
-              desc: "Indicadores e dashboards com filtros e exportação.",
-            },
-            {
-              icon: Wand2,
-              title: "Marketing & Cupons",
-              desc: "Campanhas, e-mail marketing e gestão de cupons.",
-            },
-            {
-              icon: LineChart,
-              title: "Gestão financeira",
-              desc: "Comissões, notas fiscais, controle de caixa e muito mais.",
+              title: "Whatsapp integrado",
+              desc: "Tenha seu whatsapp conectado para notificações e comunicação com clientes.",
             },
           ].map(({ icon: Icon, title, desc }, i) => (
             <SoftCard key={i} className="p-8">
@@ -368,14 +368,13 @@ export default function MarcafyLanding() {
                 </h3>
               </div>
 
-              <p className="text-4xl font-extrabold text-[#5E3BEE]">R$ 50<span className="text-base font-medium text-neutral-500">/mês</span></p>
+              <p className="text-4xl font-extrabold text-[#5E3BEE]">R$ 49,90<span className="text-base font-medium text-neutral-500">/mês</span></p>
               <p className="mt-2 text-sm text-neutral-600 mb-6">
                 Ideal para quem está começando e quer digitalizar o agendamento com praticidade e economia.
               </p>
 
               <ul className="space-y-3 text-sm">
-                <Li>Agendamento online sem necessidade de login</Li>
-                <Li>Página de agendamentos personalizada</Li>
+                <Li>Agendamento online sem necessidade de login</Li>                <Li>Página de agendamentos personalizada</Li>
                 <Li>Landing page com CMS e galeria própria</Li>
                 <Li>Painel do cliente e painel administrativo</Li>
                 <Li>Relatórios personalizados e exportação em PDF/CSV</Li>
@@ -412,9 +411,9 @@ export default function MarcafyLanding() {
                 </h3>
               </div>
 
-              <p className="text-4xl font-extrabold text-[#5E3BEE]">R$ 100<span className="text-base font-medium text-neutral-500">/mês</span></p>
+              <p className="text-4xl font-extrabold text-[#5E3BEE]">R$ 99,90<span className="text-base font-medium text-neutral-500">/mês</span></p>
               <p className="mt-2 text-sm text-neutral-600 mb-6">
-                Plano completo para quem precisa de controle total, automações e relatórios financeiros detalhados.
+                Plano completo para quem precisa de integração total, automações e relatórios financeiros detalhados.
               </p>
 
               <ul className="space-y-3 text-sm">
@@ -422,11 +421,12 @@ export default function MarcafyLanding() {
                 <Li>Painel do funcionário com permissões individuais</Li>
                 <Li>Emissão automática de Notas Fiscais</Li>
                 <Li>Backups automáticos e armazenamento de documentos</Li>
-                <Li>Exportar e importar dados em massa (CSV, Excel, JSON)</Li>
-                <Li>E-mail marketing integrado</Li>
+                <Li>Exportar e importar dados em massa</Li>
+                <Li>Whatsapp integrado</Li>
                 <Li>Controle financeiro completo (entradas, despesas e gráficos)</Li>
                 <Li>Controle de escala de trabalho e comissões detalhadas</Li>
-                <Li>Integração com ferramentas externas (Google Drive, Zapier, etc.)</Li>
+                <Li>Integração com Google Drive</Li>
+                <li>Integração com Google Calendar</li>
                 <Li>Relatórios de desempenho e produtividade por colaborador</Li>
                 <Li>Gestão de clientes com histórico e lembretes automáticos</Li>
               </ul>
@@ -451,7 +451,7 @@ export default function MarcafyLanding() {
                 </h3>
               </div>
 
-              <p className="text-4xl font-extrabold text-[#5E3BEE]">R$ 150<span className="text-base font-medium text-neutral-500">/mês</span></p>
+              <p className="text-4xl font-extrabold text-[#5E3BEE]">R$ 139,90<span className="text-base font-medium text-neutral-500">/mês</span></p>
               <p className="mt-2 text-sm text-neutral-600 mb-6">
                 Para negócios em expansão que desejam maximizar o alcance e performance com suporte prioritário.
               </p>
@@ -462,7 +462,7 @@ export default function MarcafyLanding() {
                 <Li>Suporte 24h e treinamento personalizado</Li>
                 <Li>Painel de sugestões de novas funcionalidades</Li>
                 <Li>Envio de confirmação automática para o cliente</Li>
-                <Li>Integração completa com Google Agenda</Li>
+                <Li>Integração com pagamento antecipado</Li>
                 <Li>Controle de acesso avançado e multiusuário</Li>
                 <Li>Monitoramento de desempenho em tempo real</Li>
                 <Li>Prioridade em atualizações e releases da plataforma</Li>
