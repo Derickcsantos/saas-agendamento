@@ -6,6 +6,7 @@ import {
   updateClient,
   deleteClient,
 } from '../controllers/clientsController.js';
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 
 export const clientRouter = Router();
 
@@ -51,7 +52,7 @@ export const clientRouter = Router();
  *       201:
  *         description: Cliente criado
  */
-clientRouter.post('/or-create', authenticateJWT, getOrCreateClient);
+clientRouter.post('/or-create', authenticateJWT, requireActiveSubscription, getOrCreateClient);
 
 /**
  * @swagger
@@ -71,7 +72,7 @@ clientRouter.post('/or-create', authenticateJWT, getOrCreateClient);
  *       200:
  *         description: Lista de clientes
  */
-clientRouter.get('/:slug', authenticateJWT, listClients);
+clientRouter.get('/:slug', authenticateJWT, requireActiveSubscription, listClients);
 
 /**
  * @swagger
@@ -111,7 +112,7 @@ clientRouter.get('/:slug', authenticateJWT, listClients);
  *       200:
  *         description: Cliente atualizado
  */
-clientRouter.put('/:slug/:clientId', authenticateJWT, updateClient);
+clientRouter.put('/:slug/:clientId', authenticateJWT, requireActiveSubscription, updateClient);
 
 /**
  * @swagger
@@ -136,4 +137,4 @@ clientRouter.put('/:slug/:clientId', authenticateJWT, updateClient);
  *       204:
  *         description: Cliente deletado
  */
-clientRouter.delete('/:slug/:clientId', authenticateJWT, deleteClient);
+clientRouter.delete('/:slug/:clientId', authenticateJWT, requireActiveSubscription, deleteClient);

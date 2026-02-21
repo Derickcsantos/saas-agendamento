@@ -186,7 +186,8 @@ export default function CreateOrganization() {
       }
 
       toast.success("Conta criada com sucesso!");
-      router.push(`/escolher-plano/${returnedSlug}`);
+      // router.push(`/escolher-plano/${returnedSlug}`);
+      router.push(`/login`)
       setIsReviewOpen(false);
     } catch (error) {
       console.error(error);

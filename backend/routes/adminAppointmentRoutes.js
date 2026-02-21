@@ -10,6 +10,7 @@ import {
 } from '../controllers/adminAppointmentsController.js';
 import { authenticateJWT } from '../middlewares/authMiddleware.js';
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 
 export const adminAppointmentRouter = Router();
 
@@ -48,7 +49,7 @@ export const adminAppointmentRouter = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-adminAppointmentRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, getAdminAppointments);
+adminAppointmentRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, getAdminAppointments);
 
 
 /**
@@ -95,7 +96,7 @@ adminAppointmentRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization
  *       500:
  *         description: Erro interno do servidor
  */
-adminAppointmentRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganization, getAdminAppointmentById);
+adminAppointmentRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, getAdminAppointmentById);
 
 /**
  * @swagger
@@ -123,7 +124,7 @@ adminAppointmentRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganiza
  *       500:
  *         description: Erro interno do servidor
  */
-adminAppointmentRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, updateAdminAppointment);
+adminAppointmentRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, requireAdminOfOrganization, updateAdminAppointment);
 
 /**
  * @swagger
@@ -163,7 +164,7 @@ adminAppointmentRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganiza
  *       500:
  *         description: Erro interno do servidor
  */
-adminAppointmentRouter.put('/:slug/:id/complete', authenticateJWT, requireAdminOfOrganization, updateAdminAppointmentToCompleted);
+adminAppointmentRouter.put('/:slug/:id/complete', authenticateJWT, requireAdminOfOrganization, requireAdminOfOrganization, updateAdminAppointmentToCompleted);
 
 /**
  * @swagger
@@ -219,7 +220,7 @@ adminAppointmentRouter.put('/complete-yesterday', updateAdminAppointmentToComple
  *       500:
  *         description: Erro interno do servidor
  */
-adminAppointmentRouter.get('/by-employee', authenticateJWT, getAdminAppointmentsByEmployee);
+adminAppointmentRouter.get('/by-employee', authenticateJWT, requireActiveSubscription, getAdminAppointmentsByEmployee);
 
 /**
  * @swagger

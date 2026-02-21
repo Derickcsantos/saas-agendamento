@@ -80,6 +80,7 @@ scheduleJob("0 8 * * *", "08:00");
 startUnavailableDaysCacheJob({ intervalMs: 180000 });
 
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
+
 app.use('/api/appointments', appointmentProcessRouter);
 app.use('/api/forgot-password', forgotPasswordRouter) 
 app.use('/api/send-confirmation-email', emailRouter)

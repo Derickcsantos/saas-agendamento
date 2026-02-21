@@ -151,17 +151,17 @@ export default function AdminDashboard({ slug }) {
   const renderContent = () => {
     switch (activeTab) {
       case "categories":
-        return <CategoriesTab org={org} />;
+        return <CategoriesTab org={org} setActiveTab={setActiveTab} />;
       case "services":
-        return <ServicesTab org={org} />;
+        return <ServicesTab org={org} setActiveTab={setActiveTab} />;
       case "employees":
-        return <EmployeesTab org={org} />;
+        return <EmployeesTab org={org} setActiveTab={setActiveTab} />;
       case "appointments":
-        return <AppointmentsTab org={org} />;
+        return <AppointmentsTab org={org} setActiveTab={setActiveTab} />;
       case "closed-periods":
         return <ClosedPeriodsTab org={org} />;
       case "clients":
-        return <ClientsTab org={org} />;
+        return <ClientsTab org={org} setActiveTab={setActiveTab} />;
       case "revenues":
         return <RevenuesTab org={org} />;
       case "expenses":

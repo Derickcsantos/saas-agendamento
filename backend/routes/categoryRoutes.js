@@ -9,6 +9,7 @@ import {
 } from '../controllers/categoriesController.js';
 import { authenticateJWT } from '../middlewares/authMiddleware.js';
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 
 export const categoryRouter = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -54,7 +55,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       500:
  *         description: Erro interno do servidor
  */
-categoryRouter.get('/:slug', authenticateJWT, getAllCategories);
+categoryRouter.get('/:slug', authenticateJWT, requireActiveSubscription, getAllCategories);
 
 
 /**
@@ -89,7 +90,7 @@ categoryRouter.get('/:slug', authenticateJWT, getAllCategories);
  *       500:
  *         description: Erro interno do servidor
  */
-categoryRouter.get('/:id', authenticateJWT, requireAdminOfOrganization, getCategoryById);
+categoryRouter.get('/:id', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, getCategoryById);
 
 /**
  * @swagger
@@ -142,7 +143,7 @@ categoryRouter.get('/:id', authenticateJWT, requireAdminOfOrganization, getCateg
  *       500:
  *         description: Erro interno do servidor
  */
-categoryRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, upload.single('image'), createCategory);
+categoryRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, upload.single('image'), createCategory);
 
 /**
  * @swagger
@@ -199,7 +200,7 @@ categoryRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, uploa
  *       500:
  *         description: Erro interno do servidor
  */
-categoryRouter.put('/:slug/:id', authenticateJWT,  upload.single('image'), updateCategory);
+categoryRouter.put('/:slug/:id', authenticateJWT, requireActiveSubscription,  upload.single('image'), updateCategory);
 
 /**
  * @swagger
@@ -235,4 +236,4 @@ categoryRouter.put('/:slug/:id', authenticateJWT,  upload.single('image'), updat
  *       500:
  *         description: Erro interno do servidor
  */
-categoryRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, deleteCategory);
+categoryRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, deleteCategory);

@@ -19,6 +19,7 @@ import {
   updateService,
   deleteService
 } from '../controllers/servicesController.js';
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 
 export const serviceRouter = Router();
 
@@ -55,7 +56,7 @@ export const serviceRouter = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-serviceRouter.get('/', authenticateJWT, getServices);
+serviceRouter.get('/', authenticateJWT, requireActiveSubscription, getServices);
 
 
 /**
@@ -94,7 +95,7 @@ serviceRouter.get('/', authenticateJWT, getServices);
  *       500:
  *         description: Erro interno do servidor
  */
-serviceRouter.get('/slug/:slug', authenticateJWT, getServicesBySlug)
+serviceRouter.get('/slug/:slug', authenticateJWT, requireActiveSubscription, getServicesBySlug)
 
 /**
  * @swagger
@@ -130,7 +131,7 @@ serviceRouter.get('/slug/:slug', authenticateJWT, getServicesBySlug)
  *       500:
  *         description: Falha interna no servidor
  */
-serviceRouter.get('/:id', authenticateJWT, getServiceById); 
+serviceRouter.get('/:id', authenticateJWT, requireActiveSubscription, getServiceById); 
 
 /**
  * @swagger
@@ -166,7 +167,7 @@ serviceRouter.get('/:id', authenticateJWT, getServiceById);
  *       500:
  *         description: Erro interno do servidor
  */
-serviceRouter.post('/:slug', upload.single('image'), authenticateJWT, createService);
+serviceRouter.post('/:slug', upload.single('image'), authenticateJWT, requireActiveSubscription, createService);
 
 /**
  * @swagger
@@ -221,7 +222,7 @@ serviceRouter.post('/:slug', upload.single('image'), authenticateJWT, createServ
  *       500:
  *         description: Erro interno do servidor
  */
-serviceRouter.put('/:slug/:id', upload.single('image'), authenticateJWT, updateService);
+serviceRouter.put('/:slug/:id', upload.single('image'), authenticateJWT, requireActiveSubscription, updateService);
 
 /**
  * @swagger
@@ -257,4 +258,4 @@ serviceRouter.put('/:slug/:id', upload.single('image'), authenticateJWT, updateS
  *       500:
  *         description: Erro interno do servidor
  */
-serviceRouter.delete('/:slug/:id', authenticateJWT, deleteService); 
+serviceRouter.delete('/:slug/:id', authenticateJWT, requireActiveSubscription, deleteService); 
