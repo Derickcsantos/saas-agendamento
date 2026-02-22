@@ -29,6 +29,7 @@ import {
 } from '../controllers/expensesController.js';
 import { authenticateJWT } from '../middlewares/authMiddleware.js';
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 
 export const expensesRouter = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -254,7 +255,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       500:
  *         description: Erro interno do servidor
  */
-expensesRouter.get('/categories/:slug', authenticateJWT, getAllExpenseCategories);
+expensesRouter.get('/categories/:slug', authenticateJWT, requireActiveSubscription, getAllExpenseCategories);
 
 /**
  * @swagger
@@ -288,7 +289,7 @@ expensesRouter.get('/categories/:slug', authenticateJWT, getAllExpenseCategories
  *       500:
  *         description: Erro interno
  */
-expensesRouter.get('/categories/:slug/:id', authenticateJWT, getExpenseCategoryById);
+expensesRouter.get('/categories/:slug/:id', authenticateJWT, requireActiveSubscription, getExpenseCategoryById);
 
 /**
  * @swagger
@@ -335,7 +336,7 @@ expensesRouter.get('/categories/:slug/:id', authenticateJWT, getExpenseCategoryB
  *       500:
  *         description: Erro interno
  */
-expensesRouter.post('/categories/:slug', authenticateJWT, requireAdminOfOrganization, createExpenseCategory);
+expensesRouter.post('/categories/:slug', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, createExpenseCategory);
 
 /**
  * @swagger
@@ -381,7 +382,7 @@ expensesRouter.post('/categories/:slug', authenticateJWT, requireAdminOfOrganiza
  *       500:
  *         description: Erro interno
  */
-expensesRouter.put('/categories/:slug/:id', authenticateJWT, requireAdminOfOrganization, updateExpenseCategory);
+expensesRouter.put('/categories/:slug/:id', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, updateExpenseCategory);
 
 /**
  * @swagger
@@ -410,7 +411,7 @@ expensesRouter.put('/categories/:slug/:id', authenticateJWT, requireAdminOfOrgan
  *       500:
  *         description: Erro interno
  */
-expensesRouter.delete('/categories/:slug/:id', authenticateJWT, requireAdminOfOrganization, deleteExpenseCategory);
+expensesRouter.delete('/categories/:slug/:id', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, deleteExpenseCategory);
 
 // ==========================================
 // MÉTODOS DE PAGAMENTO
@@ -438,7 +439,7 @@ expensesRouter.delete('/categories/:slug/:id', authenticateJWT, requireAdminOfOr
  *       500:
  *         description: Erro interno
  */
-expensesRouter.get('/payment-methods', authenticateJWT, getAllPaymentMethods);
+expensesRouter.get('/payment-methods', authenticateJWT, requireActiveSubscription, getAllPaymentMethods);
 
 // ==========================================
 // DESPESAS
@@ -581,10 +582,10 @@ expensesRouter.get('/payment-methods', authenticateJWT, getAllPaymentMethods);
  *       500:
  *         description: Erro ao importar
  */
-expensesRouter.get('/:slug/summary', authenticateJWT, getExpensesSummary);
+expensesRouter.get('/:slug/summary', authenticateJWT, requireActiveSubscription, getExpensesSummary);
 // Rotas específicas antes de /:slug para evitar colisão de parâmetros
-expensesRouter.post('/:slug/ai-import', authenticateJWT, requireAdminOfOrganization, upload.single('file'), importExpensesFromStatement);
-expensesRouter.get('/:slug', authenticateJWT, getAllExpenses);
+expensesRouter.post('/:slug/ai-import', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, upload.single('file'), importExpensesFromStatement);
+expensesRouter.get('/:slug', authenticateJWT, requireActiveSubscription, getAllExpenses);
 
 /**
  * @swagger
@@ -617,7 +618,7 @@ expensesRouter.get('/:slug', authenticateJWT, getAllExpenses);
  *       500:
  *         description: Erro ao buscar despesa
  */
-expensesRouter.get('/:slug/:id', authenticateJWT, getExpenseById);
+expensesRouter.get('/:slug/:id', authenticateJWT, requireActiveSubscription, getExpenseById);
 
 /**
  * @swagger
@@ -703,7 +704,7 @@ expensesRouter.get('/:slug/:id', authenticateJWT, getExpenseById);
  *       500:
  *         description: Erro ao criar despesa
  */
-expensesRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, createExpense);
+expensesRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, createExpense);
 
 /**
  * @swagger
@@ -758,7 +759,7 @@ expensesRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, creat
  *       500:
  *         description: Erro interno
  */
-expensesRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, updateExpense);
+expensesRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, updateExpense);
 
 /**
  * @swagger
@@ -787,7 +788,7 @@ expensesRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, up
  *       500:
  *         description: Erro interno
  */
-expensesRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, deleteExpense);
+expensesRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, deleteExpense);
 
 // ==========================================
 // PARCELAS
@@ -824,7 +825,7 @@ expensesRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization,
  *       500:
  *         description: Erro interno
  */
-expensesRouter.get('/:slug/:expenseId/installments', authenticateJWT, getExpenseInstallments);
+expensesRouter.get('/:slug/:expenseId/installments', authenticateJWT, requireActiveSubscription, getExpenseInstallments);
 
 /**
  * @swagger
@@ -874,7 +875,7 @@ expensesRouter.get('/:slug/:expenseId/installments', authenticateJWT, getExpense
  *       500:
  *         description: Erro interno
  */
-expensesRouter.patch('/:slug/installments/:installmentId/status', authenticateJWT, requireAdminOfOrganization, updateInstallmentStatus);
+expensesRouter.patch('/:slug/installments/:installmentId/status', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, updateInstallmentStatus);
 
 // ==========================================
 // ANEXOS
@@ -911,7 +912,7 @@ expensesRouter.patch('/:slug/installments/:installmentId/status', authenticateJW
  *       500:
  *         description: Erro interno
  */
-expensesRouter.get('/:slug/:expenseId/attachments', authenticateJWT, getExpenseAttachments);
+expensesRouter.get('/:slug/:expenseId/attachments', authenticateJWT, requireActiveSubscription, getExpenseAttachments);
 
 /**
  * @swagger
@@ -967,7 +968,7 @@ expensesRouter.get('/:slug/:expenseId/attachments', authenticateJWT, getExpenseA
  *       500:
  *         description: Erro interno
  */
-expensesRouter.post('/:slug/:expenseId/attachments', authenticateJWT, requireAdminOfOrganization, upload.single('file'), createExpenseAttachment);
+expensesRouter.post('/:slug/:expenseId/attachments', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, upload.single('file'), createExpenseAttachment);
 
 /**
  * @swagger
@@ -994,7 +995,7 @@ expensesRouter.post('/:slug/:expenseId/attachments', authenticateJWT, requireAdm
  *       500:
  *         description: Erro interno
  */
-expensesRouter.delete('/:slug/attachments/:attachmentId', authenticateJWT, requireAdminOfOrganization, deleteExpenseAttachment);
+expensesRouter.delete('/:slug/attachments/:attachmentId', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, deleteExpenseAttachment);
 
 // ==========================================
 // RELATÓRIOS

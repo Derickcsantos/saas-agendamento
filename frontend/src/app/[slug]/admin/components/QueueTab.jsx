@@ -9,15 +9,16 @@ import { useQueueWebSocket } from "@/hooks/useQueueWebSocket";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import { QRCodeCanvas } from "qrcode.react";
 import { useConfirm } from '@/components/ConfirmDialogProvider'
+import TrialExpiredModal from "./TrialExpireModal";
 
-export default function QueueTab({ slug }) {
+export default function QueueTab({ org, setActiveTab }) {
   const [queue, setQueue] = useState(null);
   const [queueEntries, setQueueEntries] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [wsConnected, setWsConnected] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
-  const { palette } = useOrganizationColors(slug);
+  const { palette } = useOrganizationColors(org.slug_organization);
   const [creatingQueue, setCreatingQueue] = useState(false);
   const [createQueueLoading, setCreateQueueLoading] = useState(false);
   const [createQueueDate, setCreateQueueDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -43,6 +44,9 @@ export default function QueueTab({ slug }) {
   const [employees, setEmployees] = useState([]);
   const [loadingServices, setLoadingServices] = useState(false);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
+
+  const [showPaywall, setShowPaywall] = useState(false);
+  const slug = org.slug_organization
 
   // ================================
   // HANDLER DE MENSAGENS WEBSOCKET
@@ -171,6 +175,7 @@ export default function QueueTab({ slug }) {
         const res = await fetchWithAuth(
           `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/categories/${slug}`
         );
+
         if (res.ok) {
           const data = await res.json();
           console.log('✅ Categorias carregadas:', data);
@@ -194,6 +199,12 @@ export default function QueueTab({ slug }) {
         const res = await fetchWithAuth(
           `${process.env.NEXT_PUBLIC_API_URL}/api/queues/${slug}/${queue.queue_id}/stats`
         );
+
+        if (res.status === 402) {
+          setShowPaywall(true);
+          return;
+        }
+
         if (res.ok) {
           const data = await res.json();
           setStats(data);
@@ -272,6 +283,11 @@ export default function QueueTab({ slug }) {
         }
       );
 
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || errData.message || "Erro ao reordenar");
@@ -293,6 +309,7 @@ export default function QueueTab({ slug }) {
       // Recarregar fila do backend em caso de erro
       try {
         const fallbackRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/queues/${slug}/today`);
+
         if (fallbackRes.ok) {
           const fallbackData = await fallbackRes.json();
           setQueueEntries(fallbackData.queue_entries || []);
@@ -409,6 +426,11 @@ export default function QueueTab({ slug }) {
           body: JSON.stringify({ status: newStatus }),
         }
       );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
 
       if (!res.ok) {
         throw new Error("Erro ao alterar status");
@@ -645,6 +667,13 @@ export default function QueueTab({ slug }) {
   if (!queue && !loading) {
     return (
       <div className="min-h-screen bg-slate-50 px-4 py-6 sm:p-6">
+
+        <TrialExpiredModal
+          open={showPaywall}
+          org={org}
+          setActiveTab={setActiveTab}
+        />
+
         <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
           <div className="text-center">
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
@@ -721,6 +750,13 @@ export default function QueueTab({ slug }) {
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-5 sm:p-6 space-y-5 sm:space-y-6">
+
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
+
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>

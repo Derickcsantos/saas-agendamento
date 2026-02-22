@@ -19,6 +19,7 @@ import {
   leaveQueueByToken,
 } from "../controllers/queueController.js";
 import { validateSlugForWebSocket } from "../controllers/websocketController.js";
+import requireActiveSubscription from "../middlewares/requireActiveSubscription.js";
 
 export const queueRouter = express.Router();
 
@@ -443,7 +444,7 @@ queueRouter.put("/:slug/:queueId", updateQueue);
  *       200:
  *         description: 'Fila reordenada com sucesso'
  */
-queueRouter.post("/:slug/:queueId/reorder", reorderQueue);
+queueRouter.post("/:slug/:queueId/reorder", requireActiveSubscription, reorderQueue);
 
 /**
  * @swagger
@@ -627,7 +628,7 @@ queueRouter.delete("/public/:publicToken/leave", leaveQueueByToken);
  *                 averageTimePerClient:
  *                   type: integer
  */
-queueRouter.get("/:slug/:queueId/stats", getQueueStats);
+queueRouter.get("/:slug/:queueId/stats", requireActiveSubscription, getQueueStats);
 
 /**
  * @swagger

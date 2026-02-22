@@ -13,6 +13,7 @@ import {
 } from '../controllers/whatsappOrganizationController.js';
 import { authenticateJWT } from '../middlewares/authMiddleware.js';
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 
 export const whatsappOrganizationRouter = Router();
 
@@ -63,6 +64,7 @@ whatsappOrganizationRouter.get(
   '/:slug/status',
   authenticateJWT,
   requireAdminOfOrganization,
+  requireActiveSubscription,
   getWhatsappStatus
 );
 

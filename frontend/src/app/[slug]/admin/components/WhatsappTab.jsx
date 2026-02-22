@@ -16,8 +16,9 @@ import {
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import { QRCodeCanvas } from "qrcode.react";
 import { useConfirm } from "@/components/ConfirmDialogProvider";
+import TrialExpiredModal from "./TrialExpireModal";
 
-export default function WhatsappTab({ org }) {
+export default function WhatsappTab({ org, setActiveTab }) {
   const { palette } = useOrganizationColors(org.slug_organization);
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,8 @@ export default function WhatsappTab({ org }) {
   const [connecting, setConnecting] = useState(false);
   const [qrSize, setQrSize] = useState(240);
   const qrContainerRef = useRef(null);
+
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // Contatos
   const [contacts, setContacts] = useState([]);
@@ -117,6 +120,12 @@ export default function WhatsappTab({ org }) {
           cache: "no-store"
         }
       );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       const data = await res.json();
 
       if (res.ok && data.isConnected) {
@@ -525,6 +534,13 @@ export default function WhatsappTab({ org }) {
 
   return (
     <div className="space-y-6">
+
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
+
       {/* ESTATÍSTICAS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Status de Conexão */}

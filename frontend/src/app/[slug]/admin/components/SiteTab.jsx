@@ -2,14 +2,17 @@
 import { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import ClientLanding from "@/app/[slug]/ClientLanding"; // IMPORT CONFIRMADO
+import TrialExpiredModal from "./TrialExpireModal";
 
-export default function SiteTab({ org }) {
+export default function SiteTab({ org, setActiveTab }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [palette, setPalette] = useState(null);
 
   const [previewMode, setPreviewMode] = useState("desktop");
   const previewRef = useRef();
+
+  const [showPaywall, setShowPaywall] = useState(false);
 
   /* =======================================================
       FORM INITIAL STATE (reflete todo o conteúdo do landing)
@@ -63,6 +66,11 @@ export default function SiteTab({ org }) {
           { credentials: "include" }
         ),
       ]);
+
+      if (landingRes.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
 
       if (!landingRes.ok) throw new Error("Erro ao carregar Landing Page");
       if (!paletteRes.ok) throw new Error("Erro ao carregar Paleta");
@@ -187,13 +195,21 @@ export default function SiteTab({ org }) {
   ===================================================================== */
   if (loading || !palette)
     return (
-      <div className="text-center py-20 text-gray-500 animate-pulse">
-        Carregando configurações...
+      <div>
+        <TrialExpiredModal
+          open={showPaywall}
+          org={org}
+          setActiveTab={setActiveTab}
+        />
+        <div className="text-center py-20 text-gray-500 animate-pulse">
+          Carregando configurações...
+        </div>
       </div>
     );
 
   return (
     <div className="flex flex-col xl:flex-row gap-6">
+
       {/* ============================ LEFT FORM ============================ */}
       <div className="w-full xl:w-[480px] 2xl:w-[520px] shrink-0">
         <h2 className="text-2xl font-semibold">Configurações do Site</h2>

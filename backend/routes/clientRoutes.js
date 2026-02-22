@@ -112,7 +112,7 @@ clientRouter.get('/:slug', authenticateJWT, requireActiveSubscription, listClien
  *       200:
  *         description: Cliente atualizado
  */
-clientRouter.put('/:slug/:clientId', authenticateJWT, requireActiveSubscription, updateClient);
+clientRouter.put('/:slug/:clientId', authenticateJWT, updateClient);
 
 /**
  * @swagger
@@ -137,4 +137,4 @@ clientRouter.put('/:slug/:clientId', authenticateJWT, requireActiveSubscription,
  *       204:
  *         description: Cliente deletado
  */
-clientRouter.delete('/:slug/:clientId', authenticateJWT, requireActiveSubscription, deleteClient);
+clientRouter.delete('/:slug/:clientId', authenticateJWT, deleteClient);

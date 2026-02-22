@@ -6,6 +6,7 @@ import {
   deleteImageBySlug,
   deleteImagesBatchBySlug
 } from '../controllers/galleryController.js';
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 
 const storage = multer.memoryStorage();
 const upload = multer({storage})
@@ -57,7 +58,7 @@ export const galleryRouter = Router();
  *       500:
  *         description: Erro interno
  */
-galleryRouter.get('/:slug', getImagesBySlug);
+galleryRouter.get('/:slug', requireActiveSubscription, getImagesBySlug);
 
 /**
  * @swagger
@@ -97,7 +98,7 @@ galleryRouter.get('/:slug', getImagesBySlug);
  *       500:
  *         description: Erro no upload
  */
-galleryRouter.post('/:slug/upload', upload.array('imagens[]', 10), uploadImageBySlug);
+galleryRouter.post('/:slug/upload', requireActiveSubscription, upload.array('imagens[]', 10), uploadImageBySlug);
 
 
 /**
@@ -129,6 +130,7 @@ galleryRouter.post('/:slug/upload', upload.array('imagens[]', 10), uploadImageBy
  */
 galleryRouter.delete(
   '/:slug/batch',
+  requireActiveSubscription,
   deleteImagesBatchBySlug
 );
 

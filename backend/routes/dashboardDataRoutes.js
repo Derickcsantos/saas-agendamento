@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddleware.js'
 import { getDashboardData } from '../controllers/dashboardDataController.js'
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js'
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js'
 
 export const dashboardDataRouter = Router()
 
@@ -107,4 +108,4 @@ export const dashboardDataRouter = Router()
  *                 details:
  *                   type: string
  */
-dashboardDataRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, getDashboardData)
+dashboardDataRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, getDashboardData)

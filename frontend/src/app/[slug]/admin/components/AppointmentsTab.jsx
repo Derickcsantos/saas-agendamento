@@ -514,11 +514,6 @@ export default function AppointmentsTab({ org, setActiveTab }) {
         { credentials: "include" }
       );
 
-      if (fetchRes.status === 402) {
-        setShowPaywall(true);
-        return;
-      }
-
       const appointmentData = await fetchRes.json();
 
       const res = await fetch(
@@ -535,11 +530,6 @@ export default function AppointmentsTab({ org, setActiveTab }) {
           }),
         }
       );
-
-      if (fetchRes.status === 402) {
-        setShowPaywall(true);
-        return;
-      }
 
       if (!res.ok) {
         throw new Error("Erro ao atualizar agendamento");

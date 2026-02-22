@@ -7,8 +7,9 @@ import autoTable from 'jspdf-autotable';
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import { useConfirm } from "@/components/ConfirmDialogProvider";
 import SecretCodeModal from "@/components/SecretCodeModal";
+import TrialExpiredModal from "./TrialExpireModal";
 
-export default function RevenueTab({ org }) {
+export default function RevenueTab({ org, setActiveTab }) {
   const [data, setData] = useState(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -22,6 +23,8 @@ export default function RevenueTab({ org }) {
   const [secretCodeModalOpen, setSecretCodeModalOpen] = useState(false);
   const [pendingWithdrawAmount, setPendingWithdrawAmount] = useState(null);
   const { palette } = useOrganizationColors(org.slug_organization);
+
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const { confirm } = useConfirm()
 
@@ -54,6 +57,12 @@ export default function RevenueTab({ org }) {
       const res = await fetch(url, {
         credentials: 'include'
       });
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       const json = await res.json();
 
       if (!res.ok) throw new Error(json.error || "Erro ao carregar dados");
@@ -76,6 +85,12 @@ export default function RevenueTab({ org }) {
       const res = await fetch(url, {
         credentials: 'include'
       });
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       if (!res.ok) throw new Error("Erro ao exportar relatório");
 
       const blob = await res.blob();
@@ -227,6 +242,13 @@ export default function RevenueTab({ org }) {
 
   return (
     <div className="space-y-6">
+
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
+
       {/* FILTROS */}
       <div className="bg-white p-5 rounded-lg shadow-sm border flex flex-wrap gap-4 items-end">
         <div>

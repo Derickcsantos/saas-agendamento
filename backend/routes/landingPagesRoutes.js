@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getLandingPageBySlug, createLandingPage, updateLandingPage } from '../controllers/landingPagesController.js';
 import { authenticateJWT } from '../middlewares/authMiddleware.js';
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 
 export const landingPageRouter = Router()
 
@@ -53,7 +54,7 @@ export const landingPageRouter = Router()
  *       500:
  *         description: Erro interno no servidor
  */
-landingPageRouter.get("/:slug", getLandingPageBySlug)
+landingPageRouter.get("/:slug", requireActiveSubscription, getLandingPageBySlug)
 
 /**
  * @swagger

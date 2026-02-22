@@ -107,11 +107,6 @@ export default function ClientsTab({ org, setActiveTab }) {
         }
       );
 
-      if (res.status === 402) {
-        setShowPaywall(true);
-        return;
-      }
-
       if (!res.ok) {
         const errorData = await res.text();
         console.error("Erro ao salvar observação:", res.status, errorData);

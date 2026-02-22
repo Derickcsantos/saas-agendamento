@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import { ptBR } from "date-fns/locale";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import { useConfirm } from "@/components/ConfirmDialogProvider";
+import TrialExpiredModal from "./TrialExpireModal";
 
 const modalStyles = `
   .react-datepicker {
@@ -43,7 +44,7 @@ const modalStyles = `
   }
 `;
 
-export default function ClosedPeriodsTab({ org }) {
+export default function ClosedPeriodsTab({ org, setActiveTab }) {
   const [periods, setPeriods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -51,6 +52,8 @@ export default function ClosedPeriodsTab({ org }) {
   const [editingPeriod, setEditingPeriod] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const { palette } = useOrganizationColors(org.slug_organization);
+
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const { confirm } = useConfirm()
   
@@ -88,6 +91,11 @@ export default function ClosedPeriodsTab({ org }) {
           }
         }
       );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
 
       if (!res.ok) throw new Error("Erro ao carregar períodos");
       
@@ -148,6 +156,7 @@ export default function ClosedPeriodsTab({ org }) {
           }),
         }
       );
+
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Erro ao criar período");
@@ -189,6 +198,7 @@ export default function ClosedPeriodsTab({ org }) {
           }),
         }
       );
+
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Erro ao atualizar período");
@@ -224,6 +234,7 @@ export default function ClosedPeriodsTab({ org }) {
           credentials: "include",
         }
       );
+
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Erro ao excluir período");
@@ -393,6 +404,7 @@ export default function ClosedPeriodsTab({ org }) {
 
     return (
       <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+
         <style>{modalStyles}</style>
         <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-2xl p-6 shadow-xl">
           <h2 className="text-xl font-bold mb-4">Editar Período Fechado</h2>
@@ -506,6 +518,13 @@ export default function ClosedPeriodsTab({ org }) {
 
   return (
     <div className="space-y-8 bg-white dark:bg-gray-900 p-6 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-gray-200 dark:border-gray-700">
+      
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
+      
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl text-gray-800 dark:text-gray-100">

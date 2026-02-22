@@ -48,11 +48,6 @@ export default function EmployeesTab({ org, setActiveTab }) {
         { credentials: 'include' }
       );
 
-      if (res.status === 402) {
-        setShowPaywall(true);
-        return;
-      }
-
       if (res.ok) {
         const data = await res.json();
         setAvailableColors(data);
@@ -84,11 +79,6 @@ export default function EmployeesTab({ org, setActiveTab }) {
         credentials: 'include'
       }
     );
-
-    if (res.status === 402) {
-      setShowPaywall(true);
-      return;
-    }
 
     const data = await res.json();
     setEmployeeServices(data);

@@ -5,8 +5,9 @@ import { toast } from "react-toastify";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { useConfirm } from "@/components/ConfirmDialogProvider";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import TrialExpiredModal from "./TrialExpireModal";
 
-export default function GalleryTab({ org }) {
+export default function GalleryTab({ org, setActiveTab }) {
   const [galleryImages, setGalleryImages] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
 
@@ -23,6 +24,8 @@ export default function GalleryTab({ org }) {
     descricao: ""
   });
 
+  const [showPaywall, setShowPaywall] = useState(false);
+
   // Cor primária da organização
   const PRIMARY = palette?.strong_color || "#5E3BEE";
 
@@ -38,6 +41,11 @@ export default function GalleryTab({ org }) {
       const res = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_API_URL}/api/admin/galeria/${org.slug_organization}`
       );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
 
       const data = await res.json();
       setGalleryImages(data.imagens || []);
@@ -111,6 +119,11 @@ export default function GalleryTab({ org }) {
         }
       );
 
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       if (!res.ok) throw new Error();
 
       toast.success("Imagens salvas com sucesso!");
@@ -163,6 +176,11 @@ export default function GalleryTab({ org }) {
         }
       );
 
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       const text = await res.text();
       console.log("STATUS:", res.status);
       console.log("RESPOSTA:", text);
@@ -182,6 +200,13 @@ export default function GalleryTab({ org }) {
 
   return (
     <div className="space-y-8">
+
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
+
       {/* ➕ UPLOAD FORM - NO TOPO */}
       <form
         onSubmit={handleSubmit}

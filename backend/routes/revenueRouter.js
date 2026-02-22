@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddleware.js'
 import { getRevenues, exportRevenue, getRevenuesLast12Months } from '../controllers/revenueController.js'
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js'
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js'
 
 export const revenueRouter = Router()
 
@@ -73,7 +74,7 @@ export const revenueRouter = Router()
  *       500:
  *         description: Erro interno do servidor
  */
-revenueRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, getRevenues)
+revenueRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, getRevenues)
 
 revenueRouter.get('/:slug/latest', authenticateJWT, requireAdminOfOrganization, getRevenuesLast12Months)
 
@@ -114,4 +115,4 @@ revenueRouter.get('/:slug/latest', authenticateJWT, requireAdminOfOrganization, 
  *       500:
  *         description: Erro interno do servidor
  */
-revenueRouter.get('/:slug/export', authenticateJWT, requireAdminOfOrganization, exportRevenue)
+revenueRouter.get('/:slug/export', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, exportRevenue)
