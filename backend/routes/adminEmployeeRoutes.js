@@ -10,6 +10,7 @@ import { authenticateJWT, extractOrganizationId } from '../middlewares/authMiddl
 import { create } from 'domain';
 import multer from 'multer';
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 const upload = multer(); 
 
 export const adminEmployeeRouter = Router();
@@ -58,7 +59,7 @@ export const adminEmployeeRouter = Router();
  *                 details:
  *                   type: string
  */
-adminEmployeeRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, getEmployees);
+adminEmployeeRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, getEmployees);
 
 /**
  * @swagger
@@ -88,7 +89,7 @@ adminEmployeeRouter.get('/:slug', authenticateJWT, requireAdminOfOrganization, g
  *       500:
  *         description: Erro interno do servidor
  */
-adminEmployeeRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganization, getEmployeeById);
+adminEmployeeRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, getEmployeeById);
 
 /**
  * @swagger
@@ -147,7 +148,7 @@ adminEmployeeRouter.get('/:slug/:id', authenticateJWT, requireAdminOfOrganizatio
  *       500:
  *         description: Erro interno do servidor
  */
-adminEmployeeRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, upload.single('image'), createEmployee);
+adminEmployeeRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, upload.single('image'), createEmployee);
 
 /**
  * @swagger
@@ -209,7 +210,7 @@ adminEmployeeRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, 
  *       500:
  *         description: Erro interno do servidor
  */
-adminEmployeeRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, upload.single('image'), updateEmployee);
+adminEmployeeRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, upload.single('image'), updateEmployee);
 
 /**
  * @swagger
@@ -237,4 +238,4 @@ adminEmployeeRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganizatio
  *       500:
  *         description: Erro interno do servidor
  */
-adminEmployeeRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, deleteEmployee);
+adminEmployeeRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, deleteEmployee);

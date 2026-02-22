@@ -8,6 +8,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "react-hot-toast";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import TrialExpiredModal from "./TrialExpireModal";
 
 const ApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -128,7 +129,7 @@ function InstallmentsList({ installments, onToggleStatus }) {
   );
 }
 
-export default function ExpensesTab({ org }) {
+export default function ExpensesTab({ org, setActiveTab }) {
   const { palette } = useOrganizationColors(org.slug_organization);
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -148,6 +149,8 @@ export default function ExpensesTab({ org }) {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState(null);
   const [importSaving, setImportSaving] = useState(false);
+
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const [form, setForm] = useState({
     name_expense: "",
@@ -186,6 +189,11 @@ export default function ExpensesTab({ org }) {
         fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/expenses/${org.slug_organization}/summary`),
       ]);
 
+      if (expRes.status === 402 || catRes.status === 402 || payRes.status === 402 || sumRes.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       const [expData, catData, payData, sumData] = await Promise.all([
         expRes.json(), catRes.json(), payRes.json(), sumRes.json(),
       ]);
@@ -209,6 +217,12 @@ export default function ExpensesTab({ org }) {
     setDetailsLoading(true);
     try {
       const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/expenses/${org.slug_organization}/${expense.expense_id}`);
+      
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+      
       const data = await res.json();
       setViewExpense(data);
       setViewInstallments(Array.isArray(data.installments) ? data.installments : []);
@@ -228,6 +242,12 @@ export default function ExpensesTab({ org }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      } 
+
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Falha ao atualizar");
@@ -268,6 +288,12 @@ export default function ExpensesTab({ org }) {
           body: JSON.stringify(payload),
         });
       }
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Falha ao salvar categoria");
@@ -290,6 +316,12 @@ export default function ExpensesTab({ org }) {
       const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/expenses/categories/${org.slug_organization}/${cat.category_expense_id}`, {
         method: "DELETE",
       });
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Falha ao excluir categoria");
@@ -315,6 +347,12 @@ export default function ExpensesTab({ org }) {
         method: "POST",
         body: fd,
       });
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Falha ao importar extrato");
@@ -432,6 +470,11 @@ export default function ExpensesTab({ org }) {
         body: JSON.stringify(payload),
       });
 
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Falha ao criar despesa");
@@ -449,6 +492,12 @@ export default function ExpensesTab({ org }) {
             method: "POST",
             body: fd,
           });
+
+          if (res.status === 402) {
+            setShowPaywall(true);
+            return;
+          }
+  
           if (!uploadRes.ok) {
             const err = await uploadRes.json();
             throw new Error(err.error || "Erro ao enviar anexo");
@@ -489,6 +538,13 @@ export default function ExpensesTab({ org }) {
 
   return (
     <div className="space-y-6">
+
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard title="A pagar este mês" value={totals.payableThisMonth.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} color={strong} />
         <StatCard title="Em aberto" value={totals.pending.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} color="#f97316" />

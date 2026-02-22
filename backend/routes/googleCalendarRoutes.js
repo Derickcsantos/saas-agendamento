@@ -9,6 +9,7 @@ import {
   disconnectGoogleCalendar,
   patchCalendarEvent,
 } from "../controllers/googleCalendarController.js";
+import requireActiveSubscription from "../middlewares/requireActiveSubscription.js";
 
 export const googleCalendarRouter = Router();
 
@@ -55,6 +56,7 @@ export const googleCalendarRouter = Router();
  */
 googleCalendarRouter.get(
   "/status",
+  requireActiveSubscription,
   getCalendarStatus
 );
 

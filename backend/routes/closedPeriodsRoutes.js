@@ -9,6 +9,7 @@ import {
 } from '../controllers/closedPeriodsController.js';
 import { authenticateJWT } from '../middlewares/authMiddleware.js';
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 
 export const closedPeriodsRouter = Router();
 
@@ -44,7 +45,7 @@ export const closedPeriodsRouter = Router();
  *       500:
  *         description: Erro interno do servidor
  */
-closedPeriodsRouter.get('/:slug', authenticateJWT, getClosedPeriodsBySlug);
+closedPeriodsRouter.get('/:slug', authenticateJWT, requireActiveSubscription, getClosedPeriodsBySlug);
 
 /**
  * @swagger

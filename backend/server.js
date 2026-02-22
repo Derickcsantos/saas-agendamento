@@ -80,12 +80,13 @@ scheduleJob("0 8 * * *", "08:00");
 startUnavailableDaysCacheJob({ intervalMs: 180000 });
 
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
+
 app.use('/api/appointments', appointmentProcessRouter);
 app.use('/api/forgot-password', forgotPasswordRouter) 
 app.use('/api/send-confirmation-email', emailRouter)
 app.use('/api/users', userRouter)
 app.use('/api/register', registerUserRouter);
-app.use('/api/login', loginRouter) 
+app.use('/api/login', loginRouter);
 app.use('/auth/google', googleRouter);
 app.use('/api/verifica-usuario', verifyUserRouter); 
 app.use('/api/appointments', appointmentsRouter);
@@ -94,11 +95,11 @@ app.use('/api/admin/categories', categoryRouter);
 app.use('/api/admin/services', serviceRouter);
 app.use('/api/admin/appointments', adminAppointmentRouter); 
 app.use('/api/admin/employees', adminEmployeeRouter); 
-app.use('/api/employee-services/', employeeServicesRouter) ;
+app.use('/api/employee-services/', employeeServicesRouter);
 app.use('/api/admin/galeria', galleryRouter);
 app.use("/api/schedules", employeeScheduleRouter)
 app.use('/api/admin/dashboard', dashboardDataRouter) 
-app.use('/api/coupons', couponRouter); 
+app.use('/api/coupons', couponRouter);
 app.use('/api/admin/revenue', revenueRouter)
 app.use('/api/landing-page', landingPageRouter)
 app.use('/api/auth', authRouter)

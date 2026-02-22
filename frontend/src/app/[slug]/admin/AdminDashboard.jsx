@@ -151,39 +151,39 @@ export default function AdminDashboard({ slug }) {
   const renderContent = () => {
     switch (activeTab) {
       case "categories":
-        return <CategoriesTab org={org} />;
+        return <CategoriesTab org={org} setActiveTab={setActiveTab} />;
       case "services":
-        return <ServicesTab org={org} />;
+        return <ServicesTab org={org} setActiveTab={setActiveTab} />;
       case "employees":
-        return <EmployeesTab org={org} />;
+        return <EmployeesTab org={org} setActiveTab={setActiveTab} />;
       case "appointments":
-        return <AppointmentsTab org={org} />;
+        return <AppointmentsTab org={org} setActiveTab={setActiveTab} />;
       case "closed-periods":
-        return <ClosedPeriodsTab org={org} />;
+        return <ClosedPeriodsTab org={org} setActiveTab={setActiveTab} />;
       case "clients":
-        return <ClientsTab org={org} />;
+        return <ClientsTab org={org} setActiveTab={setActiveTab} />;
       case "revenues":
-        return <RevenuesTab org={org} />;
+        return <RevenuesTab org={org} setActiveTab={setActiveTab} />;
       case "expenses":
-        return <ExpensesTab org={org} />;
+        return <ExpensesTab org={org} setActiveTab={setActiveTab} />;
       case "queue":
-        return <QueueTab slug={slug} />;
+        return <QueueTab org={org} setActiveTab={setActiveTab} />;
       case "gallery":
-        return <GalleryTab org={org} />;
+        return <GalleryTab org={org} setActiveTab={setActiveTab} />;
       case "coupons":
-        return <CouponsTab org={org} />;
+        return <CouponsTab org={org} setActiveTab={setActiveTab} />;
       case "users":
-        return <UsersTab org={org} />;
+        return <UsersTab org={org} setActiveTab={setActiveTab} />;
       case "faster-schedule":
-        return <FasterScheduleTab org={org} />;
+        return <FasterScheduleTab org={org} setActiveTab={setActiveTab} />;
       case "gallery":
-        return <GalleryTab org={org} />;
+        return <GalleryTab org={org} setActiveTab={setActiveTab} />;
       case "whatsapp":
-        return <WhatsappTab org={org} />;
+        return <WhatsappTab org={org} setActiveTab={setActiveTab} />;
       case "site":
-        return <SiteTab org={org} />;
+        return <SiteTab org={org} setActiveTab={setActiveTab} />;
       case "calendar-google":
-        return <PersonalCalendarTab org={org} />;
+        return <PersonalCalendarTab org={org} setActiveTab={setActiveTab} />;
       case "settings":
         return <SettingsTab org={org} />;
       case "organization-subscriptions":

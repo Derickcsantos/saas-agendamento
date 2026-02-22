@@ -8,13 +8,14 @@ import ptLocale from "@fullcalendar/core/locales/pt-br";
 import { toast } from "react-toastify";
 import { calendarStyles } from '../../../utils/calendarStyles'
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
+import TrialExpiredModal from "./TrialExpireModal";
 
 function normalizeDate(dateString) {
   if (!dateString) return null;
   return dateString.includes("T") ? dateString : `${dateString}T00:00:00`;
 }
 
-export default function PersonalCalendarTab({ org }) {
+export default function PersonalCalendarTab({ org, setActiveTab }) {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [calendarEvents, setCalendarEvents] = useState([]);
@@ -22,6 +23,8 @@ export default function PersonalCalendarTab({ org }) {
   const [user, setUser] = useState(null);
   const [calendarView, setCalendarView] = useState("timeGridWeek");
   const { palette } = useOrganizationColors(org.slug_organization);
+
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // 🆕 Estados para o modal de criação de evento
   const [showEventModal, setShowEventModal] = useState(false);
@@ -76,6 +79,9 @@ export default function PersonalCalendarTab({ org }) {
         const res = await fetch(`${API_BASE_URL}/api/auth/${slug}/check`, {
           credentials: "include",
         });
+
+        // TALVEZ TENHA QUE ADICIONAR AQUI O IF
+
         const data = await res.json();
         setUser(data.user || null);
       } finally {
@@ -96,6 +102,12 @@ export default function PersonalCalendarTab({ org }) {
         `${API_BASE_URL}/api/google-calendar/status?userId=${userId}`,
         { credentials: "include", cache: "no-store" }
       );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       const data = await res.json();
 
       if (res.ok && data.isAuthorized) {
@@ -328,6 +340,13 @@ export default function PersonalCalendarTab({ org }) {
 
   return (
     <div className="space-y-8 bg-white dark:bg-gray-900 p-6 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 min-h-[600px]">
+      
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
+      
       <style>{calendarStyles}</style>
       <style>{`
         /* Estilos para seleção de horário */

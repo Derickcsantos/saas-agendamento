@@ -5,14 +5,17 @@ import { toast } from "react-toastify";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import { useConfirm } from "@/components/ConfirmDialogProvider";
 import InviteModal from "@/app/[slug]/admin/components/InviteModal";
+import TrialExpiredModal from "./TrialExpireModal";
 
-export default function UsersTab({ org }) {
+export default function UsersTab({ org, setActiveTab }) {
   const [users, setUsers] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const { palette } = useOrganizationColors(org.slug_organization);
+
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const { confirm } = useConfirm()
 
@@ -34,6 +37,12 @@ export default function UsersTab({ org }) {
     try {
       setLoading(true);
       const res = await fetch(`${API}/api/users/${orgSlug}`, { credentials: "include" });
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       const data = await res.json();
       setUsers(data);
     } catch {
@@ -47,6 +56,12 @@ export default function UsersTab({ org }) {
     const res = await fetch(`${API}/api/admin/employees/${orgSlug}`, {
       credentials: "include"
     });
+
+    if (res.status === 402) {
+      setShowPaywall(true);
+      return;
+    }
+
     const data = await res.json();
     setEmployees(data);
   };
@@ -131,6 +146,12 @@ export default function UsersTab({ org }) {
   return (
     <div className="space-y-8">
 
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
+
       {/* FORM */}
       <form
         onSubmit={handleSubmit}
@@ -148,7 +169,7 @@ export default function UsersTab({ org }) {
             style={{backgroundColor: palette?.strong_color}}
             className="flex items-center gap-2 px-4 py-2 text-white rounded-lg text-sm font-medium transition"
           >
-           <i class="bi bi-person-plus-fill"></i>
+           <i className="bi bi-person-plus-fill"></i>
           </button>
         </div>
 

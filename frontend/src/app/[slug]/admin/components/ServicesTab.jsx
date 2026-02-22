@@ -5,8 +5,9 @@ import { toast } from "react-toastify";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import ImageDropzone from "./ImageDropzone"
 import { useConfirm } from "@/components/ConfirmDialogProvider";
+import TrialExpiredModal from "./TrialExpireModal";
 
-export default function ServicesTab({ org }) {
+export default function ServicesTab({ org, setActiveTab }) {
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
   const formRef = useRef(null); 
@@ -25,6 +26,7 @@ export default function ServicesTab({ org }) {
   const [preview, setPreview] = useState("");
   const [searchQuery, setSearchQuery] = useState(""); // 🔍 Search state
   const { palette } = useOrganizationColors(org.slug_organization);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const { confirm } = useConfirm()
 
@@ -41,6 +43,12 @@ export default function ServicesTab({ org }) {
       `${process.env.NEXT_PUBLIC_API_URL}/api/admin/categories/${org.slug_organization}`,
       { credentials: "include" }
     );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
     const data = await res.json();
     setCategories(data);
   }
@@ -56,6 +64,12 @@ export default function ServicesTab({ org }) {
     }
 
     const res = await fetch(url.toString(), { credentials: "include" });
+
+    if (res.status === 402) {
+      setShowPaywall(true);
+      return;
+    }
+
     const data = await res.json();
     setServices(data);
   }
@@ -99,6 +113,11 @@ export default function ServicesTab({ org }) {
         body: formData,
         credentials: "include",
       });
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
 
       if (!res.ok) throw new Error();
 
@@ -157,16 +176,26 @@ export default function ServicesTab({ org }) {
 
     if (!confirmed) return
 
-    await fetch(
+    const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/admin/services/${org.slug_organization}/${id}`,
       { method: "DELETE", credentials: "include" }
     );
+
+    if (res.status === 402) {
+      setShowPaywall(true);
+      return;
+    }
 
     loadServices(searchQuery); // 🔍 Mantém a busca após deletar
   };
 
   return (
     <div className="space-y-8">
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
 
       <form
         ref={formRef}

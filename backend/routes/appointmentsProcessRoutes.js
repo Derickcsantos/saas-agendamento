@@ -6,6 +6,7 @@ import {
   getAppointmentEmployeeByService,
   getAvailableTimes
 } from '../controllers/appointmentProccessController.js';
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 
 
 export const appointmentProcessRouter = Router();

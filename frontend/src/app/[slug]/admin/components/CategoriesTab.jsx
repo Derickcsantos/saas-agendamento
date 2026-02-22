@@ -5,8 +5,9 @@ import { toast } from "react-toastify";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import ImageDropzone from "./ImageDropzone"
 import { useConfirm } from "@/components/ConfirmDialogProvider";
+import TrialExpiredModal from "./TrialExpireModal";
 
-export default function CategoriesTab({ org }) {
+export default function CategoriesTab({ org, setActiveTab }) {
   const [categories, setCategories] = useState([]);
   const [categoryId, setCategoryId] = useState(0);
   const [editing, setEditing] = useState(null);
@@ -17,6 +18,7 @@ export default function CategoriesTab({ org }) {
   const [searchQuery, setSearchQuery] = useState(""); // 🔍 Search state
   const formRef = useRef(null);
   const { palette } = useOrganizationColors(org.slug_organization);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const { confirm } = useConfirm()
 
@@ -26,13 +28,19 @@ export default function CategoriesTab({ org }) {
       const url = new URL(
         `${process.env.NEXT_PUBLIC_API_URL}/api/admin/categories/${org.slug_organization}`
       );
-      
+
       // Adiciona parâmetro de search se fornecido
       if (search) {
         url.searchParams.append("search", search);
       }
 
       const res = await fetch(url.toString(), { credentials: "include" });
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       const data = await res.json();
       setCategories(data);
     } catch (err) {
@@ -74,6 +82,11 @@ export default function CategoriesTab({ org }) {
         body: formData,
         credentials: "include",
       });
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
 
       if (!res.ok) throw new Error();
 
@@ -117,17 +130,26 @@ export default function CategoriesTab({ org }) {
 
     if (!confirmed) return
 
-    await fetch(
+    const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/admin/categories/${org.slug_organization}/${id}`,
       { method: "DELETE", credentials: "include" }
     );
+
+    if (res.status === 402) {
+      setShowPaywall(true);
+      return;
+    }
 
     loadCategories(searchQuery); // 🔍 Mantém a busca após deletar
   };
 
   return (
     <div className="space-y-8">
-
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
       <form
         ref={formRef}
         onSubmit={handleSubmit}
@@ -170,7 +192,7 @@ export default function CategoriesTab({ org }) {
           <button
             type="submit"
             className=" text-white px-5 py-2 rounded-lg shadow transition"
-            style={{backgroundColor: palette?.strong_color}}
+            style={{ backgroundColor: palette?.strong_color }}
           >
             Salvar
           </button>

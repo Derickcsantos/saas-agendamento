@@ -4,8 +4,9 @@ import { toast } from 'react-toastify'
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import ImageDropzone from "./ImageDropzone";
 import { useConfirm } from "@/components/ConfirmDialogProvider";
+import TrialExpiredModal from "./TrialExpireModal";
 
-export default function EmployeesTab({ org }) {
+export default function EmployeesTab({ org, setActiveTab }) {
   const [employees, setEmployees] = useState([]);
   const [services, setServices] = useState([]);
   const [employeeServices, setEmployeeServices] = useState([]);
@@ -31,6 +32,7 @@ export default function EmployeesTab({ org }) {
   const [availableColors, setAvailableColors] = useState([]);
   const [selectedColorId, setSelectedColorId] = useState(null);
   const { palette } = useOrganizationColors(org.slug_organization);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const { confirm } = useConfirm()
 
@@ -45,6 +47,7 @@ export default function EmployeesTab({ org }) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/calendar-colors/${org.slug_organization}`,
         { credentials: 'include' }
       );
+
       if (res.ok) {
         const data = await res.json();
         setAvailableColors(data);
@@ -60,6 +63,12 @@ export default function EmployeesTab({ org }) {
         credentials: 'include'
       }
     );
+
+    if (res.status === 402) {
+      setShowPaywall(true);
+      return;
+    }
+
     const data = await res.json();
     setEmployees(data);
   };
@@ -70,6 +79,7 @@ export default function EmployeesTab({ org }) {
         credentials: 'include'
       }
     );
+
     const data = await res.json();
     setEmployeeServices(data);
   };
@@ -80,6 +90,12 @@ export default function EmployeesTab({ org }) {
         credentials: 'include'
       }
     );
+
+    if (res.status === 402) {
+      setShowPaywall(true);
+      return;
+    }
+
     const data = await res.json();
     setAllServices(data);
   };
@@ -102,6 +118,12 @@ export default function EmployeesTab({ org }) {
         credentials: 'include', 
         body: formData 
       });
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       if (!res.ok) throw new Error("Erro ao salvar funcionário");
       const emp = await res.json();
 
@@ -172,10 +194,16 @@ export default function EmployeesTab({ org }) {
 
     if (!confirmed) return
 
-    await fetch(
+    const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/admin/employees/${org.slug_organization}/${id}`,
       { method: "DELETE", credentials: 'include' }
     );
+
+    if (res.status === 402) {
+      setShowPaywall(true);
+      return;
+    }
+
     toast.success('Funcionário excluido com sucesso');
     loadEmployees();
   };
@@ -235,6 +263,13 @@ export default function EmployeesTab({ org }) {
 
   return (
     <div>
+
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
+
       <form
         onSubmit={handleSubmit}
         className="bg-white p-4 rounded-lg shadow-sm border mb-6 space-y-4"

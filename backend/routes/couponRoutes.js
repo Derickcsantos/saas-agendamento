@@ -10,6 +10,7 @@ import {
   validateCouponMarcafy
 } from '../controllers/couponController.js';
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 
 export const couponRouter = Router();
 
@@ -106,7 +107,7 @@ couponRouter.get('/validate', validateCouponMarcafy)
  *       500:
  *         description: Erro interno do servidor
  */
-couponRouter.get('/:slug', authenticateJWT, getCoupons);
+couponRouter.get('/:slug', authenticateJWT, requireActiveSubscription, getCoupons);
 
 /**
  * @swagger
@@ -183,7 +184,7 @@ couponRouter.get('/:slug/:id', authenticateJWT, getCouponById);
  *       500:
  *         description: Erro interno do servidor
  */
-couponRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, createCoupon);
+couponRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, createCoupon);
 
 /**
  * @swagger
@@ -223,7 +224,7 @@ couponRouter.post('/:slug', authenticateJWT, requireAdminOfOrganization, createC
  *       500:
  *         description: Erro interno do servidor
  */
-couponRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, updateCoupon);
+couponRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, updateCoupon);
 
 /**
  * @swagger
@@ -257,4 +258,4 @@ couponRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganization, upda
  *       500:
  *         description: Erro interno do servidor
  */
-couponRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, deleteCoupon);
+couponRouter.delete('/:slug/:id', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, deleteCoupon);

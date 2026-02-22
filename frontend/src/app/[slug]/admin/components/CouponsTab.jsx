@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { toast } from 'react-toastify'
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import { useConfirm } from "@/components/ConfirmDialogProvider";
+import TrialExpiredModal from "./TrialExpireModal";
 
-export default function CouponsTab({ org }) {
+export default function CouponsTab({ org, setActiveTab }) {
   const [coupons, setCoupons] = useState([]);
   const [form, setForm] = useState({
     name: "",
@@ -23,6 +24,8 @@ export default function CouponsTab({ org }) {
   const { palette } = useOrganizationColors(org.slug_organization);
   const { confirm } = useConfirm() 
 
+  const [showPaywall, setShowPaywall] = useState(false);
+
   useEffect(() => {
     loadCoupons();
   }, []);
@@ -32,6 +35,12 @@ export default function CouponsTab({ org }) {
       `${process.env.NEXT_PUBLIC_API_URL}/api/coupons/${org.slug_organization}`,
       { cache: "no-store", credentials: 'include'}
     );
+
+    if (res.status === 402) {
+      setShowPaywall(true);
+      return;
+    }
+
     const data = await res.json();
     setCoupons(data);
   }
@@ -52,6 +61,11 @@ export default function CouponsTab({ org }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
+
+    if (res.status === 402) {
+      setShowPaywall(true);
+      return;
+    }
 
     setLoading(false);
 
@@ -102,6 +116,11 @@ export default function CouponsTab({ org }) {
        }
     );
 
+    if (res.status === 402) {
+      setShowPaywall(true);
+      return;
+    }
+
     if (!res.ok) {
       toast.error("Erro ao excluir cupom");
       return;
@@ -133,6 +152,12 @@ export default function CouponsTab({ org }) {
 
   return (
     <div>
+
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
 
       <form
         onSubmit={handleSubmit}

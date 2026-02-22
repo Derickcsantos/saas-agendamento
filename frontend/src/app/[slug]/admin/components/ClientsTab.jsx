@@ -17,8 +17,9 @@ import {
 } from "lucide-react";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import { toast } from "react-toastify";
+import TrialExpiredModal from "./TrialExpireModal";
 
-export default function ClientsTab({ org }) {
+export default function ClientsTab({ org, setActiveTab }) {
   const { palette } = useOrganizationColors(org.slug_organization);
   const cacheRef = useRef(null);
   const cacheTimestampRef = useRef(0);
@@ -34,6 +35,8 @@ export default function ClientsTab({ org }) {
   const [observationDraft, setObservationDraft] = useState("");
   const [savingObservation, setSavingObservation] = useState(false);
   const itemsPerPage = 10;
+
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // Carregar clientes da API
   async function loadClients() {
@@ -52,6 +55,11 @@ export default function ClientsTab({ org }) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/clients/${org.slug_organization}`,
         { credentials: "include" }
       );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
 
       if (!res.ok) {
         const errorData = await res.text();
@@ -170,6 +178,13 @@ export default function ClientsTab({ org }) {
 
   return (
     <div className="space-y-6">
+
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
+
       {/* CARDS DE ESTATÍSTICAS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total de Clientes */}

@@ -6,6 +6,7 @@ import {
   updateClient,
   deleteClient,
 } from '../controllers/clientsController.js';
+import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 
 export const clientRouter = Router();
 
@@ -51,7 +52,7 @@ export const clientRouter = Router();
  *       201:
  *         description: Cliente criado
  */
-clientRouter.post('/or-create', authenticateJWT, getOrCreateClient);
+clientRouter.post('/or-create', authenticateJWT, requireActiveSubscription, getOrCreateClient);
 
 /**
  * @swagger
@@ -71,7 +72,7 @@ clientRouter.post('/or-create', authenticateJWT, getOrCreateClient);
  *       200:
  *         description: Lista de clientes
  */
-clientRouter.get('/:slug', authenticateJWT, listClients);
+clientRouter.get('/:slug', authenticateJWT, requireActiveSubscription, listClients);
 
 /**
  * @swagger

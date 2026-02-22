@@ -10,6 +10,7 @@ import { statusClasses } from "@/app/utils/appointmentStatus";
 import { statusInfo } from "@/app/utils/appointmentsInfo";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import { useConfirm } from "@/components/ConfirmDialogProvider";
+import TrialExpiredModal from "./TrialExpireModal";
 
 const calendarStyles = `
   .fc-theme-standard td, 
@@ -101,7 +102,7 @@ const calendarStyles = `
   }
 `;
 
-export default function AppointmentsTab({ org }) {
+export default function AppointmentsTab({ org, setActiveTab }) {
   const [appointments, setAppointments] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -132,6 +133,8 @@ export default function AppointmentsTab({ org }) {
     date: "",
     statuses: ["confirmed", "completed"],
   });
+
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const { confirm } = useConfirm()
 
@@ -176,6 +179,12 @@ export default function AppointmentsTab({ org }) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/admin/employees/${org.slug_organization}`,
         { credentials: 'include' }
       );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       const data = await res.json();
       setEmployees(data);
     } catch (err) {
@@ -227,6 +236,11 @@ export default function AppointmentsTab({ org }) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}?${params}`,
         { credentials: "include" }
       );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
 
       const data = await res.json();
       const raw = Array.isArray(data) ? data : [];
@@ -298,7 +312,7 @@ export default function AppointmentsTab({ org }) {
 
     setSavingId(id);
 
-    await fetch(
+    const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}/${id}`,
       {
         method: "PUT",
@@ -307,6 +321,11 @@ export default function AppointmentsTab({ org }) {
         body: JSON.stringify({ status: newStatus }),
       }
     );
+
+    if (res.status === 402) {
+      setShowPaywall(true);
+      return;
+    }
 
     await loadAppointments(filters);
     setSavingId(null);
@@ -331,6 +350,11 @@ export default function AppointmentsTab({ org }) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}/${id}`,
         { credentials: "include" }
       );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
 
       const data = await res.json();
       setEditingAppointment(data);
@@ -381,6 +405,11 @@ export default function AppointmentsTab({ org }) {
           body: JSON.stringify(body),
         }
       );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
 
       if (!res.ok) {
         alert("Erro ao atualizar agendamento.");
@@ -484,6 +513,7 @@ export default function AppointmentsTab({ org }) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}/${eventId}`,
         { credentials: "include" }
       );
+
       const appointmentData = await fetchRes.json();
 
       const res = await fetch(
@@ -653,7 +683,14 @@ export default function AppointmentsTab({ org }) {
 
 
   return (
+    
     <div className="space-y-8 bg-white dark:bg-gray-900 p-6 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-gray-200 dark:border-gray-700">
+
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
 
       <style>{calendarStyles}</style>
 

@@ -2,8 +2,9 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { Search, X } from "lucide-react";
+import TrialExpiredModal from "./TrialExpireModal";
 
-export default function FasterScheduleTab({ org }) {
+export default function FasterScheduleTab({ org, setActiveTab }) {
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -17,6 +18,8 @@ export default function FasterScheduleTab({ org }) {
   const [manualTimeMode, setManualTimeMode] = useState(false);
   const [manualStartTime, setManualStartTime] = useState("");
   const [manualEndTime, setManualEndTime] = useState("");
+
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const [form, setForm] = useState({
     client_name: "",
@@ -43,6 +46,7 @@ export default function FasterScheduleTab({ org }) {
         credentials: "include",
       }
     );
+
     setCategories(await res.json());
   }
 
@@ -53,6 +57,12 @@ export default function FasterScheduleTab({ org }) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/users/${org.slug_organization}`,
         { credentials: "include" }
       );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       const userData = await usersRes.json();
       const users = Array.isArray(userData) ? userData : [];
 
@@ -61,6 +71,12 @@ export default function FasterScheduleTab({ org }) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}`,
         { credentials: "include" }
       );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
       const appointmentsData = await appointmentsRes.json();
 
       // Extrair clientes únicos dos agendamentos
@@ -144,6 +160,7 @@ export default function FasterScheduleTab({ org }) {
         credentials: "include",
       }
     );
+
     setServices(await res.json());
   }
 
@@ -154,6 +171,7 @@ export default function FasterScheduleTab({ org }) {
         credentials: "include",
       }
     );
+
     setEmployees(await res.json());
   }
 
@@ -164,6 +182,7 @@ export default function FasterScheduleTab({ org }) {
     const url = `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/available-times/${org.slug_organization}?employeeId=${employeeId}&date=${date}&duration=${duration}`;
 
     const res = await fetch(url, { credentials: "include" });
+
     const data = await res.json();
     setSlots(Array.isArray(data) ? data : []);
   }
@@ -298,6 +317,13 @@ export default function FasterScheduleTab({ org }) {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border">
+
+      <TrialExpiredModal
+        open={showPaywall}
+        org={org}
+        setActiveTab={setActiveTab}
+      />
+
       <h2 className="text-lg font-semibold text-gray-700 mb-4">Agendamento Rápido</h2>
 
       {manualTimeMode && (
