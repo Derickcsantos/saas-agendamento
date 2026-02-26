@@ -126,6 +126,9 @@ export default function AppointmentsTab({ org, setActiveTab }) {
     date: "",
     time: "",
     price: "",
+    manualMode: false,
+    manualStartTime: "",
+    manualEndTime: "",
   });
   const [filters, setFilters] = useState({
     search: "",
@@ -359,12 +362,16 @@ export default function AppointmentsTab({ org, setActiveTab }) {
       const data = await res.json();
       setEditingAppointment(data);
 
-      setEditData({
+      setEditData(prev => ({
+        ...prev,
         employee: data.employees,
         date: data.appointment_date,
         time: { start: data.start_time.slice(0,5), end: data.end_time.slice(0,5) },
         price: data.price?.final_price ?? data.price?.original_price ?? "",
-      });
+        manualMode: false,
+        manualStartTime: "",
+        manualEndTime: "",
+      }));
 
       if (data.services?.duration) {
         await loadEditAvailableTimes(
@@ -382,11 +389,20 @@ export default function AppointmentsTab({ org, setActiveTab }) {
 
   const saveAppointmentChanges = async () => {
     try {
+      let start_time, end_time;
+      if (editData.manualMode) {
+        start_time = editData.manualStartTime;
+        end_time = editData.manualEndTime;
+      } else {
+        start_time = editData.time.start;
+        end_time = editData.time.end;
+      }
+
       const body = {
         employee_id: editData.employee.id,
         appointment_date: editData.date,
-        start_time: editData.time.start,
-        end_time: editData.time.end,
+        start_time,
+        end_time,
       };
 
       if (editData.price !== "" && editData.price !== null && editData.price !== undefined) {
@@ -558,6 +574,7 @@ export default function AppointmentsTab({ org, setActiveTab }) {
     }
   };
 
+
   const EditModal = () => {
     if (!showEditModal || !editingAppointment) return null;
 
@@ -624,26 +641,59 @@ export default function AppointmentsTab({ org, setActiveTab }) {
             }}
           />
 
-          {/* SELECT HORÁRIO */}
+          {/* MODO MANUAL */}
+          <div className="flex items-center gap-2 mt-4">
+            <label className="font-medium">Modo Manual:</label>
+            <button
+              type="button"
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition ${editData.manualMode ? "bg-orange-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
+              onClick={() => setEditData({ ...editData, manualMode: !editData.manualMode, manualStartTime: "", manualEndTime: "", time: "" })}
+            >
+              {editData.manualMode ? "Manual" : "Automático"}
+            </button>
+          </div>
+
+          {/* HORÁRIO */}
           <label className="block mt-4 font-medium">Horário</label>
 
-          {editTimeSlots.length === 0 ? (
-            <p className="text-gray-500">Selecione funcionário e data.</p>
+          {!editData.manualMode ? (
+            editTimeSlots.length === 0 ? (
+              <p className="text-gray-500">Selecione funcionário e data.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {editTimeSlots.map((slot) => (
+                  <button
+                    key={slot.start}
+                    onClick={() => setEditData({ ...editData, time: slot })}
+                    className={`px-3 py-1 rounded border ${
+                      editData.time?.start === slot.start
+                        ? "bg-purple-600 text-white"
+                        : "bg-gray-100"
+                    }`}
+                  >
+                    {slot.start} — {slot.end}
+                  </button>
+                ))}
+              </div>
+            )
           ) : (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {editTimeSlots.map((slot) => (
-                <button
-                  key={slot.start}
-                  onClick={() => setEditData({ ...editData, time: slot })}
-                  className={`px-3 py-1 rounded border ${
-                    editData.time?.start === slot.start
-                      ? "bg-purple-600 text-white"
-                      : "bg-gray-100"
-                  }`}
-                >
-                  {slot.start} — {slot.end}
-                </button>
-              ))}
+            <div className="flex gap-2 mt-2">
+              <input
+                type="time"
+                className="border p-2 rounded flex-1"
+                placeholder="Início"
+                value={editData.manualStartTime}
+                onChange={e => setEditData({ ...editData, manualStartTime: e.target.value })}
+                required
+              />
+              <input
+                type="time"
+                className="border p-2 rounded flex-1"
+                placeholder="Fim"
+                value={editData.manualEndTime}
+                onChange={e => setEditData({ ...editData, manualEndTime: e.target.value })}
+                required
+              />
             </div>
           )}
 
@@ -671,7 +721,7 @@ export default function AppointmentsTab({ org, setActiveTab }) {
               onClick={saveAppointmentChanges}
               className="px-4 py-2 text-white rounded"
               style={{backgroundColor: palette?.strong_color}}
-              disabled={!editData.time}
+              disabled={editData.manualMode ? !(editData.manualStartTime && editData.manualEndTime) : !editData.time}
             >
               Salvar
             </button>
