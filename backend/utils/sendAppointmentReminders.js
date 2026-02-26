@@ -66,6 +66,7 @@ export default async function sendAppointmentReminders() {
         start_time,
         end_time,
         meeting_url,
+        employee_id,
         organization_id,
         organizations (
           name,
@@ -90,71 +91,111 @@ export default async function sendAppointmentReminders() {
     let errorCount = 0;
     const errors = [];
 
-    // Envia lembrete para cada agendamento
+    // Envia lembrete para cada agendamento (cliente)
     for (const appointment of appointments) {
       try {
         const phoneObj = normalizePhone(appointment.client_phone);
-        
         if (!phoneObj) {
           console.warn(`⚠️ Telefone inválido para ${appointment.client_name} (ID: ${appointment.id})`);
           errorCount++;
           errors.push({ appointmentId: appointment.id, error: "Telefone inválido" });
           continue;
         }
-
-        // Usa o formato WhatsApp do objeto normalizado
         const phone = phoneObj.whatsappPlus;
-
-        // Verifica se organização tem WhatsApp próprio
         const hasOrgWhatsApp = await hasOrganizationWhatsApp(appointment.organization_id);
         const organizationName = appointment.organizations?.name || "nossa equipe";
-
-        // Monta mensagem de lembrete
         const dateBR = formatDateBR(appointment.appointment_date);
         const startTime = formatTime(appointment.start_time);
         const endTime = formatTime(appointment.end_time);
-
         let message = `Olá, ${appointment.client_name}! 👋\n\n`;
-        
-        // Se usar API key padrão, menciona o nome da organização
         if (!hasOrgWhatsApp) {
           message += `Este é um lembrete do(a) *${organizationName}* sobre o seu agendamento:\n\n`;
         } else {
           message += `Este é um lembrete sobre o seu agendamento:\n\n`;
         }
-
         message += `📅 *Data:* ${dateBR}\n`;
         message += `🕐 *Horário:* ${startTime}`;
         if (endTime) {
           message += ` até ${endTime}`;
         }
         message += `\n`;
-
-        // Adiciona link da reunião se existir
         if (appointment.meeting_url) {
           message += `\n🔗 *Link da reunião:*\n${appointment.meeting_url}\n`;
         }
-
         message += `\n🗺️ Endereço: ${appointment.organizations?.address}`;
-
         message += `\n`;
-
         message += `\nAguardamos você! 😊`;
-
         console.log(`📤 Enviando lembrete para ${appointment.client_name} (${phone})...`);
-
         await sendWhatsAppMessage(phone, message, appointment.organization_id);
-
         successCount++;
         console.log(`✅ Lembrete enviado para ${appointment.client_name}`);
       } catch (err) {
         errorCount++;
-        errors.push({ 
-          appointmentId: appointment.id, 
-          clientName: appointment.client_name, 
-          error: err.message 
-        });
+        errors.push({ appointmentId: appointment.id, clientName: appointment.client_name, error: err.message });
         console.error(`❌ Erro ao enviar para ${appointment.client_name}:`, err.message);
+      }
+    }
+
+    // Agrupa appointments por employee_id
+    const employeeAppointmentsMap = {};
+    for (const appointment of appointments) {
+      if (!appointment.employee_id) continue;
+      if (!employeeAppointmentsMap[appointment.employee_id]) {
+        employeeAppointmentsMap[appointment.employee_id] = [];
+      }
+      employeeAppointmentsMap[appointment.employee_id].push(appointment);
+    }
+
+    // Para cada funcionário, envia lembrete para cada appointment, aguardando 5 segundos entre cada
+    for (const employeeId in employeeAppointmentsMap) {
+      // Busca dados do funcionário
+      let employee;
+      try {
+        const { data, error } = await supabase
+          .from("employees")
+          .select("name, phone")
+          .eq("id", employeeId)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data || !data.phone) {
+          console.warn(`⚠️ Funcionário não encontrado ou sem telefone (ID: ${employeeId})`);
+          errors.push({ employeeId, error: "Funcionário não encontrado ou sem telefone" });
+          continue;
+        }
+        employee = data;
+      } catch (err) {
+        errorCount++;
+        errors.push({ employeeId, error: err.message });
+        console.error(`❌ Erro ao buscar funcionário (ID: ${employeeId}):`, err.message);
+        continue;
+      }
+
+      // Envia lembrete para cada appointment do funcionário
+      for (const appointment of employeeAppointmentsMap[employeeId]) {
+        try {
+          let employeeMessage = `Olá, ${employee.name}! 👋\n\n`;
+          employeeMessage += `Você tem um agendamento confirmado para amanhã:\n\n`;
+          employeeMessage += `👤 Cliente: ${appointment.client_name}\n`;
+          employeeMessage += `📅 Data: ${formatDateBR(appointment.appointment_date)}\n`;
+          employeeMessage += `🕐 Horário: ${formatTime(appointment.start_time)}`;
+          if (appointment.end_time) {
+            employeeMessage += ` até ${formatTime(appointment.end_time)}`;
+          }
+          employeeMessage += `\n`;
+          if (appointment.meeting_url) {
+            employeeMessage += `\n🔗 Link da reunião:\n${appointment.meeting_url}\n`;
+          }
+          employeeMessage += `\n🗺️ Endereço: ${appointment.organizations?.address}`;
+          employeeMessage += `\n`;
+          employeeMessage += `\nPrepare-se para atender o cliente! 😊`;
+          await sendWhatsAppMessage(employee.phone, employeeMessage, appointment.organization_id);
+          console.log(`✅ Lembrete enviado para funcionário ${employee.name} (appointment ${appointment.id})`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        } catch (err) {
+          errorCount++;
+          errors.push({ appointmentId: appointment.id, employeeId, error: err.message });
+          console.error(`❌ Erro ao enviar para funcionário (ID: ${employeeId}, appointment ${appointment.id}):`, err.message);
+        }
       }
     }
 
