@@ -40,6 +40,13 @@ const formatCNPJ = (value) => {
     .replace(/(\d{4})(\d{2})$/, '$1-$2');
 };
 
+// Função para formatar CEP: 00000-000
+const formatCEP = (value) => {
+  const numbers = value.replace(/\D/g, '').slice(0, 8);
+  if (numbers.length <= 5) return numbers;
+  return numbers.replace(/(\d{5})(\d)/, '$1-$2');
+};
+
 // Função para detectar e formatar automaticamente
 const formatDocument = (value) => {
   const numbers = value.replace(/\D/g, '');
@@ -63,6 +70,8 @@ export default function CreateOrganization() {
   const [slugExists, setSlugExists] = useState(false);
   const [checkingSlug, setCheckingSlug] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFetchingCep, setIsFetchingCep] = useState(false);
+  const [cepError, setCepError] = useState("");
   const [orgData, setOrgData] = useState({
     name: "",
     setor: "",
@@ -72,6 +81,13 @@ export default function CreateOrganization() {
     light_color: "",
     image: null,
     address: "",
+  });
+
+  const [addressData, setAddressData] = useState({
+    cep: "",
+    number: "",
+    street: "",
+    city: "",
   });
 
   const [repData, setRepData] = useState({
@@ -108,6 +124,50 @@ export default function CreateOrganization() {
     setRepData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const fetchAddressByCep = async (cepValue) => {
+    const cepNumbers = cepValue.replace(/\D/g, '');
+
+    if (cepNumbers.length !== 8) return;
+
+    setIsFetchingCep(true);
+    setCepError("");
+
+    try {
+      const { data } = await axios.get(`https://brasilapi.com.br/api/cep/v2/${cepNumbers}`);
+
+      setAddressData((prev) => ({
+        ...prev,
+        cep: formatCEP(data?.cep || cepNumbers),
+        street: data?.street || prev.street,
+        city: data?.city || prev.city,
+      }));
+    } catch {
+      setCepError("Não foi possível localizar este CEP.");
+    } finally {
+      setIsFetchingCep(false);
+    }
+  };
+
+  const handleAddressChange = (e) => {
+    const { name, value } = e.target;
+
+    if (name === 'cep') {
+      const formatted = formatCEP(value);
+      const cepNumbers = formatted.replace(/\D/g, '');
+
+      setAddressData((prev) => ({ ...prev, cep: formatted }));
+      setCepError("");
+
+      if (cepNumbers.length === 8) {
+        fetchAddressByCep(cepNumbers);
+      }
+
+      return;
+    }
+
+    setAddressData((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleLogoUpload = (e) => {
     const file = e.target.files[0];
     setOrgData((prev) => ({ ...prev, image: file }));
@@ -118,6 +178,14 @@ export default function CreateOrganization() {
     setIsSubmitting(true);
     try {
       const localSlug = orgData.name.toLowerCase().replace(/\s+/g, "-");
+      const fullAddress = [
+        addressData.street.trim(),
+        addressData.number.trim() ? `Nº ${addressData.number.trim()}` : "",
+        addressData.city.trim(),
+        addressData.cep.trim() ? `CEP ${addressData.cep.trim()}` : "",
+      ]
+        .filter(Boolean)
+        .join(", ");
 
       const formData = new FormData();
 
@@ -126,7 +194,14 @@ export default function CreateOrganization() {
       }
 
       Object.keys(orgData).forEach((key) => {
-        if (key !== "image") formData.append(key, orgData[key]);
+        if (key === "image") return;
+
+        if (key === "address") {
+          formData.append("address", fullAddress);
+          return;
+        }
+
+        formData.append(key, orgData[key]);
       });
 
       formData.append("slug_organization", localSlug);
@@ -488,15 +563,56 @@ export default function CreateOrganization() {
             {step === 3 && (
               <div className="space-y-5">
                 <div>
-                  <label className="font-semibold text-gray-900 text-sm">Endereço</label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={orgData.address}
-                    onChange={handleOrgChange}
-                    placeholder="Av. Paulista, 1471 conj 1110 — São Paulo, SP"
-                    className="w-full border border-black/10 mt-1 rounded-lg p-3 shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40"
-                  />
+                  <label className="font-semibold text-gray-900 text-sm">Endereço da Organização</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                    <input
+                      type="text"
+                      name="cep"
+                      value={addressData.cep}
+                      onChange={handleAddressChange}
+                      onBlur={() => fetchAddressByCep(addressData.cep)}
+                      placeholder="CEP (00000-000)"
+                      maxLength={9}
+                      required
+                      className="w-full border border-black/10 rounded-lg p-3 shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40"
+                    />
+
+                    <input
+                      type="text"
+                      name="number"
+                      value={addressData.number}
+                      onChange={handleAddressChange}
+                      placeholder="Número"
+                      required
+                      className="w-full border border-black/10 rounded-lg p-3 shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40"
+                    />
+
+                    <input
+                      type="text"
+                      name="street"
+                      value={addressData.street}
+                      onChange={handleAddressChange}
+                      placeholder="Rua"
+                      className="w-full border border-black/10 rounded-lg p-3 shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40"
+                    />
+
+                    <input
+                      type="text"
+                      name="city"
+                      value={addressData.city}
+                      onChange={handleAddressChange}
+                      placeholder="Cidade"
+                      className="w-full border border-black/10 rounded-lg p-3 shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-[#5E3BEE]/40"
+                    />
+                  </div>
+
+                  {isFetchingCep && (
+                    <p className="text-xs text-blue-600 mt-2">Buscando endereço pelo CEP...</p>
+                  )}
+
+                  {!isFetchingCep && cepError && (
+                    <p className="text-xs text-red-500 mt-2">{cepError}</p>
+                  )}
                 </div>
 
                 <div className="flex justify-between mt-6">
@@ -605,7 +721,10 @@ export default function CreateOrganization() {
                 {orgData.document_type.toUpperCase()} -{" "}
                 {orgData.document_number}
               </p>
-              <p><strong>Endereço:</strong> {orgData.address}</p>
+              <p><strong>CEP:</strong> {addressData.cep}</p>
+              <p><strong>Número:</strong> {addressData.number}</p>
+              <p><strong>Rua:</strong> {addressData.street}</p>
+              <p><strong>Cidade:</strong> {addressData.city}</p>
 
               {orgData.strong_color && (
                 <p>
