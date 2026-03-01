@@ -55,6 +55,7 @@ export default function AppointmentPage({ slug }) {
   const [paymentData, setPaymentData] = useState(null);
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutos em segundos
   const [refreshingPix, setRefreshingPix] = useState(false);
+  const [checkingPaymentStatus, setCheckingPaymentStatus] = useState(false);
 
   const servicePrice = Number(selected?.service?.price ?? 0);
   const hasService = Number.isFinite(servicePrice) && selected?.service;
@@ -95,6 +96,57 @@ export default function AppointmentPage({ slug }) {
 
     return () => clearInterval(interval);
   }, [showPaymentModal, timeLeft]);
+
+  useEffect(() => {
+    if (!showPaymentModal || !paymentData?.transactionId) return;
+
+    let isMounted = true;
+
+    const checkPaymentStatus = async () => {
+      try {
+        setCheckingPaymentStatus(true);
+
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/payments/${slug}/pix-status/${paymentData.transactionId}`,
+          { credentials: "include" }
+        );
+
+        const statusData = await res.json();
+
+        if (!res.ok || !isMounted) return;
+
+        const paymentConfirmed = statusData?.payment_confirmed === true;
+        const appointmentReady =
+          statusData?.appointment_confirmed === true ||
+          statusData?.appointment_confirmed === null;
+
+        if (paymentConfirmed && appointmentReady) {
+          setPaymentData((prev) => ({
+            ...prev,
+            status: "confirmed",
+          }));
+
+          setShowPaymentModal(false);
+          setShowModal(true);
+          toast.success("Pagamento confirmado! Agendamento concluído com sucesso.");
+        }
+      } catch (error) {
+        console.error("Erro ao verificar status do pagamento:", error);
+      } finally {
+        if (isMounted) {
+          setCheckingPaymentStatus(false);
+        }
+      }
+    };
+
+    checkPaymentStatus();
+    const intervalId = setInterval(checkPaymentStatus, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [showPaymentModal, paymentData?.transactionId, slug]);
 
   const formatDateBR = (iso) => {
     if (!iso) return "";
@@ -137,7 +189,7 @@ export default function AppointmentPage({ slug }) {
 
       } catch (err) {
         console.error("Erro ao buscar dados:", err);
-        setNotFound(true);
+        toast.error("Não foi possível carregar os dados do agendamento.");
       }
     }
 
@@ -377,6 +429,8 @@ const sendWhatsappConfirmation = async () => {
         amount: amount,
         status: "pending",
         error: null,
+        transactionId: data.transaction_id || null,
+        appointmentId: appointmentData?.id || paymentData?.appointmentId || null,
       });
 
       // Reinicia o contador
@@ -455,6 +509,7 @@ const sendWhatsappConfirmation = async () => {
       const usedCoupon = selected.coupon;
 
       setAppointmentData({
+        id: data?.id || data?.appointment?.id || null,
         category: selected.category,
         service: selected.service,
         employee: selected.employee,
@@ -488,6 +543,8 @@ const sendWhatsappConfirmation = async () => {
           amount: data?.payment?.amount || validatedFinal,
           status: data?.appointment?.status || "pending",
           error: data?.error || null,
+          transactionId: data?.payment?.transaction_id || null,
+          appointmentId: data?.id || data?.appointment?.id || null,
         };
 
         console.log("💳 Dados do pagamento:", {
@@ -736,7 +793,7 @@ const sendWhatsappConfirmation = async () => {
     const timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
     return (
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 bg-white backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <div className="bg-gradient-to-b from-white to-gray-50 rounded-2xl shadow-2xl w-full max-w-2xl p-6 border border-gray-100 relative">
           <div className="absolute inset-x-0 -top-1 h-1 bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-amber-500 rounded-t-2xl"></div>
 
@@ -843,6 +900,9 @@ const sendWhatsappConfirmation = async () => {
                   <span className="inline-flex h-2 w-2 rounded-full bg-amber-400"></span>
                   Status do agendamento: <strong className="text-gray-800">Aguardando pagamento</strong>
                 </div>
+                {checkingPaymentStatus && (
+                  <p className="text-xs text-gray-500">Verificando confirmação do pagamento...</p>
+                )}
                 <p className="text-xs text-gray-500">
                   Assim que o pagamento for identificado, seu agendamento será confirmado automaticamente.
                 </p>

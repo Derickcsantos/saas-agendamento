@@ -5,6 +5,7 @@ import {
   requestWithdrawal,
   getAvailableBalance,
   getIncomeHistory,
+  getPixPaymentStatus,
 } from "../controllers/organizationsPaymentsController.js";
 
 export const organizationsPaymentsRouter = express.Router();
@@ -174,6 +175,11 @@ organizationsPaymentsRouter.get(
 organizationsPaymentsRouter.get(
   "/:slug/history",
   getIncomeHistory
+);
+
+organizationsPaymentsRouter.get(
+  "/:slug/pix-status/:transactionId",
+  getPixPaymentStatus
 );
 
 /**

@@ -252,6 +252,69 @@ export async function createPixPayment(req, res) {
   }
 }
 
+/**
+ * GET /api/payments/:slug/pix-status/:transactionId
+ * Returns PIX payment and appointment confirmation status
+ */
+export async function getPixPaymentStatus(req, res) {
+  const { slug, transactionId } = req.params;
+
+  if (!transactionId) {
+    return res.status(400).json({ error: "Transaction ID is required" });
+  }
+
+  try {
+    const { data: org, error: orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !org) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    const { data: transaction, error: txError } = await supabase
+      .from("transactions_organizations")
+      .select("id, status, confirmed_at, appointment_id")
+      .eq("id", transactionId)
+      .eq("organization_id", org.id)
+      .single();
+
+    if (txError || !transaction) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    let appointmentStatus = null;
+    if (transaction.appointment_id) {
+      const { data: appointment } = await supabase
+        .from("appointments")
+        .select("status")
+        .eq("id", transaction.appointment_id)
+        .maybeSingle();
+
+      appointmentStatus = appointment?.status || null;
+    }
+
+    const paymentConfirmed = transaction.status === "confirmed";
+    const appointmentConfirmed =
+      appointmentStatus === "confirmed" || appointmentStatus === "completed";
+
+    return res.status(200).json({
+      transaction_id: transaction.id,
+      transaction_status: transaction.status,
+      payment_confirmed: paymentConfirmed,
+      confirmed_at: transaction.confirmed_at,
+      appointment_id: transaction.appointment_id,
+      appointment_status: appointmentStatus,
+      appointment_confirmed: transaction.appointment_id ? appointmentConfirmed : null,
+    });
+  } catch (error) {
+    console.error("PIX STATUS ERROR:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
 export async function abacatePayPixWebhook(req, res) {
   const payload = req.body;
 
@@ -320,10 +383,14 @@ export async function abacatePayPixWebhook(req, res) {
 
     // 5️⃣ Atualizar status do agendamento, se existir
     if (transaction.appointment_id) {
-      await supabase
+      const { error: appointmentUpdateError } = await supabase
         .from("appointments")
         .update({ status: "confirmed" })
         .eq("id", transaction.appointment_id);
+
+      if (appointmentUpdateError) {
+        throw appointmentUpdateError;
+      }
     }
 
     return res.status(200).json({ received: true });

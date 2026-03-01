@@ -366,8 +366,8 @@ export const createAppointment = async (req, res) => {
       console.error("Erro buscando políticas:", policyError);
     }
 
-    const requiresPrepayment = policy?.appointment_prepayment === true && !isAdminUser;
-    console.log(`💳 Pré-pagamento obrigatório? ${requiresPrepayment ? 'SIM' : 'NÃO'}`);
+    const policyRequiresPrepayment = policy?.appointment_prepayment === true && !isAdminUser;
+    console.log(`💳 Pré-pagamento obrigatório? ${policyRequiresPrepayment ? 'SIM' : 'NÃO'}`);
     console.log(`   - appointment_prepayment: ${policy?.appointment_prepayment}`);
     console.log(`   - isAdminUser: ${isAdminUser}`);
     console.log(`   - prepayment_type: ${policy?.prepayment_type}`);
@@ -375,7 +375,7 @@ export const createAppointment = async (req, res) => {
     console.log(`   - pix_key: ${policy?.pix_key ? '✅ configurada' : '❌ NÃO configurada'}`);
 
     let prepaymentAmount = finalPriceToUse; // padrão: total
-    if (requiresPrepayment) {
+    if (policyRequiresPrepayment) {
       const rawValue = policy?.prepayment_value ? Number(policy.prepayment_value) : null;
       if (policy?.prepayment_type === 'percent') {
         const pct = rawValue && rawValue > 0 ? rawValue : 0;
@@ -391,6 +391,8 @@ export const createAppointment = async (req, res) => {
       prepaymentAmount = Math.min(prepaymentAmount, finalPriceToUse);
       console.log(`💳 Valor de pré-pagamento calculado: R$ ${prepaymentAmount.toFixed(2)} (${policy?.prepayment_type || 'full'})`);
     }
+
+    const requiresPrepayment = policyRequiresPrepayment && prepaymentAmount > 0;
 
     // ✅ Telefone opcional: envia null ao invés de string vazia/undefined
     const safeClientPhone =
