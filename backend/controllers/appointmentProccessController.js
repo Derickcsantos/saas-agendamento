@@ -159,6 +159,12 @@ export const getAvailableTimes = async (req, res) => {
     const { employeeId, date, duration } = req.query;
     const { slug } = req.params;
     const employeeIdInt = parseInt(employeeId, 10);
+    const durationInt = parseInt(duration, 10);
+    const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(String(date || ""));
+
+    if (!Number.isInteger(employeeIdInt) || employeeIdInt <= 0 || !isValidDate || !Number.isInteger(durationInt) || durationInt <= 0) {
+      return res.status(400).json({ error: 'Parâmetros inválidos' });
+    }
 
     const { data: employee, error: employeeError } = await supabase
       .from("employees")
@@ -191,15 +197,13 @@ export const getAvailableTimes = async (req, res) => {
       .eq('slug_organization', slug)
       .single();
 
-      console.log(orgData.id)
-
     if (orgError || !orgData) {
       return res.status(404).json({ error: 'Organização não encontrada' });
     }
 
     const { data: policy, error: policyError } = await supabase
       .from("organization_policies")
-      .select("sync_google_calendar, max_schedule_days")
+      .select("sync_google_calendar, max_schedule_days, min_hours_before_booking")
       .eq("organization_id", orgData.id)
       .maybeSingle();
 
@@ -208,6 +212,14 @@ export const getAvailableTimes = async (req, res) => {
     }
 
     const shouldSyncGoogle = policy?.sync_google_calendar === true;
+    const minHoursPolicy = Number(policy?.min_hours_before_booking);
+    const minHoursBeforeBooking = Number.isFinite(minHoursPolicy)
+      ? Math.max(0, Math.trunc(minHoursPolicy))
+      : 0;
+    const minBookingDateTime =
+      minHoursBeforeBooking > 0
+        ? new Date(Date.now() + minHoursBeforeBooking * 60 * 60 * 1000)
+        : null;
 
     const hasGoogleCalendar = shouldSyncGoogle && !!googleData?.refresh_token;;
 
@@ -352,7 +364,7 @@ export const getAvailableTimes = async (req, res) => {
     const workStart = new Date(`${date}T${schedule.start_time}`);
     const workEnd = new Date(`${date}T${schedule.end_time}`);
     const interval = 15 * 60 * 1000;
-    const durationMs = duration * 60 * 1000;
+    const durationMs = durationInt * 60 * 1000;
     
     let currentSlot = new Date(workStart);
     const availableSlots = [];
@@ -360,6 +372,11 @@ export const getAvailableTimes = async (req, res) => {
     while (currentSlot.getTime() + durationMs <= workEnd.getTime()) {
       const slotStart = new Date(currentSlot);
       const slotEnd = new Date(slotStart.getTime() + durationMs);
+
+      if (minBookingDateTime && slotStart < minBookingDateTime) {
+        currentSlot = new Date(currentSlot.getTime() + interval);
+        continue;
+      }
 
       function rangesOverlap(aStart, aEnd, bStart, bEnd) {
         return (
