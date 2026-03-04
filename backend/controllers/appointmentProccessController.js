@@ -154,6 +154,82 @@ export const getAppointmentEmployeeByService = async (req, res) => {
   }
 };
 
+export const getAppointmentAdditionalServices = async (req, res) => {
+  try {
+    const { serviceId, employeeId, slug } = req.params;
+    const serviceIdInt = Number(serviceId);
+    const employeeIdInt = Number(employeeId);
+
+    if (!slug || !Number.isInteger(serviceIdInt) || serviceIdInt <= 0 || !Number.isInteger(employeeIdInt) || employeeIdInt <= 0) {
+      return res.status(400).json({ error: 'Parâmetros inválidos' });
+    }
+
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug_organization', slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: 'Organização não encontrada' });
+    }
+
+    const { data: links, error: linksError } = await supabase
+      .from('additional_services')
+      .select('additional_id, subservice_id')
+      .eq('service_id', serviceIdInt)
+      .order('additional_id', { ascending: true });
+
+    if (linksError) throw linksError;
+
+    if (!links || links.length === 0) {
+      return res.json([]);
+    }
+
+    const subserviceIds = [...new Set(links.map((item) => item.subservice_id).filter(Boolean))];
+
+    const { data: employeeServices, error: employeeServicesError } = await supabase
+      .from('employee_services')
+      .select('service_id')
+      .eq('employee_id', employeeIdInt)
+      .eq('organization_id', orgData.id)
+      .in('service_id', subserviceIds);
+
+    if (employeeServicesError) throw employeeServicesError;
+
+    const allowedSubserviceIds = new Set((employeeServices || []).map((item) => item.service_id));
+
+    if (allowedSubserviceIds.size === 0) {
+      return res.json([]);
+    }
+
+    const allowedLinks = links.filter((item) => allowedSubserviceIds.has(item.subservice_id));
+
+    const { data: subservices, error: subservicesError } = await supabase
+      .from('services')
+      .select('id, name, price, duration, durability_days, imagem_service')
+      .in('id', [...allowedSubserviceIds])
+      .eq('organization_id', orgData.id);
+
+    if (subservicesError) throw subservicesError;
+
+    const subservicesById = new Map((subservices || []).map((item) => [item.id, item]));
+
+    const payload = allowedLinks
+      .map((item) => ({
+        additional_id: item.additional_id,
+        subservice_id: item.subservice_id,
+        subservice: subservicesById.get(item.subservice_id) || null,
+      }))
+      .filter((item) => !!item.subservice);
+
+    return res.json(payload);
+  } catch (error) {
+    console.error('Error fetching additional services for appointment:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 export const getAvailableTimes = async (req, res) => {
   try {
     const { employeeId, date, duration } = req.query;

@@ -25,6 +25,12 @@ export default function ServicesTab({ org, setActiveTab }) {
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState("");
   const [searchQuery, setSearchQuery] = useState(""); // 🔍 Search state
+  const [showAdditionalModal, setShowAdditionalModal] = useState(false);
+  const [selectedServiceForAdditional, setSelectedServiceForAdditional] = useState(null);
+  const [allServices, setAllServices] = useState([]);
+  const [searchAdditionalService, setSearchAdditionalService] = useState("");
+  const [selectedAdditionalIds, setSelectedAdditionalIds] = useState([]);
+  const [savingAdditional, setSavingAdditional] = useState(false);
   const { palette } = useOrganizationColors(org.slug_organization);
   const [showPaywall, setShowPaywall] = useState(false);
 
@@ -72,6 +78,37 @@ export default function ServicesTab({ org, setActiveTab }) {
 
     const data = await res.json();
     setServices(data);
+  }
+
+  async function loadAllServices() {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/services/slug/${org.slug_organization}`,
+      { credentials: "include" }
+    );
+
+    if (res.status === 402) {
+      setShowPaywall(true);
+      return;
+    }
+
+    const data = await res.json();
+    setAllServices(Array.isArray(data) ? data : []);
+  }
+
+  async function loadAdditionalServices(serviceId) {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/services/slug/${org.slug_organization}/${serviceId}/additional-services`,
+      { credentials: "include" }
+    );
+
+    if (res.status === 402) {
+      setShowPaywall(true);
+      return;
+    }
+
+    const data = await res.json();
+    const ids = (Array.isArray(data) ? data : []).map((item) => item.subservice_id);
+    setSelectedAdditionalIds(ids);
   }
 
   // 🔍 Efeito para buscar ao digitar (com delay)
@@ -188,6 +225,63 @@ export default function ServicesTab({ org, setActiveTab }) {
 
     loadServices(searchQuery); // 🔍 Mantém a busca após deletar
   };
+
+  const openAdditionalModal = async (service) => {
+    setSelectedServiceForAdditional(service);
+    setShowAdditionalModal(true);
+    setSearchAdditionalService("");
+    await Promise.all([loadAllServices(), loadAdditionalServices(service.id)]);
+  };
+
+  const toggleAdditionalService = (serviceId) => {
+    setSelectedAdditionalIds((prev) =>
+      prev.includes(serviceId)
+        ? prev.filter((id) => id !== serviceId)
+        : [...prev, serviceId]
+    );
+  };
+
+  const saveAdditionalServices = async () => {
+    if (!selectedServiceForAdditional) return;
+
+    try {
+      setSavingAdditional(true);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/services/slug/${org.slug_organization}/${selectedServiceForAdditional.id}/additional-services`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            additional_service_ids: selectedAdditionalIds,
+          }),
+        }
+      );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error("Falha ao salvar subserviços");
+      }
+
+      toast.success("Subserviços atualizados com sucesso!");
+      setShowAdditionalModal(false);
+    } catch (error) {
+      toast.error("Erro ao salvar subserviços.");
+    } finally {
+      setSavingAdditional(false);
+    }
+  };
+
+  const filteredAdditionalServices = allServices.filter((serviceItem) => {
+    if (serviceItem.id === selectedServiceForAdditional?.id) return false;
+    return serviceItem.name
+      ?.toLowerCase()
+      ?.includes(searchAdditionalService.toLowerCase());
+  });
 
   return (
     <div className="space-y-8">
@@ -405,6 +499,12 @@ export default function ServicesTab({ org, setActiveTab }) {
                       Editar
                     </button>
                     <button
+                      onClick={() => openAdditionalModal(s)}
+                      className="text-violet-600 dark:text-violet-400 hover:underline"
+                    >
+                      Subserviços
+                    </button>
+                    <button
                       onClick={() => handleDelete(s.id)}
                       className="text-red-600 dark:text-red-400 hover:underline"
                     >
@@ -426,6 +526,82 @@ export default function ServicesTab({ org, setActiveTab }) {
           </table>
         </div>
       </div>
+
+      {showAdditionalModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-linear-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
+              <h4 className="font-semibold text-gray-800 dark:text-gray-100 text-lg">
+                Subserviços de {selectedServiceForAdditional?.name}
+              </h4>
+              <p className="text-sm text-gray-500 dark:text-gray-300 mt-1">
+                Selecione os serviços que podem ser adicionados ao agendamento.
+              </p>
+            </div>
+
+            <div className="p-6">
+              <input
+                type="text"
+                placeholder="Pesquisar subserviço..."
+                value={searchAdditionalService}
+                onChange={(e) => setSearchAdditionalService(e.target.value)}
+                className="border dark:border-gray-600 bg-gray-50 dark:bg-gray-900 rounded-md p-2.5 w-full mb-4 text-sm"
+              />
+
+              <div className="max-h-80 overflow-auto space-y-2 pr-1">
+                {filteredAdditionalServices.map((serviceItem) => {
+                  const checked = selectedAdditionalIds.includes(serviceItem.id);
+
+                  return (
+                    <div
+                      key={serviceItem.id}
+                      className="flex justify-between items-center border dark:border-gray-700 rounded-lg p-3"
+                    >
+                      <div>
+                        <p className="font-medium text-gray-800 dark:text-gray-100">{serviceItem.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-300">
+                          R$ {Number(serviceItem.price || 0).toFixed(2)} • {serviceItem.duration || 0} min
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => toggleAdditionalService(serviceItem.id)}
+                        className={`px-3 py-1 rounded-md text-sm text-white ${
+                          checked ? "bg-red-500" : "bg-green-500"
+                        }`}
+                      >
+                        {checked ? "Remover" : "Adicionar"}
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {filteredAdditionalServices.length === 0 && (
+                  <p className="text-sm text-center text-gray-400 py-4">Nenhum serviço encontrado.</p>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 mt-5">
+                <button
+                  className="bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-100 px-4 py-2 rounded-md"
+                  onClick={() => setShowAdditionalModal(false)}
+                  disabled={savingAdditional}
+                >
+                  Fechar
+                </button>
+                <button
+                  className="text-white px-4 py-2 rounded-md"
+                  onClick={saveAdditionalServices}
+                  style={{ backgroundColor: palette?.strong_color }}
+                  disabled={savingAdditional}
+                >
+                  {savingAdditional ? "Salvando..." : "Salvar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -204,6 +204,155 @@ export const getServicesBySlug = async (req, res) => {
   }
 };
 
+export const getAdditionalServicesByServiceSlug = async (req, res) => {
+  try {
+    const { slug, serviceId } = req.params;
+    const serviceIdInt = Number(serviceId);
+
+    if (!slug || !Number.isInteger(serviceIdInt) || serviceIdInt <= 0) {
+      return res.status(400).json({ error: "Parâmetros inválidos" });
+    }
+
+    const { data: orgData, error: orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
+    const { data: service, error: serviceError } = await supabase
+      .from("services")
+      .select("id")
+      .eq("id", serviceIdInt)
+      .eq("organization_id", orgData.id)
+      .single();
+
+    if (serviceError || !service) {
+      return res.status(404).json({ error: "Serviço não encontrado" });
+    }
+
+    const { data: links, error: linksError } = await supabase
+      .from("additional_services")
+      .select("additional_id, subservice_id")
+      .eq("service_id", serviceIdInt)
+      .order("additional_id", { ascending: true });
+
+    if (linksError) throw linksError;
+
+    const subserviceIds = [...new Set((links || []).map((item) => item.subservice_id).filter(Boolean))];
+
+    let subservicesById = new Map();
+    if (subserviceIds.length) {
+      const { data: subservices, error: subservicesError } = await supabase
+        .from("services")
+        .select("id, name, price, duration, imagem_service")
+        .in("id", subserviceIds)
+        .eq("organization_id", orgData.id);
+
+      if (subservicesError) throw subservicesError;
+
+      subservicesById = new Map((subservices || []).map((serviceItem) => [serviceItem.id, serviceItem]));
+    }
+
+    const payload = (links || [])
+      .map((item) => ({
+        additional_id: item.additional_id,
+        subservice_id: item.subservice_id,
+        subservice: subservicesById.get(item.subservice_id) || null,
+      }))
+      .filter((item) => !!item.subservice);
+
+    return res.json(payload);
+  } catch (error) {
+    console.error("Error fetching additional services:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const updateAdditionalServicesByServiceSlug = async (req, res) => {
+  try {
+    const { slug, serviceId } = req.params;
+    const serviceIdInt = Number(serviceId);
+    const incomingIds = Array.isArray(req.body?.additional_service_ids)
+      ? req.body.additional_service_ids
+      : [];
+
+    if (!slug || !Number.isInteger(serviceIdInt) || serviceIdInt <= 0) {
+      return res.status(400).json({ error: "Parâmetros inválidos" });
+    }
+
+    const sanitizedIds = [...new Set(
+      incomingIds
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value > 0 && value !== serviceIdInt)
+    )];
+
+    const { data: orgData, error: orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
+    const { data: service, error: serviceError } = await supabase
+      .from("services")
+      .select("id")
+      .eq("id", serviceIdInt)
+      .eq("organization_id", orgData.id)
+      .single();
+
+    if (serviceError || !service) {
+      return res.status(404).json({ error: "Serviço não encontrado" });
+    }
+
+    if (sanitizedIds.length > 0) {
+      const { data: existingSubservices, error: existingSubservicesError } = await supabase
+        .from("services")
+        .select("id")
+        .in("id", sanitizedIds)
+        .eq("organization_id", orgData.id);
+
+      if (existingSubservicesError) throw existingSubservicesError;
+
+      const validIds = new Set((existingSubservices || []).map((row) => row.id));
+      if (validIds.size !== sanitizedIds.length) {
+        return res.status(400).json({ error: "Há subserviços inválidos para esta organização" });
+      }
+    }
+
+    const { error: deleteError } = await supabase
+      .from("additional_services")
+      .delete()
+      .eq("service_id", serviceIdInt);
+
+    if (deleteError) throw deleteError;
+
+    if (sanitizedIds.length > 0) {
+      const payload = sanitizedIds.map((subserviceId) => ({
+        service_id: serviceIdInt,
+        subservice_id: subserviceId,
+      }));
+
+      const { error: insertError } = await supabase
+        .from("additional_services")
+        .insert(payload);
+
+      if (insertError) throw insertError;
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("Error updating additional services:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 export const createService = async (req, res) => {
   try {
     const { slug } = req.params;

@@ -17,7 +17,9 @@ import {
   getServiceById,
   createService,
   updateService,
-  deleteService
+  deleteService,
+  getAdditionalServicesByServiceSlug,
+  updateAdditionalServicesByServiceSlug
 } from '../controllers/servicesController.js';
 import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 
@@ -96,6 +98,9 @@ serviceRouter.get('/', authenticateJWT, requireActiveSubscription, getServices);
  *         description: Erro interno do servidor
  */
 serviceRouter.get('/slug/:slug', authenticateJWT, requireActiveSubscription, getServicesBySlug)
+
+serviceRouter.get('/slug/:slug/:serviceId/additional-services', authenticateJWT, requireActiveSubscription, getAdditionalServicesByServiceSlug);
+serviceRouter.put('/slug/:slug/:serviceId/additional-services', authenticateJWT, requireActiveSubscription, updateAdditionalServicesByServiceSlug);
 
 /**
  * @swagger

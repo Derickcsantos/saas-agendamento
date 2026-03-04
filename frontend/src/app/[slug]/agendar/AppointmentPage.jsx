@@ -29,6 +29,7 @@ export default function AppointmentPage({ slug }) {
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [additionalServicesOptions, setAdditionalServicesOptions] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
 
   // State principal
@@ -36,6 +37,7 @@ export default function AppointmentPage({ slug }) {
     category: null,
     service: null,
     employee: null,
+    additionalServices: [],
     date: "",
     time: null,
     coupon: null,
@@ -58,7 +60,16 @@ export default function AppointmentPage({ slug }) {
   const [checkingPaymentStatus, setCheckingPaymentStatus] = useState(false);
 
   const servicePrice = Number(selected?.service?.price ?? 0);
-  const hasService = Number.isFinite(servicePrice) && selected?.service;
+  const additionalServicesPrice = (selected?.additionalServices || []).reduce(
+    (sum, item) => sum + Number(item?.subservice?.price || 0),
+    0
+  );
+  const totalBasePrice = servicePrice + additionalServicesPrice;
+  const hasAdditionalStep = additionalServicesOptions.length > 0;
+  const DATE_STEP = hasAdditionalStep ? 5 : 4;
+  const TIME_STEP = hasAdditionalStep ? 6 : 5;
+  const COUPON_STEP = hasAdditionalStep ? 7 : 6;
+  const CONFIRM_STEP = hasAdditionalStep ? 8 : 7;
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -240,9 +251,6 @@ export default function AppointmentPage({ slug }) {
     }
   };
 
-  // ================================
-  // 5️⃣ LOAD EMPLOYEES
-  // ================================
   const loadEmployees = async (serviceId) => {
     try {
       setLoading(true);
@@ -253,6 +261,28 @@ export default function AppointmentPage({ slug }) {
       setEmployees((data || []).filter((e) => e.is_active));
     } catch (e) {
       console.error("Erro ao carregar funcionários:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAdditionalServices = async (serviceId, employeeId) => {
+    if (!serviceId || !employeeId) {
+      setAdditionalServicesOptions([]);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/additional-services/${serviceId}/${employeeId}/${slug}`
+      );
+
+      const data = await res.json();
+      setAdditionalServicesOptions(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Erro ao carregar subserviços adicionais:", e);
+      setAdditionalServicesOptions([]);
     } finally {
       setLoading(false);
     }
@@ -280,10 +310,6 @@ export default function AppointmentPage({ slug }) {
     loadUnavailableDays();
   }, [selected.employee, selected.service, slug]);
 
-
-  // ================================
-  // 6️⃣ LOAD TIME SLOTS
-  // ================================
   useEffect(() => {
   const loadAvailableTimes = async () => {
     if (!selected.employee || !selected.date || !selected.service) return;
@@ -306,9 +332,6 @@ export default function AppointmentPage({ slug }) {
   loadAvailableTimes();
 }, [selected.employee, selected.date, selected.service, slug]);
 
-  // ================================
-  // 7️⃣ VALIDAR CUPOM
-  // ================================
   const validateCoupon = async () => {
     if (!couponInput || !selected.service) {
       setCouponStatus({
@@ -394,7 +417,6 @@ const sendWhatsappConfirmation = async () => {
   }
 };
 
-  // ✅ Função para atualizar/regenerar o QR Code PIX
   const handleRefreshPix = async () => {
     if (!appointmentData || !paymentData) return;
 
@@ -455,7 +477,7 @@ const sendWhatsappConfirmation = async () => {
       setLoading(true);
 
       const coupon = selected.coupon;
-      const originalPrice = selected.service?.price || 0;
+      const originalPrice = totalBasePrice;
       let finalPrice = originalPrice;
 
       if (coupon) {
@@ -483,6 +505,7 @@ const sendWhatsappConfirmation = async () => {
             coupon_code: coupon?.code || null,
             original_price: originalPrice,
             final_price: finalPrice,
+            additional_service_ids: (selected.additionalServices || []).map((item) => item.additional_id),
           }),
         }
       );
@@ -512,6 +535,7 @@ const sendWhatsappConfirmation = async () => {
         id: data?.id || data?.appointment?.id || null,
         category: selected.category,
         service: selected.service,
+        additionalServices: selected.additionalServices || [],
         employee: selected.employee,
         date: selected.date,
         time: selected.time,
@@ -527,6 +551,7 @@ const sendWhatsappConfirmation = async () => {
         category: null,
         service: null,
         employee: null,
+        additionalServices: [],
         date: "",
         time: null,
         coupon: null,
@@ -576,27 +601,19 @@ const sendWhatsappConfirmation = async () => {
   };
 
   const canAdvance = () => {
-    switch (step) {
-      case 1:
-        return !!selected.category;
-      case 2:
-        return !!selected.service;
-      case 3:
-        return !!selected.employee;
-      case 4:
-        return !!selected.date;
-      case 5:
-        return !!selected.time;
-      case 6:
-        return true;
-      default:
-        return true;
-    }
+    if (step === 1) return !!selected.category;
+    if (step === 2) return !!selected.service;
+    if (step === 3) return !!selected.employee;
+    if (hasAdditionalStep && step === 4) return true;
+    if (step === DATE_STEP) return !!selected.date;
+    if (step === TIME_STEP) return !!selected.time;
+    if (step === COUPON_STEP) return true;
+    return true;
   };
 
   // Avança sem verificação (usado nos handlers de seleção)
   const next = () => {
-    setStep((s) => Math.min(s + 1, 7));
+    setStep((s) => Math.min(s + 1, CONFIRM_STEP));
   };
 
   // Avança COM verificação (usado no botão "Próximo")
@@ -617,12 +634,14 @@ const sendWhatsappConfirmation = async () => {
       category: cat,
       service: null,
       employee: null,
+      additionalServices: [],
       date: "",
       time: null,
       coupon: null,
     }));
     setServices([]);
     setEmployees([]);
+    setAdditionalServicesOptions([]);
     setTimeSlots([]);
     setUnavailableDays([]);
     setCouponInput("");
@@ -636,11 +655,13 @@ const sendWhatsappConfirmation = async () => {
       ...prev,
       service: srv,
       employee: null,
+      additionalServices: [],
       date: "",
       time: null,
       coupon: null,
     }));
     setEmployees([]);
+    setAdditionalServicesOptions([]);
     setTimeSlots([]);
     setUnavailableDays([]);
     setCouponInput("");
@@ -649,16 +670,40 @@ const sendWhatsappConfirmation = async () => {
     next();
   };
 
-  const handleSelectEmployee = (emp) => {
+  const handleSelectEmployee = async (emp) => {
     setSelected((prev) => ({
       ...prev,
       employee: emp,
+      additionalServices: [],
       date: "",
       time: null,
     }));
     setTimeSlots([]);
     setUnavailableDays([]);
-    next();
+    await loadAdditionalServices(selected.service?.id, emp.id);
+    setStep(4);
+  };
+
+  const handleToggleAdditionalService = (additional) => {
+    setSelected((prev) => {
+      const exists = (prev.additionalServices || []).some(
+        (item) => item.additional_id === additional.additional_id
+      );
+
+      if (exists) {
+        return {
+          ...prev,
+          additionalServices: (prev.additionalServices || []).filter(
+            (item) => item.additional_id !== additional.additional_id
+          ),
+        };
+      }
+
+      return {
+        ...prev,
+        additionalServices: [...(prev.additionalServices || []), additional],
+      };
+    });
   };
 
   const handleSelectDate = (dateIso) => {
@@ -682,6 +727,7 @@ const sendWhatsappConfirmation = async () => {
     "Categoria",
     "Serviço",
     "Profissional",
+    ...(hasAdditionalStep ? ["Adicionais"] : []),
     "Data",
     "Horário",
     "Cupom",
@@ -736,6 +782,9 @@ const sendWhatsappConfirmation = async () => {
           <div className="space-y-2 text-gray-700">
             <p><strong>Cliente:</strong> {a.client?.name}</p>
             <p><strong>Serviço:</strong> {a.service?.name}</p>
+            {!!a.additionalServices?.length && (
+              <p><strong>Adicionais:</strong> {a.additionalServices.map((item) => item.subservice?.name).join(", ")}</p>
+            )}
             <p><strong>Profissional:</strong> {a.employee?.name}</p>
             <p><strong>Data:</strong> {formatDateBR(a.date)}</p>
             <p><strong>Horário:</strong> {a.time?.start} - {a.time?.end}</p>
@@ -1082,7 +1131,60 @@ const sendWhatsappConfirmation = async () => {
               </motion.div>
             )}
 
-            {step === 4 && (
+            {hasAdditionalStep && step === 4 && (
+              <motion.div key="additional" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <h2 className="text-xl text-gray-800 font-semibold mb-2">
+                  Serviços adicionais
+                </h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Se desejar, selecione quantos adicionais quiser para este atendimento.
+                </p>
+
+                {loading ? (
+                  <p className="text-gray-500 animate-pulse">Carregando subserviços...</p>
+                ) : additionalServicesOptions.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-gray-500">
+                    Este profissional não possui serviços adicionais para o serviço escolhido.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {additionalServicesOptions.map((additional) => {
+                      const isSelected = (selected.additionalServices || []).some(
+                        (item) => item.additional_id === additional.additional_id
+                      );
+
+                      return (
+                        <button
+                          key={additional.additional_id}
+                          onClick={() => handleToggleAdditionalService(additional)}
+                          className={`text-left border rounded-xl p-4 transition-all ${
+                            isSelected
+                              ? "border-gray-700 bg-purple-50"
+                              : "border-gray-200 hover:border-purple-300"
+                          }`}
+                        >
+                          <p className="font-semibold text-gray-800">
+                            {additional.subservice?.name}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            R$ {Number(additional.subservice?.price || 0).toFixed(2)} • {additional.subservice?.duration || 0} min
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <button
+                  onClick={next}
+                  className="mt-5 w-full bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition-all font-semibold"
+                >
+                  Continuar
+                </button>
+              </motion.div>
+            )}
+
+            {step === DATE_STEP && (
               <motion.div key="date" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 <h2 className="text-xl text-gray-800 font-semibold mb-4">
                   Selecione a data
@@ -1157,7 +1259,7 @@ const sendWhatsappConfirmation = async () => {
               </motion.div>
             )}
 
-            {step === 5 && (
+            {step === TIME_STEP && (
               <motion.div
                 key="time"
                 initial={{ opacity: 0, y: 10 }}
@@ -1199,7 +1301,7 @@ const sendWhatsappConfirmation = async () => {
               </motion.div>
             )}
 
-            {step === 6 && (
+            {step === COUPON_STEP && (
               <motion.div
                 key="coupon"
                 initial={{ opacity: 0, y: 10 }}
@@ -1251,7 +1353,7 @@ const sendWhatsappConfirmation = async () => {
               </motion.div>
             )}
 
-            {step === 7 && (
+            {step === CONFIRM_STEP && (
               <motion.div key="confirm" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 <h2 className="text-xl font-semibold mb-4 text-gray-800">Confirme seu agendamento</h2>
 
@@ -1283,6 +1385,12 @@ const sendWhatsappConfirmation = async () => {
                 <div className="text-gray-700 space-y-1 mb-4">
                   <p><strong>Categoria:</strong> {selected.category?.name}</p>
                   <p><strong>Serviço:</strong> {selected.service?.name}</p>
+                  {(selected.additionalServices || []).length > 0 && (
+                    <p>
+                      <strong>Adicionais:</strong>{" "}
+                      {selected.additionalServices.map((item) => item.subservice?.name).join(", ")}
+                    </p>
+                  )}
                   <p><strong>Profissional:</strong> {selected.employee?.name}</p>
                   <p><strong>Data:</strong> {selected.date ? formatDateBR(selected.date) : ""}</p>
                   <p>
@@ -1299,12 +1407,12 @@ const sendWhatsappConfirmation = async () => {
                         {selected?.coupon ? (
                           <>
                             <span className="line-through text-gray-400 mr-1">
-                              R$ {servicePrice.toFixed(2)}
+                              R$ {totalBasePrice.toFixed(2)}
                             </span>
 
                             {(() => {
                               const coupon = selected.coupon;
-                              const original = servicePrice;
+                              const original = totalBasePrice;
 
                               const final =
                                 coupon.discountType === "percentage"
@@ -1323,7 +1431,7 @@ const sendWhatsappConfirmation = async () => {
                           </>
                         ) : (
                           <span className="font-semibold text-gray-700">
-                            R$ {servicePrice.toFixed(2)}
+                            R$ {totalBasePrice.toFixed(2)}
                           </span>
                         )}
                       </>
@@ -1364,8 +1472,8 @@ const sendWhatsappConfirmation = async () => {
             Voltar
           </button>
 
-          {/* Show "Next" button only on step 6 (coupon). Steps 1-5 have auto-advance, step 7 has its own confirm button */}
-          {step === 6 && (
+          {/* Show "Next" button only on coupon step. */}
+          {step === COUPON_STEP && (
             <button
               onClick={nextIfCan}
               disabled={!canAdvance()}

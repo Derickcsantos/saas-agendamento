@@ -4,6 +4,7 @@ import {
   getAppointmentServices, 
   getAppointmentServicesByCategory,
   getAppointmentEmployeeByService,
+  getAppointmentAdditionalServices,
   getAvailableTimes
 } from '../controllers/appointmentProccessController.js';
 import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
@@ -134,6 +135,7 @@ appointmentProcessRouter.get('/services/:categoryId/:slug', getAppointmentServic
  *         description: Erro interno do servidor
  */
 appointmentProcessRouter.get('/employees/:serviceId/:slug', getAppointmentEmployeeByService);
+appointmentProcessRouter.get('/additional-services/:serviceId/:employeeId/:slug', getAppointmentAdditionalServices);
 
 /**
  * @swagger
