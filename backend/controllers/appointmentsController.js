@@ -130,6 +130,90 @@ async function createPixCharge({ organizationId, appointmentId, amountInCents })
   };
 }
 
+async function resolveAdditionalServicesForAppointment({
+  organizationId,
+  serviceId,
+  employeeId,
+  additionalServiceIds,
+}) {
+  const sanitizedAdditionalIds = [...new Set(
+    (Array.isArray(additionalServiceIds) ? additionalServiceIds : [])
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0)
+  )];
+
+  if (!sanitizedAdditionalIds.length) {
+    return {
+      links: [],
+      items: [],
+      totalAdditionalPrice: 0,
+      additionalIds: [],
+    };
+  }
+
+  const { data: links, error: linksError } = await supabase
+    .from("additional_services")
+    .select("additional_id, service_id, subservice_id")
+    .eq("service_id", serviceId)
+    .in("additional_id", sanitizedAdditionalIds);
+
+  if (linksError) throw linksError;
+
+  if (!links || links.length !== sanitizedAdditionalIds.length) {
+    throw new Error("Subserviços adicionais inválidos para o serviço selecionado");
+  }
+
+  const subserviceIds = [...new Set(links.map((item) => item.subservice_id).filter(Boolean))];
+
+  const { data: employeeServices, error: employeeServicesError } = await supabase
+    .from("employee_services")
+    .select("service_id")
+    .eq("employee_id", employeeId)
+    .eq("organization_id", organizationId)
+    .in("service_id", subserviceIds);
+
+  if (employeeServicesError) throw employeeServicesError;
+
+  const allowedSubserviceIds = new Set((employeeServices || []).map((item) => item.service_id));
+  if (allowedSubserviceIds.size !== subserviceIds.length) {
+    throw new Error("Há subserviços que o profissional selecionado não executa");
+  }
+
+  const { data: subservices, error: subservicesError } = await supabase
+    .from("services")
+    .select("id, name, price")
+    .eq("organization_id", organizationId)
+    .in("id", subserviceIds);
+
+  if (subservicesError) throw subservicesError;
+
+  const subserviceById = new Map((subservices || []).map((item) => [item.id, item]));
+
+  const items = links.map((link) => {
+    const subservice = subserviceById.get(link.subservice_id);
+
+    if (!subservice) {
+      throw new Error("Subserviço adicional não encontrado na organização");
+    }
+
+    return {
+      additional_id: link.additional_id,
+      subservice_id: link.subservice_id,
+      name: subservice.name,
+      price: Number(subservice.price) || 0,
+    };
+  });
+
+  const totalAdditionalPrice = items.reduce((sum, item) => sum + item.price, 0);
+
+  return {
+    links,
+    items,
+    totalAdditionalPrice,
+    additionalIds: items.map((item) => item.additional_id),
+  };
+}
+
 export const getAppointmentsByEmployee = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -216,6 +300,7 @@ export const createAppointment = async (req, res) => {
       final_price,
       coupon_code,
       original_price,
+      additional_service_ids,
       admin_override, // ✅ Flag para agendamentos especiais de admin (ignora validações de horário/conflito)
     } = req.body;
     const { slug } = req.params;
@@ -238,6 +323,24 @@ export const createAppointment = async (req, res) => {
 
     if (orgError || !orgData) {
       return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
+    let additionalSummary = {
+      links: [],
+      items: [],
+      totalAdditionalPrice: 0,
+      additionalIds: [],
+    };
+
+    try {
+      additionalSummary = await resolveAdditionalServicesForAppointment({
+        organizationId: orgData.id,
+        serviceId: Number(service_id),
+        employeeId: Number(employee_id),
+        additionalServiceIds: additional_service_ids,
+      });
+    } catch (additionalError) {
+      return res.status(400).json({ error: additionalError.message || "Subserviços adicionais inválidos" });
     }
 
     // =====================================================
@@ -278,7 +381,7 @@ export const createAppointment = async (req, res) => {
           // Continua com valor do frontend como fallback
           console.log("⚠️ Serviço não pertence à org - usando frontend como fallback");
         } else {
-          const backendOriginalPrice = parseFloat(service.price);
+          const backendOriginalPrice = (parseFloat(service.price) || 0) + additionalSummary.totalAdditionalPrice;
           let backendFinalPrice = backendOriginalPrice;
           let discountApplied = false;
 
@@ -493,6 +596,21 @@ export const createAppointment = async (req, res) => {
 
     if (createError) throw createError;
 
+    if (additionalSummary.additionalIds.length > 0) {
+      const additionalRows = additionalSummary.additionalIds.map((additionalId) => ({
+        appointment_id: created.id,
+        additional_id: additionalId,
+      }));
+
+      const { error: additionalInsertError } = await supabase
+        .from("additional_services_appointments")
+        .insert(additionalRows);
+
+      if (additionalInsertError) {
+        console.error("❌ Erro ao salvar adicionais do agendamento:", additionalInsertError);
+      }
+    }
+
     console.log("✅ Agendamento criado:", created);
 
     // ✅ meetingUrl precisa existir para o return final mesmo se não sincronizar
@@ -669,6 +787,7 @@ Olá, *${client_name}* 👋
 Seu agendamento foi realizado com sucesso em *${orgData?.name}*.
 
 💇 Serviço: ${service?.name || "-"}
+${additionalSummary.items.length ? `➕ Adicionais: ${additionalSummary.items.map((item) => item.name).join(", ")}` : ""}
 🧑‍💼 Profissional: ${employeeInfo?.name || "-"}
 📅 Data: ${formattedDate}
 ⏰ Horário: ${start_time} - ${end_time}
@@ -783,6 +902,7 @@ Qualquer dúvida, entre em contato conosco! 💬
     const responsePayload = {
       ...created,
       meeting_url: meetingUrl,
+      additional_services: additionalSummary.items,
       payment_required: !!requiresPrepayment,
       validated_prices: {
         final: finalPriceToUse,
