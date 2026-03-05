@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Briefcase, Users, Layers, CalendarCheck } from "lucide-react";
+import { DollarSign, Users, CalendarCheck, ReceiptText } from "lucide-react";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
-import PWAInstallButton from "@/components/PWAInstallButton";
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import Card from "./components/Card";
 import ChartCard from "./components/ChartCard";
+import ServicesDoughnutChartCard from "./components/ServicesDoughnutChartCard";
 import Table from "./components/Table";
 import CategoriesTab from "./components/CategoriesTab";
 import ServicesTab from "./components/ServicesTab";
@@ -28,9 +28,15 @@ import RevenueAreaChartCard from "./components/RevenueAreaChartCard";
 import WhatsappTab from "./components/WhatsappTab";
 import ExpensesTab from "./components/ExpensesTab";
 import QueueTab from "@/app/[slug]/admin/components/QueueTab";
-import SubscriptionsTab from "./components/SubscriptionsTab";
-import PlansTab from "./components/PlansTab";
 import OrganizationSubscriptionsTab from "./components/OrganizationSubscriptionsTab";
+
+function formatBRL(value) {
+  return Number(value || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 2,
+  });
+}
 
 export default function AdminDashboard({ slug }) {
   const router = useRouter();
@@ -196,22 +202,22 @@ export default function AdminDashboard({ slug }) {
         return (
           <>
             <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card title="Serviços" value={stats?.totalServices} org={org} icon={<Briefcase size={18} />} />
-              <Card title="Funcionários" value={stats?.totalEmployees} org={org} icon={<Users size={18} />} />
-              <Card title="Categorias" value={stats?.totalCategories} org={org} icon={<Layers size={18} />}/>
+              <Card title="Receita (30 dias)" value={formatBRL(stats?.totalRevenue)} org={org} icon={<DollarSign size={18} />} />
               <Card title="Agendamentos" value={stats?.totalAppointments} org={org} icon={<CalendarCheck size={18} />} />
+              <Card title="Despesas (30 dias)" value={formatBRL(stats?.totalExpenses)} org={org} icon={<ReceiptText size={18} />} />
+              <Card title="Clientes" value={stats?.totalClients} org={org} icon={<Users size={18} />} />
             </section>
 
               <section className="mt-6">
                 <RevenueAreaChartCard org={org} />
               </section>
 
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 w-full overflow-x-hidden">
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 w-full overflow-x-hidden">
               <ChartCard
                 id="appointmentsChart"
                 title="Agendamentos por mês"
                 data={{
-                  labels: ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"],
+                  labels: stats?.monthlyAppointmentsLabels || ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"],
                   values: stats?.monthlyAppointments || [],
                 }}
                 org={org}
@@ -224,6 +230,10 @@ export default function AdminDashboard({ slug }) {
                   values: stats?.servicesPopularity?.map((s) => s.count) || [],
                 }}
                 org={org}
+              />
+              <ServicesDoughnutChartCard
+                org={org}
+                data={stats?.servicesPopularity || []}
               />
             </section>
 
