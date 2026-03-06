@@ -868,3 +868,32 @@ Qualquer dúvida, entre em contato conosco! 💬
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const getNextAppointmentByClient = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+
+    const today = new Date().toISOString().split("T")[0];
+
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("appointment_date, start_time, status")
+      .eq("client_id", clientId)
+      .in("status", ["scheduled", "confirmed"])
+      .gte("appointment_date", today)
+      .order("appointment_date", { ascending: true })
+      .order("start_time", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Erro ao buscar próximo agendamento" });
+    }
+
+    res.json(data || null);
+  } catch (err) {
+    res.status(500).json({ error: "Erro interno" });
+  }
+};
+

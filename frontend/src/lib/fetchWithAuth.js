@@ -37,8 +37,8 @@ export async function fetchWithAuth(url, options = {}) {
   try {
     return await fetch(resolvedUrl, config);
   } catch (error) {
-    console.error('fetchWithAuth: falha na requisição', { resolvedUrl, error });
-    throw error;
+    console.warn('fetchWithAuth: falha na requisição', resolvedUrl);
+    return new Response(null, {status: 500});
   }
 }
 
@@ -79,8 +79,8 @@ if (typeof window !== 'undefined' && !window.__fetchAuthPatched) {
     try {
       return await originalFetch.apply(this, [url, newOptions]);
     } catch (error) {
-      console.error('fetch (patched) falhou', { url, error });
-      throw error;
+      console.warn('fetch (patched) falhou', url);
+      return new Response(null, { status: 500});
     }
   };
 

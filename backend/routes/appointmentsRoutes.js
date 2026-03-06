@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createAppointment, getAppointmentsByEmployee} from '../controllers/appointmentsController.js';
+import { createAppointment, getAppointmentsByEmployee, getNextAppointmentByClient} from '../controllers/appointmentsController.js';
 import { extractOrganizationId } from '../middlewares/authMiddleware.js';
 
 export const appointmentsRouter = Router();
@@ -121,3 +121,9 @@ appointmentsRouter.post('/:slug', createAppointment);
  *         description: Erro interno do servidor
  */
 appointmentsRouter.get('/by-employee/:userId', getAppointmentsByEmployee)
+
+appointmentsRouter.get(
+    '/client/:clientId/next',
+    getNextAppointmentByClient
+  );
+  

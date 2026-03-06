@@ -258,8 +258,8 @@ export default function EmployeesTab({ org }) {
 
 
           <div className="w-full md:basis-[calc(50%-0.5rem)]">
-            <label className="text-gray-800 text-sm" htmlFor="username">Salário</label>
-            <input type="number" placeholder="Salário" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
+            <label className="text-gray-800 text-sm" htmlFor="username">Salário por dia trabalhado</label>
+            <input type="number" placeholder="Salário por dia trabalhado" className="border p-2 rounded-md w-full md:basis-[calc(50%-0.5rem)] "
             value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} />
           </div>
 
