@@ -14,6 +14,7 @@ import ProfileModal from "../../components/ProfileModal";
 import PersonalCalendarTab from "./calendario/page";
 import SalaryChart from "./components/salaryChart";
 import WorkDaysChart from "./components/workingDaysChart";
+import EmployeeQueueTab from "./components/EmployeeQueueTab";
 
 export default function EmployeePanel() {
   const router = useRouter();
@@ -44,14 +45,21 @@ export default function EmployeePanel() {
   const perPage = 10;
 
   const [data, setData] = useState([])
+  const salaryRows = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.salaries)
+        ? data.salaries
+        : [];
   const chartSalaryData = {
-    labels: data.map(item => item.mes),
-    salary: data.map(item => item.salario_base),
-    commission: data.map(item => item.comissao),
-    total: data.map(item => item.total_recebido)
+    labels: salaryRows.map(item => item.mes),
+    salary: salaryRows.map(item => item.salario_base),
+    commission: salaryRows.map(item => item.comissao),
+    total: salaryRows.map(item => item.total_recebido)
   };
 
-  const chartAppointmentsData = data.reduce((acc, item) => {
+  const chartAppointmentsData = salaryRows.reduce((acc, item) => {
     const hasAppointments =
       item.agendamentos_por_dia &&
       Object.keys(item.agendamentos_por_dia).length > 0;
@@ -90,6 +98,10 @@ export default function EmployeePanel() {
         // ✅ Busca dados do usuário para verificar app_installed
         const userRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${slug}/${data.user.id}`);
         const userData = await userRes.json();
+        setUser((prev) => ({
+          ...prev,
+          id_employee: userData?.id_employee ?? prev?.id_employee,
+        }));
         setAppInstalled(userData?.app_installed || false);
 
       } catch (error) {
@@ -164,7 +176,15 @@ export default function EmployeePanel() {
 
         const salary = await res.json();
 
-        setData(salary)
+        const salaryArray = Array.isArray(salary)
+          ? salary
+          : Array.isArray(salary?.data)
+            ? salary.data
+            : Array.isArray(salary?.salaries)
+              ? salary.salaries
+              : [];
+
+        setData(salaryArray)
 
       } catch (err) {
         console.error("Erro ao buscar salários:", err);
@@ -300,6 +320,9 @@ export default function EmployeePanel() {
     switch (activeTab) {
       case "calendar":
         return <PersonalCalendarTab />;
+
+      case "queue":
+        return <EmployeeQueueTab org={org} user={user} palette={palette} />;
 
       case "appointments":
         return (

@@ -44,6 +44,20 @@ export default function QueueTab({ org, setActiveTab }) {
   const [employees, setEmployees] = useState([]);
   const [loadingServices, setLoadingServices] = useState(false);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [joinLoading, setJoinLoading] = useState(false);
+  const [joinServices, setJoinServices] = useState([]);
+  const [joinEmployees, setJoinEmployees] = useState([]);
+  const [loadingJoinServices, setLoadingJoinServices] = useState(false);
+  const [loadingJoinEmployees, setLoadingJoinEmployees] = useState(false);
+  const [joinData, setJoinData] = useState({
+    categoryId: "",
+    serviceId: "",
+    employeeId: "",
+    clientName: "",
+    clientEmail: "",
+    clientPhone: "",
+  });
 
   const [showPaywall, setShowPaywall] = useState(false);
   const slug = org.slug_organization
@@ -130,6 +144,127 @@ export default function QueueTab({ org, setActiveTab }) {
     } catch (err) {
       console.error("Erro ao copiar:", err);
       toast.error("Erro ao copiar o link");
+    }
+  };
+
+  const resetJoinForm = () => {
+    setJoinData({
+      categoryId: "",
+      serviceId: "",
+      employeeId: "",
+      clientName: "",
+      clientEmail: "",
+      clientPhone: "",
+    });
+    setJoinServices([]);
+    setJoinEmployees([]);
+  };
+
+  const loadJoinServices = async (categoryId) => {
+    if (!categoryId) {
+      setJoinServices([]);
+      return;
+    }
+
+    try {
+      setLoadingJoinServices(true);
+      const res = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/services/${categoryId}/${slug}`
+      );
+
+      if (!res.ok) {
+        throw new Error("Erro ao carregar serviços");
+      }
+
+      const data = await res.json();
+      setJoinServices(data || []);
+    } catch (err) {
+      console.error("Erro ao carregar serviços da entrada manual:", err);
+      toast.error(err.message || "Erro ao carregar serviços");
+    } finally {
+      setLoadingJoinServices(false);
+    }
+  };
+
+  const loadJoinEmployees = async (serviceId) => {
+    if (!serviceId) {
+      setJoinEmployees([]);
+      return;
+    }
+
+    try {
+      setLoadingJoinEmployees(true);
+      const res = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/employees/${serviceId}/${slug}`
+      );
+
+      if (!res.ok) {
+        throw new Error("Erro ao carregar profissionais");
+      }
+
+      const data = await res.json();
+      setJoinEmployees(data || []);
+    } catch (err) {
+      console.error("Erro ao carregar profissionais da entrada manual:", err);
+      toast.error(err.message || "Erro ao carregar profissionais");
+    } finally {
+      setLoadingJoinEmployees(false);
+    }
+  };
+
+  const handleAdminJoinQueue = async () => {
+    if (!queue?.queue_id) {
+      toast.error("Crie uma fila antes de adicionar pessoas");
+      return;
+    }
+
+    if (queue?.status !== "open") {
+      toast.error("Abra a fila para adicionar novas pessoas");
+      return;
+    }
+
+    if (!joinData.clientName || !joinData.serviceId || !joinData.employeeId) {
+      toast.error("Preencha nome, serviço e profissional");
+      return;
+    }
+
+    try {
+      setJoinLoading(true);
+
+      const selectedService = joinServices.find(
+        (service) => String(service.id) === String(joinData.serviceId)
+      );
+
+      const res = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/queues/${slug}/join`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            client_name: joinData.clientName,
+            client_email: joinData.clientEmail || null,
+            client_phone: joinData.clientPhone || null,
+            service_id: Number(joinData.serviceId),
+            employee_id: Number(joinData.employeeId),
+            original_price: Number(selectedService?.price || 0),
+            final_price: Number(selectedService?.price || 0),
+          }),
+        }
+      );
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao adicionar pessoa na fila");
+      }
+
+      toast.success("Pessoa adicionada na fila com sucesso!", { autoClose: 2000 });
+      setShowJoinModal(false);
+      resetJoinForm();
+    } catch (err) {
+      console.error("Erro ao adicionar pessoa na fila:", err);
+      toast.error(err.message || "Erro ao adicionar pessoa na fila");
+    } finally {
+      setJoinLoading(false);
     }
   };
 
@@ -380,12 +515,11 @@ export default function QueueTab({ org, setActiveTab }) {
   const handleCallNext = async () => {
     try {
       const nextEntry = queueEntries
-        .filter((e) => e.status === "confirmed" || e.status === "calling")
+        .filter((e) => e.status === "confirmed")
         .sort((a, b) => a.position - b.position)[0];
 
-      const employeeId = nextEntry?.employee_id ?? nextEntry?.employees?.id;
-      if (!employeeId) {
-        toast.error("Não foi possível identificar o profissional do próximo cliente");
+      if (!nextEntry) {
+        toast.error("Não há clientes aguardando para chamar");
         return;
       }
 
@@ -393,8 +527,6 @@ export default function QueueTab({ org, setActiveTab }) {
         `${process.env.NEXT_PUBLIC_API_URL}/api/queues/${slug}/${queue.queue_id}/call-next`,
         {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ employee_id: Number(employeeId) }),
         }
       );
 
@@ -404,7 +536,7 @@ export default function QueueTab({ org, setActiveTab }) {
       }
 
       const data = await res.json();
-      toast.success(`${data.entry?.clients?.client_name} foi chamado!`, { autoClose: 4000 });
+      toast.success(`${data.clients?.client_name || "Cliente"} foi chamado!`, { autoClose: 4000 });
     } catch (err) {
       console.error("Erro ao chamar próximo:", err);
       toast.error(err.message || "Erro ao chamar próximo");
@@ -812,8 +944,19 @@ export default function QueueTab({ org, setActiveTab }) {
             {queue?.status === "open" ? "Fechar fila" : "Abrir fila"}
           </button>
           <button
+            onClick={() => setShowJoinModal(true)}
+            disabled={queue?.status !== "open"}
+            style={{ backgroundColor: palette?.strong_color }}
+            className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Adicionar pessoa
+          </button>
+          <button
             onClick={handleCallNext}
-            disabled={activeEntries.length === 0}
+            disabled={!activeEntries.some((entry) => entry.status === "confirmed")}
             style={{ backgroundColor: palette?.strong_color }}
             className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -1256,6 +1399,163 @@ export default function QueueTab({ org, setActiveTab }) {
       </AnimatePresence>
 
       {/* Share Modal com QRCode */}
+      <AnimatePresence>
+        {showJoinModal && (
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => {
+              setShowJoinModal(false);
+              resetJoinForm();
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-8 max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Adicionar pessoa na fila</h2>
+              <p className="text-sm text-slate-500 mb-6">
+                Cadastro manual feito pelo admin na fila do dia.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Nome</label>
+                  <input
+                    type="text"
+                    value={joinData.clientName}
+                    onChange={(e) => setJoinData((prev) => ({ ...prev, clientName: e.target.value }))}
+                    className="mt-1 w-full px-4 py-2 rounded-lg border border-slate-200 text-sm"
+                    placeholder="Nome do cliente"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Telefone</label>
+                    <input
+                      type="text"
+                      value={joinData.clientPhone}
+                      onChange={(e) => setJoinData((prev) => ({ ...prev, clientPhone: e.target.value }))}
+                      className="mt-1 w-full px-4 py-2 rounded-lg border border-slate-200 text-sm"
+                      placeholder="(00) 00000-0000"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Email</label>
+                    <input
+                      type="email"
+                      value={joinData.clientEmail}
+                      onChange={(e) => setJoinData((prev) => ({ ...prev, clientEmail: e.target.value }))}
+                      className="mt-1 w-full px-4 py-2 rounded-lg border border-slate-200 text-sm"
+                      placeholder="cliente@email.com"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Categoria</label>
+                  <select
+                    value={joinData.categoryId}
+                    onChange={(e) => {
+                      const categoryId = e.target.value;
+                      setJoinData((prev) => ({
+                        ...prev,
+                        categoryId,
+                        serviceId: "",
+                        employeeId: "",
+                      }));
+                      setJoinEmployees([]);
+                      loadJoinServices(categoryId);
+                    }}
+                    className="mt-1 w-full px-4 py-2 rounded-lg border border-slate-200 text-sm"
+                  >
+                    <option value="">Selecione uma categoria</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Serviço</label>
+                  <select
+                    value={joinData.serviceId}
+                    onChange={(e) => {
+                      const serviceId = e.target.value;
+                      setJoinData((prev) => ({ ...prev, serviceId, employeeId: "" }));
+                      loadJoinEmployees(serviceId);
+                    }}
+                    disabled={loadingJoinServices || joinServices.length === 0}
+                    className="mt-1 w-full px-4 py-2 rounded-lg border border-slate-200 text-sm disabled:bg-slate-100"
+                  >
+                    <option value="">
+                      {loadingJoinServices
+                        ? "Carregando..."
+                        : joinServices.length === 0
+                        ? "Selecione uma categoria primeiro"
+                        : "Selecione um serviço"}
+                    </option>
+                    {joinServices.map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.name} - R$ {service.price?.toFixed(2)} ({service.duration}min)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Profissional</label>
+                  <select
+                    value={joinData.employeeId}
+                    onChange={(e) => setJoinData((prev) => ({ ...prev, employeeId: e.target.value }))}
+                    disabled={loadingJoinEmployees || joinEmployees.length === 0}
+                    className="mt-1 w-full px-4 py-2 rounded-lg border border-slate-200 text-sm disabled:bg-slate-100"
+                  >
+                    <option value="">
+                      {loadingJoinEmployees
+                        ? "Carregando..."
+                        : joinEmployees.length === 0
+                        ? "Selecione um serviço primeiro"
+                        : "Selecione um profissional"}
+                    </option>
+                    {joinEmployees.map((employee) => (
+                      <option key={employee.id} value={employee.id}>
+                        {employee.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => {
+                    setShowJoinModal(false);
+                    resetJoinForm();
+                  }}
+                  className="flex-1 px-4 py-2 rounded-lg border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleAdminJoinQueue}
+                  disabled={joinLoading}
+                  style={{ backgroundColor: palette?.strong_color || "#111827" }}
+                  className="flex-1 px-4 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition disabled:opacity-50"
+                >
+                  {joinLoading ? "Adicionando..." : "Adicionar na fila"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {showShareModal && (
           <div

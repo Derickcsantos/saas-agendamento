@@ -534,7 +534,50 @@ export const callNextInQueue = async (req, res) => {
       return res.status(404).json({ error: "Nenhum cliente na fila" });
     }
 
-    const calledEntry = { ...nextEntry, status: "calling" };
+    const { data: updatedEntry, error: updateError } = await supabase
+      .from("queue_entries")
+      .update({ status: "calling" })
+      .eq("id", nextEntry.id)
+      .eq("queue_id", queueId)
+      .eq("status", "confirmed")
+      .select("id, queue_id, status")
+      .maybeSingle();
+
+    if (updateError) {
+      console.error("Erro ao atualizar status em callNextInQueue:", updateError);
+      return res.status(500).json({ error: "Erro ao atualizar status do cliente chamado" });
+    }
+
+    if (!updatedEntry) {
+      return res.status(409).json({ error: "Cliente já foi chamado ou atualizado por outro usuário" });
+    }
+
+    const { data: calledEntry, error: calledEntryError } = await supabase
+      .from("queue_entries")
+      .select(
+        `
+        id,
+        position,
+        status,
+        client_id,
+        service_id,
+        employee_id,
+        original_price,
+        final_price,
+        public_token,
+        clients (client_name, client_phone, client_email),
+        services (name, price, duration, category_id),
+        employees (name, imagem_funcionario)
+      `
+      )
+      .eq("id", nextEntry.id)
+      .eq("queue_id", queueId)
+      .maybeSingle();
+
+    if (calledEntryError || !calledEntry) {
+      console.error("Erro ao buscar cliente chamado em callNextInQueue:", calledEntryError);
+      return res.status(500).json({ error: "Cliente chamado, mas não foi possível carregar os detalhes" });
+    }
 
     // Buscar organização para broadcast
     const { data: org } = await supabase
@@ -543,14 +586,14 @@ export const callNextInQueue = async (req, res) => {
       .eq("slug_organization", slug)
       .single();
 
-    console.log(`📢 Cliente ${nextEntry.clients.client_name} chamado`);
+    console.log(`📢 Cliente ${calledEntry.clients.client_name} chamado`);
 
     // 📡 Broadcast para todos
     broadcastQueueUpdate(org.id, queueId, {
       type: "client_called",
-      entryId: nextEntry.id,
+      entryId: calledEntry.id,
       entry: calledEntry,
-      message: `Cliente ${nextEntry.clients.client_name} chamado!`,
+      message: `Cliente ${calledEntry.clients.client_name} chamado!`,
     });
 
     res.json(calledEntry);
