@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Script from "next/script";
 import { Search, Eye, EyeOff } from "lucide-react";
 import { generateNormalizedText } from '../utils/normalizeText'
 
@@ -27,6 +28,8 @@ export default function GlobalLogin() {
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [recaptchaToken, setRecaptchaToken] = useState("");
+  const [recaptchaReady, setRecaptchaReady] = useState(false);
 
   const loadOrganizations = async () => {
     try {
@@ -134,12 +137,25 @@ export default function GlobalLogin() {
     }
 
     try {
+      const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+
+      if (!siteKey) {
+        throw new Error("Chave do reCAPTCHA não configurada no frontend.");
+      }
+
+      if (!recaptchaReady || !window?.grecaptcha) {
+        throw new Error("reCAPTCHA não carregou. Tente novamente.");
+      }
+
+      const token = await window.grecaptcha.execute(siteKey, { action: "login" });
+      setRecaptchaToken(token);
+
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/login/${orgToUse.slug_organization}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({ ...formData, recaptchaToken: token, recaptchaAction: "login" }),
           credentials: "include",
         }
       );
@@ -188,6 +204,7 @@ export default function GlobalLogin() {
 
     } catch (err) {
       setErrorMsg(err.message || "Erro ao fazer login");
+      setRecaptchaToken("");
     } finally {
       setLoadingLogin(false);
     }
@@ -196,6 +213,11 @@ export default function GlobalLogin() {
   return (
     
     <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <Script
+        src={`https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""}`}
+        strategy="afterInteractive"
+        onLoad={() => setRecaptchaReady(true)}
+      />
       <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8">
 
         {/* Título */}
@@ -306,6 +328,9 @@ export default function GlobalLogin() {
             {loadingLogin ? "Entrando..." : "Entrar"}
           </button>
         </form>
+        <p className="mt-3 text-xs text-gray-500 text-center">
+          Protegido por reCAPTCHA
+        </p>
         <div className="w-full mt-4 flex justify-center">
           <p className="text-gray-500 mr-1">Deseja voltar?</p>
           <a style={{color: "#5E3BEE"}}  href="/">clique aqui</a>
