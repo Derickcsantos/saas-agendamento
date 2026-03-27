@@ -4,43 +4,9 @@ import generateAccessToken from '../utils/jwt.js';
 import setTokenCookie from '../utils/setTokenCookie.js';
 import { verifyPassword } from '../utils/password.js';
 
-const verifyRecaptchaV3 = async ({ token, action }) => {
-  const secret = process.env.RECAPTCHA_SECRET_KEY;
-  const minScore = Number(process.env.RECAPTCHA_MIN_SCORE || 0.5);
-
-  if (!secret) {
-    throw new Error('RECAPTCHA_SECRET_KEY não configurado.');
-  }
-
-  const params = new URLSearchParams();
-  params.append('secret', secret);
-  params.append('response', token);
-
-  const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params,
-  });
-
-  const data = await response.json();
-
-  if (!data.success) {
-    return { ok: false, reason: 'Falha na verificação do reCAPTCHA.' };
-  }
-
-  if (typeof data.score === 'number' && data.score < minScore) {
-    return { ok: false, reason: 'Pontuação do reCAPTCHA muito baixa.' };
-  }
-
-  if (action && data.action && data.action !== action) {
-    return { ok: false, reason: 'Ação do reCAPTCHA inválida.' };
-  }
-
-  return { ok: true };
-};
 
 export const login = async (req, res) => {
-  const { login, password, recaptchaToken, recaptchaAction } = req.body;
+  const { login, password } = req.body;
 
   if (!login || !password) {
     return res.status(400).json({ error: 'Login e senha são obrigatórios.' });
@@ -51,16 +17,6 @@ export const login = async (req, res) => {
   }
 
   try {
-    if (recaptchaToken) {
-      const recaptchaResult = await verifyRecaptchaV3({
-        token: recaptchaToken,
-        action: recaptchaAction || 'login',
-      });
-
-      if (!recaptchaResult.ok) {
-        return res.status(403).json({ error: recaptchaResult.reason });
-      }
-    }
 
     const loginValue = String(login || "").trim();
 
