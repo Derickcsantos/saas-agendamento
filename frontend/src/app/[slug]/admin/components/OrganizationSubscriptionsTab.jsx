@@ -337,7 +337,7 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
             <button
               onClick={() => setShowPaymentModal(true)}
               disabled={processing}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:opacity-95 disabled:opacity-50 transition font-semibold shadow-sm"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-linear-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:opacity-95 disabled:opacity-50 transition font-semibold shadow-sm"
             >
               <FiArrowRight size={18} />
               Trocar de Plano
