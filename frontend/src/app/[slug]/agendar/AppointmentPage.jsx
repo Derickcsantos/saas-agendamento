@@ -523,7 +523,20 @@ const sendWhatsappConfirmation = async () => {
 
       if (!res.ok) {
         console.error("❌ Erro ao criar agendamento:", data);
-        toast.error(data?.error || "Erro ao confirmar o agendamento.");
+        toast.error(data?.details || data?.error || "Erro ao confirmar o agendamento.");
+
+        if (res.status === 409 && selected?.employee?.id && selected?.date && selected?.service?.duration) {
+          try {
+            const refreshSlotsRes = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/available-times/${slug}?employeeId=${selected.employee.id}&date=${selected.date}&duration=${selected.service.duration}`
+            );
+            const refreshedSlots = await refreshSlotsRes.json();
+            setTimeSlots(Array.isArray(refreshedSlots) ? refreshedSlots : []);
+          } catch (refreshErr) {
+            console.error("Erro ao atualizar horários após conflito:", refreshErr);
+          }
+        }
+
         return;
       }
 
@@ -843,8 +856,8 @@ const sendWhatsappConfirmation = async () => {
 
     return (
       <div className="fixed inset-0 bg-white backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-gradient-to-b from-white to-gray-50 rounded-2xl shadow-2xl w-full max-w-2xl p-6 border border-gray-100 relative">
-          <div className="absolute inset-x-0 -top-1 h-1 bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-amber-500 rounded-t-2xl"></div>
+        <div className="bg-linear-to-b from-white to-gray-50 rounded-2xl shadow-2xl w-full max-w-2xl p-6 border border-gray-100 relative">
+          <div className="absolute inset-x-0 -top-1 h-1 bg-linear-to-r from-indigo-500 via-fuchsia-500 to-amber-500 rounded-t-2xl"></div>
 
           <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">Pagamento PIX</h2>
           <p className="text-center text-gray-600 mb-2">

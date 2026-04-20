@@ -2,6 +2,8 @@ import { supabase } from '../lib/supabase.js';
 import findCalendarIdByEventId from '../utils/findCalendarByEventId.js';
 import createOAuthClient from '../utils/createOAuthClient.js';
 import updateYesterdayAppointmentsToCompleted from '../utils/confirmAppointments.js';
+import updateGoogleCalendarEvent from '../utils/updateGoogleCalendarEvent.js';
+import { getEmployeeGoogleBusyIntervals, slotOverlapsBusyIntervals } from '../utils/googleCalendarAvailability.js';
 import { google } from "googleapis";
 
 export const getAdminAppointments = async (req, res) => {
@@ -311,6 +313,93 @@ export const updateAdminAppointment = async (req, res) => {
       return res.status(404).json({ error: "Agendamento não encontrado" });
     }
 
+    const nextEmployeeId = updates.employee_id || appointment.employee_id;
+    const nextDate = updates.appointment_date || appointment.appointment_date;
+    const nextStartTime = updates.start_time || appointment.start_time;
+    const nextEndTime = updates.end_time || appointment.end_time;
+
+    const dateTimeOrEmployeeChanged =
+      nextEmployeeId !== appointment.employee_id ||
+      nextDate !== appointment.appointment_date ||
+      nextStartTime !== appointment.start_time ||
+      nextEndTime !== appointment.end_time;
+
+    if (dateTimeOrEmployeeChanged) {
+      const nextStart = new Date(`${nextDate}T${nextStartTime}`);
+      const nextEnd = new Date(`${nextDate}T${nextEndTime}`);
+
+      if (!(nextStart < nextEnd)) {
+        return res.status(400).json({ error: "Horário do agendamento inválido" });
+      }
+
+      const { data: dbAppointments, error: dbConflictError } = await supabase
+        .from("appointments")
+        .select("id, appointment_date, start_time, end_time, status")
+        .eq("organization_id", org.id)
+        .eq("employee_id", nextEmployeeId)
+        .eq("appointment_date", nextDate)
+        .in("status", ["confirmed", "completed"])
+        .neq("id", appointment.id);
+
+      if (dbConflictError) throw dbConflictError;
+
+      const hasDbConflict = (dbAppointments || []).some((appt) => {
+        const busyStart = new Date(`${appt.appointment_date}T${appt.start_time}`);
+        const busyEnd = new Date(`${appt.appointment_date}T${appt.end_time}`);
+        return nextStart < busyEnd && nextEnd > busyStart;
+      });
+
+      if (hasDbConflict) {
+        return res.status(409).json({
+          error: "Horário indisponível",
+          details: "Já existe um agendamento neste horário para o funcionário selecionado.",
+        });
+      }
+
+      const { data: policy } = await supabase
+        .from("organization_policies")
+        .select("sync_google_calendar")
+        .eq("organization_id", org.id)
+        .maybeSingle();
+
+      if (policy?.sync_google_calendar) {
+        const { data: employeeForCalendar } = await supabase
+          .from("employees")
+          .select("user_id")
+          .eq("id", nextEmployeeId)
+          .single();
+
+        if (employeeForCalendar?.user_id) {
+          const googleBusyResult = await getEmployeeGoogleBusyIntervals({
+            userId: employeeForCalendar.user_id,
+            timeMin: `${nextDate}T00:00:00-03:00`,
+            timeMax: `${nextDate}T23:59:59-03:00`,
+          });
+
+          if (googleBusyResult.ok) {
+            const busyIntervals = (googleBusyResult.busyIntervals || []).filter((busy) => {
+              if (!appointment.google_event_id) return true;
+              return busy.id !== appointment.google_event_id;
+            });
+
+            const hasGoogleConflict = slotOverlapsBusyIntervals(nextStart, nextEnd, busyIntervals);
+
+            if (hasGoogleConflict) {
+              return res.status(409).json({
+                error: "Horário indisponível",
+                details: "Existe um evento no Google Calendar do funcionário neste horário.",
+              });
+            }
+          } else {
+            console.warn(
+              "⚠️ Não foi possível ler eventos do Google Calendar durante atualização:",
+              googleBusyResult.reason
+            );
+          }
+        }
+      }
+    }
+
     // 3) Atualizar no banco
     const { data: updated, error: updateErr } = await supabase
       .from("appointments")
@@ -323,15 +412,19 @@ export const updateAdminAppointment = async (req, res) => {
     if (updateErr) throw updateErr;
 
     // =========================
-    // ✅ 4) Se virou canceled -> atualizar Google Calendar
+    // ✅ 4) Detectar mudanças para sincronizar com Google Calendar
     // =========================
     const becameCanceled =
       updates.status === "canceled" && appointment.status !== "canceled";
 
-    // ✅ 4.5) Se o funcionário mudou -> atualizar cor no Google Calendar
     const employeeChanged = updates.employee_id && updates.employee_id !== appointment.employee_id;
 
-    if (becameCanceled || employeeChanged) {
+    const dateTimeChanged =
+      (updates.appointment_date && updates.appointment_date !== appointment.appointment_date) ||
+      (updates.start_time && updates.start_time !== appointment.start_time) ||
+      (updates.end_time && updates.end_time !== appointment.end_time);
+
+    if (becameCanceled || employeeChanged || dateTimeChanged) {
       // 4.1) Política da organização
       const { data: policy, error: policyErr } = await supabase
         .from("organization_policies")
@@ -420,6 +513,44 @@ export const updateAdminAppointment = async (req, res) => {
                     ...(colorId && { colorId }),
                   },
                 });
+              } else if (dateTimeChanged) {
+                // ✅ Se data/horário mudou, sincronizar completo com Google Calendar
+                console.log("📅 Data/horário mudou - sincronizando com Google Calendar...");
+
+                // Buscar dados necessários para atualizar o evento
+                const { data: appointmentFull } = await supabase
+                  .from("appointments")
+                  .select(`
+                    *,
+                    services:service_id (id, name, is_online),
+                    employees:employee_id (id, name)
+                  `)
+                  .eq("id", updated.id)
+                  .single();
+
+                if (appointmentFull) {
+                  const updateResult = await updateGoogleCalendarEvent({
+                    calendarUserId: employee.user_id,
+                    googleEventId: updated.google_event_id,
+                    appointmentDate: updated.appointment_date,
+                    startTime: updated.start_time,
+                    endTime: updated.end_time,
+                    clientName: updated.client_name,
+                    employeeId: targetEmployeeId,
+                    employeeName: appointmentFull.employees?.name || "-",
+                    serviceId: updated.service_id,
+                    originalPrice: updated.original_price,
+                    finalPrice: updated.final_price,
+                    normalizedClientPhone: updated.client_phone,
+                    organizationName: org.name,
+                  });
+
+                  if (updateResult.updated) {
+                    console.log("✅ Evento atualizado no Google Calendar:", updateResult.googleEventId);
+                  } else {
+                    console.error("❌ Falha ao atualizar evento:", updateResult.reason);
+                  }
+                }
               }
 
               // 4.6) Se Google renovou token, salva no Supabase (igual seu controller faz)

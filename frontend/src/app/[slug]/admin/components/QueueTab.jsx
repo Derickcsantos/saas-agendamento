@@ -1038,7 +1038,7 @@ export default function QueueTab({ org, setActiveTab }) {
                         >
                           <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                             {/* Drag Handle */}
-                            <div className="flex-shrink-0 text-gray-400 cursor-grab active:cursor-grabbing">
+                            <div className="shrink-0 text-gray-400 cursor-grab active:cursor-grabbing">
                               <svg
                                 className="w-6 h-6"
                                 fill="none"
@@ -1056,7 +1056,7 @@ export default function QueueTab({ org, setActiveTab }) {
 
                             {/* Position Badge */}
                             <div
-                              className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white text-sm ${
+                              className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white text-sm ${
                                 entry.status === "calling"
                                   ? "bg-amber-500 animate-pulse"
                                   : "bg-slate-900"
@@ -1601,7 +1601,7 @@ export default function QueueTab({ org, setActiveTab }) {
                   />
                   <button
                     onClick={() => handleCopyToClipboard(getQueueShareUrl())}
-                    className="flex-shrink-0 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
+                    className="shrink-0 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
                     title="Copiar link"
                   >
                     <svg className="w-5 h-5 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
