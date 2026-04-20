@@ -495,7 +495,7 @@ export default function EmployeePanel() {
             {topClient && (
               <section className="mt-6">
                 <div
-                  className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl shadow-md border p-6"
+                  className="bg-linear-to-r from-purple-50 to-blue-50 rounded-xl shadow-md border p-6"
                   style={{ borderColor: `${palette?.medium_color}30` }}
                 >
                   <div className="flex items-center gap-4">

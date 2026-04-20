@@ -616,7 +616,7 @@ export default function AppointmentsTab({ org, setActiveTab }) {
             value={editData.employee?.id}
             onChange={(e) => {
               const emp = employees.find((x) => x.id == e.target.value);
-              setEditData({ ...editData, employee: emp });
+              setEditData({ ...editData, employee: emp, time: null });
               setEditTimeSlots([]);
             }}
           >
@@ -632,7 +632,7 @@ export default function AppointmentsTab({ org, setActiveTab }) {
             className="w-full border p-2 rounded"
             value={editData.date}
             onChange={(e) => {
-              setEditData({ ...editData, date: e.target.value });
+              setEditData({ ...editData, date: e.target.value, time: null });
               loadEditAvailableTimes(
                 editData.employee.id,
                 e.target.value,
@@ -647,7 +647,7 @@ export default function AppointmentsTab({ org, setActiveTab }) {
             <button
               type="button"
               className={`px-3 py-1 rounded-full text-xs font-semibold transition ${editData.manualMode ? "bg-orange-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
-              onClick={() => setEditData({ ...editData, manualMode: !editData.manualMode, manualStartTime: "", manualEndTime: "", time: "" })}
+              onClick={() => setEditData({ ...editData, manualMode: !editData.manualMode, manualStartTime: "", manualEndTime: "", time: null })}
             >
               {editData.manualMode ? "Manual" : "Automático"}
             </button>
@@ -870,7 +870,7 @@ export default function AppointmentsTab({ org, setActiveTab }) {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div
-                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            className="w-3 h-3 rounded-full shrink-0"
                             style={{ backgroundColor: employeeColor }}
                           />
                           {a.client_name}

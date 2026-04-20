@@ -4,6 +4,7 @@ import axios from "axios";
 import { sendWhatsAppMessage } from "../lib/whatsapp.js";
 import { isUserAdmin } from '../middlewares/authMiddleware.js';
 import createGoogleCalendarEvent from "../utils/createGoogleCalendarEvent.js";
+import { getEmployeeGoogleBusyIntervals, slotOverlapsBusyIntervals } from "../utils/googleCalendarAvailability.js";
 
 // Garante que a linha de saldo exista para a organização
 async function ensureOrganizationBalance(organizationId) {
@@ -459,7 +460,7 @@ export const createAppointment = async (req, res) => {
 
     const { data: policy, error: policyError } = await supabase
       .from("organization_policies")
-      .select("sync_google_calendar, appointment_prepayment, prepayment_type, prepayment_value, pix_key, user_main_calendar, show_all_appointments_in_google")
+      .select("sync_google_calendar, appointment_prepayment, prepayment_type, prepayment_value, pix_key, user_main_calendar, show_all_appointments_in_google, min_hours_before_booking")
       .eq("organization_id", orgData.id)
       .maybeSingle();
 
@@ -467,6 +468,159 @@ export const createAppointment = async (req, res) => {
 
     if (policyError) {
       console.error("Erro buscando políticas:", policyError);
+    }
+
+    const bypassAvailabilityValidation =
+      admin_override === true ||
+      admin_override === "true" ||
+      admin_override === 1 ||
+      admin_override === "1";
+
+    if (!bypassAvailabilityValidation) {
+      const { data: employeeValidation, error: employeeValidationError } = await supabase
+        .from("employees")
+        .select("id, user_id, name, is_active")
+        .eq("id", employee_id)
+        .single();
+
+      if (employeeValidationError || !employeeValidation || !employeeValidation.is_active) {
+        return res.status(404).json({ error: "Funcionário não encontrado ou inativo" });
+      }
+
+      const normalizeTime = (value) => {
+        const raw = String(value || "");
+        if (raw.length === 5) return `${raw}:00`;
+        return raw;
+      };
+
+      const toSaoPauloDateTime = (day, time) =>
+        new Date(`${day}T${normalizeTime(time)}-03:00`);
+
+      const appointmentStart = toSaoPauloDateTime(date, start_time);
+      const appointmentEnd = toSaoPauloDateTime(date, end_time);
+
+      if (!(appointmentStart < appointmentEnd)) {
+        return res.status(400).json({ error: "Horário do agendamento inválido" });
+      }
+
+      const minHoursPolicy = Number(policy?.min_hours_before_booking);
+      const minHoursBeforeBooking = Number.isFinite(minHoursPolicy) ? Math.max(0, Math.trunc(minHoursPolicy)) : 0;
+      if (minHoursBeforeBooking > 0) {
+        const minAllowedDateTime = new Date(Date.now() + minHoursBeforeBooking * 60 * 60 * 1000);
+        if (appointmentStart < minAllowedDateTime) {
+          return res.status(409).json({
+            error: "Horário indisponível",
+            details: `Agendamentos exigem no mínimo ${minHoursBeforeBooking}h de antecedência.`,
+          });
+        }
+      }
+
+      const appointmentDayOfWeek = new Date(`${date}T12:00:00-03:00`).getDay();
+
+      const { data: workSchedule, error: workScheduleError } = await supabase
+        .from("work_schedules")
+        .select("is_available, start_time, end_time")
+        .eq("organization_id", orgData.id)
+        .eq("employee_id", employee_id)
+        .eq("day_of_week", appointmentDayOfWeek)
+        .maybeSingle();
+
+      if (workScheduleError) throw workScheduleError;
+
+      if (!workSchedule || workSchedule.is_available !== true) {
+        return res.status(409).json({
+          error: "Horário indisponível",
+          details: "O funcionário não atende neste dia da semana.",
+        });
+      }
+
+      const workStart = toSaoPauloDateTime(date, workSchedule.start_time);
+      const workEnd = toSaoPauloDateTime(date, workSchedule.end_time);
+
+      if (!(appointmentStart >= workStart && appointmentEnd <= workEnd)) {
+        return res.status(409).json({
+          error: "Horário indisponível",
+          details: "Horário fora da jornada configurada do funcionário.",
+        });
+      }
+
+      const { data: closedPeriods, error: closedPeriodsError } = await supabase
+        .from("closed_periods")
+        .select("start_day, end_day")
+        .eq("organization_id", orgData.id);
+
+      if (closedPeriodsError) throw closedPeriodsError;
+
+      const hasClosedPeriodConflict = (closedPeriods || []).some((period) => {
+        if (!period.start_day) return false;
+
+        const startDay = period.start_day;
+        const endDay = period.end_day || period.start_day;
+        const closedStart = new Date(`${startDay}T00:00:00-03:00`);
+        const closedEnd = new Date(`${endDay}T23:59:59-03:00`);
+
+        return appointmentStart <= closedEnd && appointmentEnd >= closedStart;
+      });
+
+      if (hasClosedPeriodConflict) {
+        return res.status(409).json({
+          error: "Horário indisponível",
+          details: "A organização está em período fechado para a data selecionada.",
+        });
+      }
+
+      const { data: dbAppointments, error: dbConflictError } = await supabase
+        .from("appointments")
+        .select("id, appointment_date, start_time, end_time, status")
+        .eq("organization_id", orgData.id)
+        .eq("employee_id", employee_id)
+        .eq("appointment_date", date)
+        .in("status", ["confirmed", "completed"]);
+
+      if (dbConflictError) {
+        throw dbConflictError;
+      }
+
+      const hasDbConflict = (dbAppointments || []).some((appt) => {
+        const busyStart = toSaoPauloDateTime(appt.appointment_date, appt.start_time);
+        const busyEnd = toSaoPauloDateTime(appt.appointment_date, appt.end_time);
+        return appointmentStart < busyEnd && appointmentEnd > busyStart;
+      });
+
+      if (hasDbConflict) {
+        return res.status(409).json({
+          error: "Horário indisponível",
+          details: "Já existe um agendamento neste horário para o funcionário selecionado.",
+        });
+      }
+
+      if (policy?.sync_google_calendar && employeeValidation.user_id) {
+        const googleBusyResult = await getEmployeeGoogleBusyIntervals({
+          userId: employeeValidation.user_id,
+          timeMin: `${date}T00:00:00-03:00`,
+          timeMax: `${date}T23:59:59-03:00`,
+        });
+
+        if (googleBusyResult.ok) {
+          const hasGoogleConflict = slotOverlapsBusyIntervals(
+            appointmentStart,
+            appointmentEnd,
+            googleBusyResult.busyIntervals
+          );
+
+          if (hasGoogleConflict) {
+            return res.status(409).json({
+              error: "Horário indisponível",
+              details: "Existe um evento no Google Calendar do funcionário neste horário.",
+            });
+          }
+        } else {
+          console.warn(
+            "⚠️ Não foi possível ler eventos do Google Calendar. Usando fallback de disponibilidade local:",
+            googleBusyResult.reason
+          );
+        }
+      }
     }
 
     const policyRequiresPrepayment = policy?.appointment_prepayment === true && !isAdminUser;
@@ -790,7 +944,8 @@ Seu agendamento foi realizado com sucesso em *${orgData?.name}*.
 ${additionalSummary.items.length ? `➕ Adicionais: ${additionalSummary.items.map((item) => item.name).join(", ")}` : ""}
 🧑‍💼 Profissional: ${employeeInfo?.name || "-"}
 📅 Data: ${formattedDate}
-⏰ Horário: ${start_time} - ${end_time}
+⏰ Horário de início: ${start_time}
+⏰ Previsão de término: ${end_time}
 💰 Valor: ${formattedFinalPrice}
 
 ${

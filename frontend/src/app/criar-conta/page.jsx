@@ -114,6 +114,10 @@ export default function CreateOrganization() {
         ...prev, 
         document_number: numbersOnly
       }));
+    } else if (name === 'name') {
+      // Remove espaços no início e final do nome
+      const trimmedValue = value.trim();
+      setOrgData((prev) => ({ ...prev, [name]: trimmedValue }));
     } else {
       setOrgData((prev) => ({ ...prev, [name]: value }));
     }
@@ -177,7 +181,7 @@ export default function CreateOrganization() {
   const submitAll = async () => {
     setIsSubmitting(true);
     try {
-      const localSlug = orgData.name.toLowerCase().replace(/\s+/g, "-");
+      const localSlug = orgData.name.trim().toLowerCase().replace(/\s+/g, "-");
       const fullAddress = [
         addressData.street.trim(),
         addressData.number.trim() ? `Nº ${addressData.number.trim()}` : "",
@@ -280,7 +284,7 @@ export default function CreateOrganization() {
   ];
 
   const checkSlugAvailability = async () => {
-    const slug = generateNormalizedText(orgData.name)
+    const slug = generateNormalizedText(orgData.name.trim())
 
     if (!slug) return;
 
@@ -374,7 +378,7 @@ export default function CreateOrganization() {
                   />
                   {orgData.name? (
                     <div className="flex justify-center mt-4">
-                      <p className="text-gray-500" style={{fontSize: '12px'}}>www.marcafy.com.br/{generateNormalizedText(orgData.name)}
+                      <p className="text-gray-500" style={{fontSize: '12px'}}>www.marcafy.com.br/{generateNormalizedText(orgData.name.trim())}
                       </p>
                     </div>
                     ) : (
@@ -711,7 +715,7 @@ export default function CreateOrganization() {
             <div className="space-y-3 text-sm text-gray-700">
               <p>
                 <strong>Slug:</strong>{" "}
-                {orgData.name.toLowerCase().replace(/\s+/g, "-")}
+                {orgData.name.trim().toLowerCase().replace(/\s+/g, "-")}
               </p>
 
               <p><strong>Nome do Negócio:</strong> {orgData.name}</p>

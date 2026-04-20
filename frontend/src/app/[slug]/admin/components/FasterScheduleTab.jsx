@@ -275,20 +275,23 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
       final_price: Number(form.final_price),
       original_price: Number(selectedService?.price || 0),
       coupon_code: null,
-      admin_override: true, // ✅ Flag para permitir agendamentos especiais
+      admin_override: manualTimeMode, // só permite bypass em modo manual
     };
 
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/${org.slug_organization}`,
       {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       }
     );
 
+    const data = await res.json().catch(() => ({}));
+
     if (!res.ok) {
-      toast.info("Erro ao agendar. Verifique os dados.");
+      toast.info(data?.details || data?.error || "Erro ao agendar. Verifique os dados.");
       return;
     }
 
@@ -366,10 +369,10 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
                       <img
                         src={client.imagem_perfil}
                         alt={client.username}
-                        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                        className="w-8 h-8 rounded-full object-cover shrink-0"
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0 text-xs font-semibold text-gray-600">
+                      <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center shrink-0 text-xs font-semibold text-gray-600">
                         {client.username?.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -386,7 +389,7 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
                         </p>
                       )}
                     </div>
-                    <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full flex-shrink-0">
+                    <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full shrink-0">
                       {client.type === "user" ? "Usuário" : "Cliente"}
                     </span>
                   </button>

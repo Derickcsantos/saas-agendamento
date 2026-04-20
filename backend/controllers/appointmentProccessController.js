@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase.js';
-import { google } from "googleapis";
+import { getEmployeeGoogleBusyIntervals } from "../utils/googleCalendarAvailability.js";
 
 export const getAppointmentCategories = async (req, res) => {
   try {
@@ -255,12 +255,6 @@ export const getAvailableTimes = async (req, res) => {
     const employeeUserId = employee.user_id; // única referência
 
 
-    const { data: googleData, error: googleError } = await supabase
-      .from("organization_google_calendar")
-      .select("access_token, refresh_token, token_type, scope, expiry_date")
-      .eq("user_id", employeeUserId)
-      .maybeSingle();
-
     console.log('Parâmetros recebidos:', { employeeIdInt, date, duration, slug });
 
     if (!slug) {
@@ -296,9 +290,6 @@ export const getAvailableTimes = async (req, res) => {
       minHoursBeforeBooking > 0
         ? new Date(Date.now() + minHoursBeforeBooking * 60 * 60 * 1000)
         : null;
-
-    const hasGoogleCalendar = shouldSyncGoogle && !!googleData?.refresh_token;;
-
 
     
     // 🔒 Verificar períodos fechados do salão
@@ -352,88 +343,38 @@ export const getAvailableTimes = async (req, res) => {
 
     if (appointmentsError) throw appointmentsError;
 
-    function parseGoogleApiEvent(ev, selectedDate) {
-      if (!ev.start || !ev.end) return null;
-
-      // Evento com horário
-      if (ev.start.includes("T") && ev.end.includes("T")) {
-        return {
-          start: new Date(ev.start),
-          end: new Date(ev.end),
-        };
-      }
-
-      // Evento ALL-DAY (Google retorna end no dia seguinte)
-      const eventStart = new Date(`${ev.start}T00:00:00`);
-      const eventEnd = new Date(`${ev.end}T00:00:00`); // NÃO 23:59:59
-
-      // Normalizar para o dia selecionado
-      const dayStart = new Date(selectedDate);
-      dayStart.setHours(0, 0, 0, 0);
-
-      const dayEnd = new Date(selectedDate);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      const overlapsDay =
-        eventStart < dayEnd && eventEnd > dayStart;
-
-      if (!overlapsDay) return null;
-
-      return {
-        start: dayStart,
-        end: dayEnd,
-      };
-
-    }
-
-
     let googleEvents = [];
 
-    if (hasGoogleCalendar) {
-      try {
-        const dayStartISO = new Date(`${date}T00:00:00`).toISOString();
-        const dayEndISO = new Date(`${date}T23:59:59`).toISOString();
+    if (shouldSyncGoogle && employeeUserId) {
+      const dayStartISO = `${date}T00:00:00-03:00`;
+      const dayEndISO = `${date}T23:59:59-03:00`;
 
-        const url =
-          `${process.env.BACKEND_URL}/api/google-calendar/events` +
-          `?userId=${encodeURIComponent(employeeUserId)}` +
-          `&timeMin=${encodeURIComponent(dayStartISO)}` +
-          `&timeMax=${encodeURIComponent(dayEndISO)}` +
-          `&excludeHolidays=true`;
+      const googleBusyResult = await getEmployeeGoogleBusyIntervals({
+        userId: employeeUserId,
+        timeMin: dayStartISO,
+        timeMax: dayEndISO,
+      });
 
-        const response = await fetch(url, { credentials: "include" });
+      if (googleBusyResult.ok) {
+        googleEvents = (googleBusyResult.busyIntervals || []).map((item) => ({
+          start: item.start,
+          end: item.end,
+        }));
 
-
-        const events = await response.json();
-
-        const eventsNotCanceled = (events || []).filter(ev => {
-          const s = (ev.summary || "").toLowerCase().trim();
-          return !s.startsWith("agendamento cancelado:");
-        });
-
-        const selectedDateObj = new Date(`${date}T00:00:00`);
-
-        console.log("Google raw events:", events);
-        console.log("Google parsed events:", googleEvents);
-
-        googleEvents =
-          eventsNotCanceled
-            .map(ev => parseGoogleApiEvent(ev, selectedDateObj))
-            .filter(Boolean);
-
-        const hasAllDayBlock = googleEvents.some(ev => {
+        const hasAllDayBlock = googleEvents.some((ev) => {
           const dayStart = new Date(`${date}T00:00:00`);
-          const dayEnd = new Date(`${date}T23:59:59`);
+          const dayEnd = new Date(`${date}T23:59:59.999`);
           return ev.start <= dayStart && ev.end >= dayEnd;
         });
 
         if (hasAllDayBlock) {
           return res.json([]);
         }
-
-
-      } catch (err) {
-        console.error("Erro ao buscar eventos via API interna:", err);
+      } else {
+        console.warn(
+          "⚠️ Não foi possível ler eventos do Google Calendar para disponibilidade:",
+          googleBusyResult.reason
+        );
       }
     }
 
