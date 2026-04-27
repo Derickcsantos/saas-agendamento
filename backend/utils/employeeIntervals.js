@@ -39,7 +39,8 @@ export async function getEmployeeIntervalsForDate({ organizationId, employeeId, 
     .eq("employee_id", employeeId)
     .eq("is_active", true)
     .eq("interval_type", "recurring")
-    .eq("day_of_week", dayOfWeek)
+    // Inclui intervalos recorrentes definidos para "todo dia" (day_of_week = 7)
+    .or(`day_of_week.eq.7,day_of_week.eq.${dayOfWeek}`)
     .lte("recurring_start_date", date)
     .or(`recurring_end_date.is.null,recurring_end_date.gte.${date}`);
 

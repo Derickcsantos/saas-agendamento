@@ -14,6 +14,7 @@ const dayOptions = [
   { value: 4, label: "Quinta-feira" },
   { value: 5, label: "Sexta-feira" },
   { value: 6, label: "Sábado" },
+  { value: "every", label: "Todo dia" },
 ];
 
 function emptyForm() {
@@ -127,7 +128,7 @@ function EmployeeIntervalModal({
                   onChange={(e) => setForm((prev) => ({ ...prev, day_of_week: e.target.value }))}
                 >
                   {dayOptions.map((day) => (
-                    <option key={day.value} value={day.value}>
+                    <option key={String(day.value)} value={day.value}>
                       {day.label}
                     </option>
                   ))}
@@ -327,9 +328,9 @@ export default function EmployeeIntervalsTab({ org, setActiveTab, user }) {
       interval_type: interval.interval_type || "single",
       specific_date: interval.specific_date || "",
       day_of_week:
-        interval.day_of_week !== null && interval.day_of_week !== undefined
-          ? String(interval.day_of_week)
-          : "1",
+        interval.day_of_week === 7 || interval.day_of_week === null || interval.day_of_week === undefined
+          ? "every"
+          : String(interval.day_of_week),
       recurring_start_date: interval.recurring_start_date || "",
       recurring_end_date: interval.recurring_end_date || "",
       start_time: formatTime(interval.start_time),
@@ -382,7 +383,12 @@ export default function EmployeeIntervalsTab({ org, setActiveTab, user }) {
     employee_id: Number(form.employee_id),
     interval_type: form.interval_type,
     specific_date: form.interval_type === "single" ? form.specific_date : null,
-    day_of_week: form.interval_type === "recurring" ? Number(form.day_of_week) : null,
+    day_of_week:
+      form.interval_type === "recurring"
+        ? form.day_of_week === "every"
+          ? 7
+          : Number(form.day_of_week)
+        : null,
     recurring_start_date:
       form.interval_type === "recurring" ? form.recurring_start_date : null,
     recurring_end_date:
@@ -562,9 +568,13 @@ export default function EmployeeIntervalsTab({ org, setActiveTab, user }) {
                 const dateInfo =
                   interval.interval_type === "single"
                     ? `Data: ${formatDate(interval.specific_date)}`
-                    : `Dia: ${dayOptions.find((d) => d.value === interval.day_of_week)?.label || "-"} | ${formatDate(
-                        interval.recurring_start_date
-                      )} até ${interval.recurring_end_date ? formatDate(interval.recurring_end_date) : "indeterminado"}`;
+                    : `Dia: ${
+                        interval.day_of_week === 7 || interval.day_of_week === null || interval.day_of_week === undefined
+                          ? "Todo dia"
+                          : dayOptions.find((d) => String(d.value) === String(interval.day_of_week))?.label || "-"
+                      } | ${formatDate(interval.recurring_start_date)} até ${
+                        interval.recurring_end_date ? formatDate(interval.recurring_end_date) : "indeterminado"
+                      }`;
 
                 return (
                   <tr key={interval.id} className="border-t">

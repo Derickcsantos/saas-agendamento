@@ -92,8 +92,18 @@ function validateIntervalPayload(payload) {
     };
   }
 
-  if (!Number.isInteger(Number(day_of_week)) || Number(day_of_week) < 0 || Number(day_of_week) > 6) {
-    return { ok: false, message: "day_of_week deve estar entre 0 e 6 para intervalos recorrentes." };
+  // Permitir 'every' (todo dia) além de 0-6.
+  // Persistência no banco: 7 = todo dia.
+  let processedDayOfWeek = null;
+  if (day_of_week !== null && day_of_week !== undefined && String(day_of_week).trim() !== "") {
+    const lowered = String(day_of_week).toLowerCase();
+    if (lowered === "every") {
+      processedDayOfWeek = 7;
+    } else if (!Number.isInteger(Number(day_of_week)) || Number(day_of_week) < 0 || Number(day_of_week) > 7) {
+      return { ok: false, message: "day_of_week deve estar entre 0 e 6 para dias da semana, ou 7/'every' para todo dia." };
+    } else {
+      processedDayOfWeek = Number(day_of_week);
+    }
   }
 
   if (!recurring_start_date) {
@@ -109,7 +119,7 @@ function validateIntervalPayload(payload) {
     data: {
       interval_type: "recurring",
       specific_date: null,
-      day_of_week: Number(day_of_week),
+      day_of_week: processedDayOfWeek,
       recurring_start_date,
       recurring_end_date: recurring_end_date || null,
       start_time: normalizedStartTime,
@@ -154,14 +164,24 @@ async function ensureNoOverlap({
     return;
   }
 
-  const { data: recurring, error } = await supabase
+  // Se o novo intervalo for 'todo dia' (day_of_week === null), precisamos buscar todos os recorrentes
+  // Caso contrário, buscar recorrentes específicos do dia OU aqueles marcados como 'todo dia' (day_of_week IS NULL)
+  let recurringQuery = supabase
     .from("employee_intervals")
     .select("id, day_of_week, recurring_start_date, recurring_end_date, start_time, end_time")
     .eq("organization_id", organizationId)
     .eq("employee_id", employeeId)
     .eq("is_active", true)
-    .eq("interval_type", "recurring")
-    .eq("day_of_week", payload.day_of_week);
+    .eq("interval_type", "recurring");
+
+  if (payload.day_of_week === 7) {
+    // buscar todos os recorrentes (qualquer day_of_week)
+  } else {
+    // buscar recorrentes com day_of_week igual OU os que foram definidos como 'todo dia' (7)
+    recurringQuery = recurringQuery.or(`day_of_week.eq.7,day_of_week.eq.${payload.day_of_week}`);
+  }
+
+  const { data: recurring, error } = await recurringQuery;
 
   if (error) throw error;
 
