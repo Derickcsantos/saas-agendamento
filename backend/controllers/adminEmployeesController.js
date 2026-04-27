@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase.js';
 import express from 'express';
 import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
+import { normalizeEmployeeImage } from '../utils/normalizeEmployeeImage.js';
 
 export const getEmployees = async (req, res) => {
   try {
@@ -20,7 +21,7 @@ export const getEmployees = async (req, res) => {
     // Buscar funcionários
     const { data: employees, error: employeesError } = await supabase
       .from('employees')
-      .select('name, email, phone, comissao, salary, is_active, id')
+      .select('name, email, phone, comissao, salary, is_active, id, user_id')
       .eq('organization_id', org.id)
       .order('created_at', { ascending: false });
 
@@ -101,14 +102,11 @@ export const getEmployeeById = async (req, res) => {
       .eq('employee_id', id)
       .maybeSingle();
 
-    // Converter imagem base64 para URL de dados se existir
-    const employeeWithImage = data.imagem_funcionario 
-      ? {
-          ...data,
-          calendar_color_id: colorData?.calendar_color_id || null,
-          imagem_funcionario: `data:image/jpeg;base64,${data.imagem_funcionario}`
-        }
-      : { ...data, calendar_color_id: colorData?.calendar_color_id || null };
+    const employeeWithImage = {
+      ...data,
+      calendar_color_id: colorData?.calendar_color_id || null,
+      imagem_funcionario: normalizeEmployeeImage(data.imagem_funcionario),
+    };
 
     res.json(employeeWithImage);
   } catch (error) {

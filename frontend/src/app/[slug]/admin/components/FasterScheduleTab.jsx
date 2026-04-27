@@ -20,6 +20,7 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
   const [manualEndTime, setManualEndTime] = useState("");
 
   const [showPaywall, setShowPaywall] = useState(false);
+  const [isEmailMandatory, setIsEmailMandatory] = useState(true);
 
   const [form, setForm] = useState({
     client_name: "",
@@ -36,7 +37,26 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
   useEffect(() => {
     loadCategories();
     loadClients();
+    loadPolicies();
   }, []);
+
+  async function loadPolicies() {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`,
+        {
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      setIsEmailMandatory(data?.mandatory_email !== false);
+    } catch (err) {
+      console.error("Erro ao carregar políticas da organização:", err);
+    }
+  }
 
   async function loadCategories() {
     const res = await fetch(
@@ -253,6 +273,12 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
   const submit = async (e) => {
     e.preventDefault();
 
+    const normalizedEmail = (form.client_email || "").trim();
+    if (isEmailMandatory && !normalizedEmail) {
+      toast.info("E-mail é obrigatório para esta organização.");
+      return;
+    }
+
     // Define horários baseado no modo (manual ou automático)
     let start_time, end_time;
     
@@ -265,7 +291,7 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
 
     const payload = {
       client_name: form.client_name,
-      client_email: form.client_email,
+      client_email: normalizedEmail || null,
       client_phone: form.client_phone,
       service_id: form.service_id,
       employee_id: form.employee_id,
@@ -406,11 +432,11 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
 
           <input
             className="border p-2 rounded-md"
-            placeholder="E-mail"
+            placeholder={isEmailMandatory ? "E-mail" : "E-mail (opcional)"}
             type="email"
             value={form.client_email}
             onChange={(e) => setForm({ ...form, client_email: e.target.value })}
-            required
+            required={isEmailMandatory}
           />
           <input
             className="border p-2 rounded-md"

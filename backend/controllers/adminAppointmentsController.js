@@ -5,6 +5,8 @@ import updateYesterdayAppointmentsToCompleted from '../utils/confirmAppointments
 import updateGoogleCalendarEvent from '../utils/updateGoogleCalendarEvent.js';
 import { getEmployeeGoogleBusyIntervals, slotOverlapsBusyIntervals } from '../utils/googleCalendarAvailability.js';
 import { google } from "googleapis";
+import { sendWhatsAppMessage } from "../lib/whatsapp.js";
+import { getEmployeeIntervalsForDate, hasIntervalConflict } from "../utils/employeeIntervals.js";
 
 export const getAdminAppointments = async (req, res) => {
   try {
@@ -356,6 +358,25 @@ export const updateAdminAppointment = async (req, res) => {
         });
       }
 
+      const employeeIntervalsResult = await getEmployeeIntervalsForDate({
+        organizationId: org.id,
+        employeeId: Number(nextEmployeeId),
+        date: nextDate,
+      });
+
+      if (
+        hasIntervalConflict({
+          startDateTime: nextStart,
+          endDateTime: nextEnd,
+          intervalRanges: employeeIntervalsResult.ranges,
+        })
+      ) {
+        return res.status(409).json({
+          error: "Horário indisponível",
+          details: "O funcionário possui um intervalo configurado neste horário.",
+        });
+      }
+
       const { data: policy } = await supabase
         .from("organization_policies")
         .select("sync_google_calendar")
@@ -583,6 +604,93 @@ export const updateAdminAppointment = async (req, res) => {
     return res.status(500).json({
       error: "Internal server error",
       details: error.message,
+    });
+  }
+};
+
+export const resendAdminAppointmentConfirmation = async (req, res) => {
+  try {
+    const { slug, id } = req.params;
+
+    const { data: org, error: orgErr } = await supabase
+      .from("organizations")
+      .select("id, name, phone, address")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgErr || !org) {
+      return res.status(404).json({ error: "Organização não encontrada" });
+    }
+
+    const { data: appointment, error: appointmentErr } = await supabase
+      .from("appointments")
+      .select(`
+        id,
+        client_name,
+        client_phone,
+        appointment_date,
+        start_time,
+        end_time,
+        final_price,
+        services:service_id (name),
+        employees:employee_id (name)
+      `)
+      .eq("id", id)
+      .eq("organization_id", org.id)
+      .single();
+
+    if (appointmentErr || !appointment) {
+      return res.status(404).json({ error: "Agendamento não encontrado" });
+    }
+
+    if (!appointment.client_phone) {
+      return res.status(400).json({ error: "Cliente sem telefone cadastrado" });
+    }
+
+    const formattedDate = String(appointment.appointment_date || "")
+      .split("-")
+      .reverse()
+      .join("/");
+
+    const formattedFinalPrice = Number.isFinite(Number(appointment.final_price))
+      ? Number(appointment.final_price).toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        })
+      : "-";
+
+    const message = `
+🎉 *Agendamento Confirmado com Sucesso!*
+
+🏢 *${org?.name || "Nossa equipe"}*
+
+👤 Cliente: ${appointment.client_name || "-"}
+💇 Serviço: ${appointment.services?.name || "-"}
+🧑‍💼 Profissional: ${appointment.employees?.name || "-"}
+
+📅 Data: ${formattedDate || "-"}
+⏰ Horário: ${String(appointment.start_time || "").slice(0, 5)} - ${String(appointment.end_time || "").slice(0, 5)}
+📞 Telefone p/ contato: ${org?.phone || "-"}
+📍 Endereço: ${org?.address || "-"}
+
+💰 Valor final: ${formattedFinalPrice}
+
+🔐 Link para agendar novamente:
+👉 https://marcafy.com.br/${slug}/agendar
+
+Qualquer dúvida, estamos à disposição 💬
+    `.trim();
+
+    await sendWhatsAppMessage(appointment.client_phone, message, org.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Confirmação reenviada com sucesso",
+    });
+  } catch (error) {
+    console.error("Erro ao reenviar confirmação de agendamento:", error);
+    return res.status(500).json({
+      error: error.message || "Erro ao reenviar confirmação",
     });
   }
 };

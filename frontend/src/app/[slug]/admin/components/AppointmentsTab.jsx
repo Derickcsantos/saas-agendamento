@@ -11,6 +11,7 @@ import { statusInfo } from "@/app/utils/appointmentsInfo";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import { useConfirm } from "@/components/ConfirmDialogProvider";
 import TrialExpiredModal from "./TrialExpireModal";
+import { toast } from "react-toastify";
 
 const calendarStyles = `
   .fc-theme-standard td, 
@@ -138,6 +139,7 @@ export default function AppointmentsTab({ org, setActiveTab }) {
   });
 
   const [showPaywall, setShowPaywall] = useState(false);
+  const [resendingId, setResendingId] = useState(null);
 
   const { confirm } = useConfirm()
 
@@ -332,6 +334,43 @@ export default function AppointmentsTab({ org, setActiveTab }) {
 
     await loadAppointments(filters);
     setSavingId(null);
+  };
+
+  const handleResendConfirmation = async (appointmentId) => {
+    const confirmed = await confirm({
+      title: "Reenviar confirmação",
+      message: "Deseja reenviar a confirmação de agendamento via WhatsApp para este cliente?",
+      confirmVariant: "primary",
+      confirmColor: palette?.strong_color,
+    });
+
+    if (!confirmed) return;
+
+    try {
+      setResendingId(appointmentId);
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/appointments/${org.slug_organization}/${appointmentId}/send-confirmation`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        toast.error(data?.error || "Falha ao reenviar confirmação");
+        return;
+      }
+
+      toast.success(data?.message || "Confirmação reenviada com sucesso");
+    } catch (error) {
+      console.error("Erro ao reenviar confirmação:", error);
+      toast.error("Erro ao reenviar confirmação");
+    } finally {
+      setResendingId(null);
+    }
   };
 
   const loadEditAvailableTimes = async (employeeId, date, duration) => {
@@ -890,15 +929,25 @@ export default function AppointmentsTab({ org, setActiveTab }) {
                       </td>
 
                       <td className="px-4 py-3">
-                        <select
-                          className="rounded-lg px-2 py-1 bg-gray-100 dark:bg-gray-900 border dark:border-gray-700 shadow-sm"
-                          value={a.status}
-                          onChange={(e) => handleStatusChange(a.id, e.target.value)}
-                        >
-                          <option value="confirmed">Pendente</option>
-                          <option value="completed">Concluído</option>
-                          <option value="canceled">Cancelado</option>
-                        </select>
+                        <div className="flex flex-col gap-2">
+                          <select
+                            className="rounded-lg px-2 py-1 bg-gray-100 dark:bg-gray-900 border dark:border-gray-700 shadow-sm"
+                            value={a.status}
+                            onChange={(e) => handleStatusChange(a.id, e.target.value)}
+                          >
+                            <option value="confirmed">Pendente</option>
+                            <option value="completed">Concluído</option>
+                            <option value="canceled">Cancelado</option>
+                          </select>
+
+                          <button
+                            onClick={() => handleResendConfirmation(a.id)}
+                            disabled={resendingId === a.id}
+                            className="rounded-lg px-2 py-1 text-xs bg-green-600 text-white hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {resendingId === a.id ? "Enviando..." : "Enviar confirmação"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

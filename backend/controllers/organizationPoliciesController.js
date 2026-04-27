@@ -27,6 +27,7 @@ export const getOrganizationPolicies = async (req, res) => {
         max_schedule_days: 30,
         min_hours_before_booking: 0,
         sync_google_calendar: true,
+        mandatory_email: true,
       });
     }
 
@@ -40,7 +41,7 @@ export const getOrganizationPolicies = async (req, res) => {
 export const updateOrganizationPolicies = async (req, res) => {
   try {
     const { slug } = req.params;
-    const { max_schedule_days, allow_same_day, min_hours_before_booking, sync_google_calendar, secret_code, current_secret_code } =
+    const { max_schedule_days, allow_same_day, min_hours_before_booking, sync_google_calendar, mandatory_email, secret_code, current_secret_code } =
       req.body;
 
     const { data: org, error: orgError } = await supabase
@@ -59,6 +60,10 @@ export const updateOrganizationPolicies = async (req, res) => {
       min_hours_before_booking,
       sync_google_calendar: Boolean(sync_google_calendar),
     };
+
+    if (mandatory_email !== undefined) {
+      updateData.mandatory_email = Boolean(mandatory_email);
+    }
 
     // Se incluiu secret_code, validar e criptografar antes de salvar
     if (secret_code !== undefined && secret_code !== null) {

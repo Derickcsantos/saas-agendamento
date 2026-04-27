@@ -70,6 +70,7 @@ export default function AppointmentPage({ slug }) {
   const TIME_STEP = hasAdditionalStep ? 6 : 5;
   const COUPON_STEP = hasAdditionalStep ? 7 : 6;
   const CONFIRM_STEP = hasAdditionalStep ? 8 : 7;
+  const isEmailMandatory = policies?.mandatory_email !== false;
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -473,6 +474,14 @@ const sendWhatsappConfirmation = async () => {
       return;
     }
 
+    const normalizedEmail =
+      typeof clientData?.email === "string" ? clientData.email.trim() : "";
+
+    if (isEmailMandatory && !normalizedEmail) {
+      toast.info("E-mail é obrigatório para esta organização.");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -495,7 +504,7 @@ const sendWhatsappConfirmation = async () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             client_name: clientData.name,
-            client_email: clientData.email,
+            client_email: normalizedEmail || null,
             client_phone: clientData.phone,
             service_id: selected.service.id,
             employee_id: selected.employee.id,
@@ -1380,11 +1389,12 @@ const sendWhatsappConfirmation = async () => {
                 />
                 <input
                   type="email"
-                  placeholder="E-mail"
+                  placeholder={isEmailMandatory ? "E-mail" : "E-mail (opcional)"}
                   value={selected.clientEmail || (user?.email || "")}
                   onChange={(e) => handleSelect("clientEmail", e.target.value)}
                   className="w-full text-gray-700 mb-2 border rounded-lg p-2"
                   disabled={authenticated && !!user?.email}
+                  required={isEmailMandatory}
                 />
                 <input
                   type="tel"

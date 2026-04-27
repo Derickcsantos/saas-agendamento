@@ -24,6 +24,7 @@ import SettingsTab from "./components/SettingsTab";
 import PersonalCalendarTab from "./components/PersonalCalendarTab";
 import GalleryTab from "./components/GalleryTab";
 import ClosedPeriodsTab from './components/ClosedPeriods';
+import EmployeeIntervalsTab from './components/EmployeeIntervalsTab';
 import RevenueAreaChartCard from "./components/RevenueAreaChartCard";
 import WhatsappTab from "./components/WhatsappTab";
 import ExpensesTab from "./components/ExpensesTab";
@@ -166,6 +167,8 @@ export default function AdminDashboard({ slug }) {
         return <AppointmentsTab org={org} setActiveTab={setActiveTab} />;
       case "closed-periods":
         return <ClosedPeriodsTab org={org} setActiveTab={setActiveTab} />;
+      case "employee-intervals":
+        return <EmployeeIntervalsTab org={org} setActiveTab={setActiveTab} user={user} />;
       case "clients":
         return <ClientsTab org={org} setActiveTab={setActiveTab} />;
       case "revenues":

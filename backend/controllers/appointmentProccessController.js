@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase.js';
 import { getEmployeeGoogleBusyIntervals } from "../utils/googleCalendarAvailability.js";
+import { getEmployeeIntervalsForDate, rangesOverlap } from "../utils/employeeIntervals.js";
+import { normalizeEmployeeImage } from "../utils/normalizeEmployeeImage.js";
 
 export const getAppointmentCategories = async (req, res) => {
   try {
@@ -139,12 +141,9 @@ export const getAppointmentEmployeeByService = async (req, res) => {
 
     if (error) throw error;
     
-    // Converter imagens base64 para URLs de dados
     const employees = data.map(item => ({
       ...item.employees,
-      imagem_funcionario: item.employees.imagem_funcionario 
-        ? `data:image/jpeg;base64,${item.employees.imagem_funcionario}`
-        : null
+      imagem_funcionario: normalizeEmployeeImage(item.employees.imagem_funcionario),
     }));
     
     res.json(employees);
@@ -343,6 +342,14 @@ export const getAvailableTimes = async (req, res) => {
 
     if (appointmentsError) throw appointmentsError;
 
+    const employeeIntervalsResult = await getEmployeeIntervalsForDate({
+      organizationId: orgData.id,
+      employeeId: employeeIdInt,
+      date,
+    });
+
+    const employeeIntervalBusy = employeeIntervalsResult.ranges || [];
+
     let googleEvents = [];
 
     if (shouldSyncGoogle && employeeUserId) {
@@ -395,14 +402,6 @@ export const getAvailableTimes = async (req, res) => {
         continue;
       }
 
-      function rangesOverlap(aStart, aEnd, bStart, bEnd) {
-        return (
-          (aStart >= bStart && aStart < bEnd) ||
-          (aEnd > bStart && aEnd <= bEnd) ||
-          (aStart <= bStart && aEnd >= bEnd)
-        );
-      }
-
       // Transformar os appointments do banco
       const dbBusy = appointments.map((appt) => ({
         start: new Date(`${date}T${appt.start_time}`),
@@ -419,7 +418,7 @@ export const getAvailableTimes = async (req, res) => {
       }));
 
       // Unificar ocupações
-      const allBusy = [...dbBusy, ...googleBusy, ...closedBusy];
+      const allBusy = [...dbBusy, ...googleBusy, ...closedBusy, ...employeeIntervalBusy];
 
       const isAvailable = !allBusy.some((busy) =>
         rangesOverlap(slotStart, slotEnd, busy.start, busy.end)
