@@ -37,6 +37,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
     { name: "Agendamentos", key: "appointments", icon: "bi-calendar-check" },
     { name: "Fila", key: "queue", icon: "bi-list-ol" },
     { name: "Períodos fechados", key: "closed-periods", icon: "bi-calendar-check" },
+    { name: "Intervalos funcionários", key: "employee-intervals", icon: "bi-clock-history" },
     { name: "Agendamento rápido", key: "faster-schedule", icon: "bi-lightning" },
     { name: "Receitas", key: "revenues", icon: "bi-cash-coin" },
     { name: "Despesas", key: "expenses", icon: "bi-receipt" },
@@ -71,7 +72,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
     <>
       {/* BOTÃO MOBILE */}
       <button
-        className="md:hidden fixed top-3 right-4 z-[55] bg-white p-2 rounded-lg shadow-lg"
+        className="md:hidden fixed top-3 right-4 z-55 bg-white p-2 rounded-lg shadow-lg"
         onClick={() => setMobileOpen(true)}
       >
         <i className="bi bi-list text-xl"></i>

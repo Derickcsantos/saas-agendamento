@@ -53,7 +53,9 @@ export function isUserAdmin(req) {
     if (!isValid || !user) {
       return false;
     }
-    return user.role === 'admin';
+    // Compat: alguns lugares usam `tipo` no token (p.ex. 'admin'|'funcionario'|'comum')
+    const roleField = (user.role || user.tipo || '').toString().toLowerCase();
+    return roleField === 'admin' || roleField === 'master';
   } catch (err) {
     console.error('❌ Erro ao verificar admin status:', err.message);
     return false;

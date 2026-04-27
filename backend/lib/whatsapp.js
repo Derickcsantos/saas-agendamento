@@ -16,6 +16,35 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function toWhatsAppJid(phone) {
+  const raw = String(phone || "").trim();
+
+  if (!raw) return null;
+
+  if (raw.includes("@")) {
+    return raw;
+  }
+
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return null;
+
+  let nationalNumber = digits;
+
+  if (digits.startsWith("55") && digits.length > 11) {
+    nationalNumber = digits.slice(2);
+  }
+
+  if (nationalNumber.length === 10 || nationalNumber.length === 11) {
+    return `55${nationalNumber}@s.whatsapp.net`;
+  }
+
+  if (digits.length === 12 || digits.length === 13) {
+    return `${digits}@s.whatsapp.net`;
+  }
+
+  return null;
+}
+
 async function processQueue() {
   if (isProcessingQueue || messageQueue.length === 0) return;
 
@@ -74,14 +103,15 @@ export async function sendWhatsAppMessage(phone, message, organizationId = null,
     throw new Error("Telefone e mensagem são obrigatórios");
   }
 
+  const normalizedTo = toWhatsAppJid(phone);
+  if (!normalizedTo) {
+    console.error("❌ Telefone inválido para WhatsApp:", phone);
+    throw new Error("Telefone inválido para WhatsApp");
+  }
+
   // Adicionar à fila
   return addToQueue(async () => {
-    // Normalização defensiva
-    const to = phone.startsWith("+") 
-      ? phone 
-      : phone.startsWith("55") 
-        ? `+${phone}` 
-        : `+55${phone}`;
+    const to = normalizedTo;
 
     let apiKey = WASENDER_API_KEY; // Fallback padrão
     let source = "API_KEY_PADRAO";
@@ -131,6 +161,8 @@ export async function sendWhatsAppMessage(phone, message, organizationId = null,
     console.log("Message preview:", message.substring(0, 100) + "...");
 
     try {
+      let targetTo = to;
+
       const sendOnce = async () => {
         const response = await fetch(WASENDER_API_URL, {
           method: "POST",
@@ -139,7 +171,7 @@ export async function sendWhatsAppMessage(phone, message, organizationId = null,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            to,
+            to: targetTo,
             text: message,
           }),
         });
@@ -160,6 +192,21 @@ export async function sendWhatsAppMessage(phone, message, organizationId = null,
       };
 
       let { response, data } = await sendOnce();
+
+      if (
+        response.status === 422 &&
+        String(data?.message || "").toLowerCase().includes("valid whatsapp jid")
+      ) {
+        if (targetTo.endsWith("@s.whatsapp.net")) {
+          targetTo = targetTo.replace("@s.whatsapp.net", "@c.us");
+          console.warn("⚠️ JID @s.whatsapp.net rejeitado. Tentando @c.us...");
+          ({ response, data } = await sendOnce());
+        } else if (targetTo.endsWith("@c.us")) {
+          targetTo = targetTo.replace("@c.us", "@s.whatsapp.net");
+          console.warn("⚠️ JID @c.us rejeitado. Tentando @s.whatsapp.net...");
+          ({ response, data } = await sendOnce());
+        }
+      }
 
       if (response.status === 429) {
         const retryAfterSeconds = Number(data?.retry_after);
@@ -182,7 +229,7 @@ export async function sendWhatsAppMessage(phone, message, organizationId = null,
       }
 
       console.log("✅ WhatsApp enviado com sucesso:", {
-        to,
+        to: targetTo,
         messageId: data?.id || data?.message_id || "N/A",
         status: data?.status || "sent"
       });

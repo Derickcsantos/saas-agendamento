@@ -54,6 +54,7 @@ import { startUnavailableDaysCacheJob } from './utils/unavailableDaysCacheJob.js
 import QueueWebSocketManager from './lib/websocket.js';
 import http from 'http';
 import { salariesRouter } from './routes/salaryRoutes.js';
+import { employeeIntervalsRouter } from './routes/employeeIntervalsRoutes.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -125,6 +126,7 @@ app.use('/api/queues', queueRouter)
 app.use('/api/user-invites', userInvitesRouter)
 app.use('/api/organization-subscriptions', organizationSubscriptionsRouter)
 app.use('/api/salaries', salariesRouter)
+app.use('/api/employee-intervals', employeeIntervalsRouter)
 // app.use("/api/whatsapp-send", sendWhatsappRouter);
 
 server.listen(port, () => {

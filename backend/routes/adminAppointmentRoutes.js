@@ -5,6 +5,7 @@ import {
   updateAdminAppointmentToCompleted, 
   updateAdminAppointmentToCompletedYesterday,
   updateAdminAppointment,
+  resendAdminAppointmentConfirmation,
   getAdminAppointmentsByEmployee,
   getCancelledAppointments
 } from '../controllers/adminAppointmentsController.js';
@@ -165,6 +166,8 @@ adminAppointmentRouter.put('/:slug/:id', authenticateJWT, requireAdminOfOrganiza
  *         description: Erro interno do servidor
  */
 adminAppointmentRouter.put('/:slug/:id/complete', authenticateJWT, requireAdminOfOrganization, requireAdminOfOrganization, updateAdminAppointmentToCompleted);
+
+adminAppointmentRouter.post('/:slug/:id/send-confirmation', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, resendAdminAppointmentConfirmation);
 
 /**
  * @swagger

@@ -59,6 +59,7 @@ export default function SettingsTab({ org }) {
     prepayment_value: "",
     pix_key: "",
     secret_code: "",
+    mandatory_email: true,
   });
 
   // SECRET CODE STATE
@@ -425,6 +426,35 @@ export default function SettingsTab({ org }) {
             savingField={savingField}
             strongColor={strongColor}
           />
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="mandatory_email" className="font-medium text-gray-700">
+              E-mail obrigatório para agendamento?
+            </label>
+            <select
+              id="mandatory_email"
+              value={policies.mandatory_email ? "true" : "false"}
+              onChange={(e) =>
+                handlePolicyChange("mandatory_email")(
+                  e.target.value === "true"
+                )
+              }
+              onBlur={() =>
+                updateField(
+                  "mandatory_email",
+                  policies.mandatory_email,
+                  `${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`
+                )
+              }
+              className="w-full rounded-md border px-3 py-2"
+            >
+              <option value="true">Sim</option>
+              <option value="false">Não</option>
+            </select>
+            <p className="text-xs text-gray-500">
+              Quando desativado, o cliente pode agendar sem informar e-mail.
+            </p>
+          </div>
 
           <label htmlFor="google_calendar_sync">Sincronização com google calendário</label>
           <select

@@ -5,6 +5,7 @@ import { sendWhatsAppMessage } from "../lib/whatsapp.js";
 import { isUserAdmin } from '../middlewares/authMiddleware.js';
 import createGoogleCalendarEvent from "../utils/createGoogleCalendarEvent.js";
 import { getEmployeeGoogleBusyIntervals, slotOverlapsBusyIntervals } from "../utils/googleCalendarAvailability.js";
+import { getEmployeeIntervalsForDate, hasIntervalConflict } from "../utils/employeeIntervals.js";
 
 // Garante que a linha de saldo exista para a organização
 async function ensureOrganizationBalance(organizationId) {
@@ -460,7 +461,7 @@ export const createAppointment = async (req, res) => {
 
     const { data: policy, error: policyError } = await supabase
       .from("organization_policies")
-      .select("sync_google_calendar, appointment_prepayment, prepayment_type, prepayment_value, pix_key, user_main_calendar, show_all_appointments_in_google, min_hours_before_booking")
+      .select("sync_google_calendar, appointment_prepayment, prepayment_type, prepayment_value, pix_key, user_main_calendar, show_all_appointments_in_google, min_hours_before_booking, mandatory_email")
       .eq("organization_id", orgData.id)
       .maybeSingle();
 
@@ -569,6 +570,25 @@ export const createAppointment = async (req, res) => {
         });
       }
 
+      const employeeIntervalsResult = await getEmployeeIntervalsForDate({
+        organizationId: orgData.id,
+        employeeId: Number(employee_id),
+        date,
+      });
+
+      if (
+        hasIntervalConflict({
+          startDateTime: appointmentStart,
+          endDateTime: appointmentEnd,
+          intervalRanges: employeeIntervalsResult.ranges,
+        })
+      ) {
+        return res.status(409).json({
+          error: "Horário indisponível",
+          details: "O funcionário possui um intervalo configurado neste horário.",
+        });
+      }
+
       const { data: dbAppointments, error: dbConflictError } = await supabase
         .from("appointments")
         .select("id, appointment_date, start_time, end_time, status")
@@ -651,6 +671,17 @@ export const createAppointment = async (req, res) => {
 
     const requiresPrepayment = policyRequiresPrepayment && prepaymentAmount > 0;
 
+    const safeClientEmail =
+      typeof client_email === "string" ? client_email.trim() : "";
+    const normalizedClientEmail = safeClientEmail ? safeClientEmail : null;
+    const mandatoryEmail = policy?.mandatory_email !== false;
+
+    if (mandatoryEmail && !normalizedClientEmail) {
+      return res.status(400).json({
+        error: "E-mail é obrigatório para esta organização.",
+      });
+    }
+
     // ✅ Telefone opcional: envia null ao invés de string vazia/undefined
     const safeClientPhone =
       typeof client_phone === "string" ? client_phone.trim() : client_phone;
@@ -664,11 +695,11 @@ export const createAppointment = async (req, res) => {
 
     try {
       // 1º: Buscar por email
-      if (client_email) {
+      if (normalizedClientEmail) {
         const { data: clientByEmail, error: emailErr } = await supabase
           .from("clients")
           .select("client_id")
-          .eq("client_email", client_email)
+          .eq("client_email", normalizedClientEmail)
           .eq("organization_id", orgData.id)
           .maybeSingle();
 
@@ -702,7 +733,7 @@ export const createAppointment = async (req, res) => {
             {
               organization_id: orgData.id,
               client_name,
-              client_email: client_email || null,
+              client_email: normalizedClientEmail,
               client_phone: normalizedClientPhone,
             },
           ])
@@ -732,7 +763,7 @@ export const createAppointment = async (req, res) => {
           organization_id: orgData.id,
           client_id: clientId, // ✅ Novo: client_id
           client_name,
-          client_email,
+          client_email: normalizedClientEmail,
           client_phone: normalizedClientPhone,
           service_id,
           employee_id,
