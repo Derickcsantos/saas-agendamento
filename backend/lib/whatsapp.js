@@ -10,6 +10,11 @@ const WASENDER_API_KEY = process.env.WASENDER_API_KEY;
 const messageQueue = [];
 let isProcessingQueue = false;
 const QUEUE_DELAY = 5000; // 5 segundos entre mensagens
+let lastSentAt = 0;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function processQueue() {
   if (isProcessingQueue || messageQueue.length === 0) return;
@@ -18,10 +23,19 @@ async function processQueue() {
 
   while (messageQueue.length > 0) {
     const task = messageQueue.shift();
+
+    // Garante 5s mínimos desde o último envio, mesmo com fila vazia entre requisições
+    const elapsedSinceLastSend = Date.now() - lastSentAt;
+    const waitTime = Math.max(0, QUEUE_DELAY - elapsedSinceLastSend);
+    if (waitTime > 0) {
+      console.log(`⏳ Aguardando ${(waitTime / 1000).toFixed(1)}s para respeitar limite da API...`);
+      await sleep(waitTime);
+    }
     
     try {
       console.log(`📤 Processando fila: ${messageQueue.length} mensagens restantes`);
       await task.execute();
+      lastSentAt = Date.now();
       task.resolve();
     } catch (error) {
       task.reject(error);
@@ -30,7 +44,7 @@ async function processQueue() {
     // Aguardar 5 segundos antes da próxima mensagem (se houver mais na fila)
     if (messageQueue.length > 0) {
       console.log(`⏳ Aguardando ${QUEUE_DELAY / 1000}s antes da próxima mensagem...`);
-      await new Promise(resolve => setTimeout(resolve, QUEUE_DELAY));
+      await sleep(QUEUE_DELAY);
     }
   }
 
@@ -117,28 +131,45 @@ export async function sendWhatsAppMessage(phone, message, organizationId = null,
     console.log("Message preview:", message.substring(0, 100) + "...");
 
     try {
-      const response = await fetch(WASENDER_API_URL, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          to,
-          text: message,
-        }),
-      });
+      const sendOnce = async () => {
+        const response = await fetch(WASENDER_API_URL, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            to,
+            text: message,
+          }),
+        });
 
-      const rawText = await response.text();
-      console.log("📩 Status Wasender:", response.status);
-      console.log("📩 Resposta Wasender:", rawText.substring(0, 200));
+        const rawText = await response.text();
+        console.log("📩 Status Wasender:", response.status);
+        console.log("📩 Resposta Wasender:", rawText.substring(0, 200));
 
-      let data;
-      try {
-        data = JSON.parse(rawText);
-      } catch {
-        console.error("❌ Resposta inválida da Wasender (não é JSON):", rawText);
-        throw new Error("Resposta inválida da Wasender (não é JSON)");
+        let data;
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          console.error("❌ Resposta inválida da Wasender (não é JSON):", rawText);
+          throw new Error("Resposta inválida da Wasender (não é JSON)");
+        }
+
+        return { response, data };
+      };
+
+      let { response, data } = await sendOnce();
+
+      if (response.status === 429) {
+        const retryAfterSeconds = Number(data?.retry_after);
+        const retryDelayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+          ? retryAfterSeconds * 1000
+          : QUEUE_DELAY;
+
+        console.warn(`⚠️ Rate limit 429. Reenviando em ${retryDelayMs / 1000}s...`);
+        await sleep(retryDelayMs);
+        ({ response, data } = await sendOnce());
       }
 
       if (!response.ok) {
