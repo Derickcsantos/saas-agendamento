@@ -575,18 +575,16 @@ export const updateAdminAppointment = async (req, res) => {
 
               // Se cancelou, usar vermelho
               if (becameCanceled) {
-                const clientName = updated.client_name || "Cliente";
-                const canceledSummary = `Agendamento cancelado: ${clientName}`;
-                
-                // 4.5) PATCH no evento (summary + vermelho)
-                await calendar.events.patch({
-                  calendarId,
-                  eventId: updated.google_event_id,
-                  requestBody: {
-                    summary: canceledSummary,
-                    colorId: "11", // vermelho (geralmente)
-                  },
-                });
+                // Cancelado: remove o evento do Google Calendar para liberar o horário
+                try {
+                  await calendar.events.delete({
+                    calendarId,
+                    eventId: updated.google_event_id,
+                  });
+                } catch (deleteErr) {
+                  // Se o evento já tiver sido removido, seguimos sem bloquear o fluxo
+                  console.warn("⚠️ Não foi possível remover o evento cancelado do Google Calendar:", deleteErr?.message || deleteErr);
+                }
               } else if (employeeChanged) {
                 // Se funcionário mudou, buscar a cor do novo funcionário
                 const { data: employeeColor } = await supabase
