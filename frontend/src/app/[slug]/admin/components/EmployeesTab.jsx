@@ -400,7 +400,7 @@ export default function EmployeesTab({ org, setActiveTab }) {
                     )
                   } />
 
-                <button type="button" className="text-red-500 text-lg font-bold flex-shrink-0 w-8 h-8 flex items-center justify-center" onClick={() => removeSchedule(i)}>✕</button>
+                <button type="button" className="text-red-500 text-lg font-bold shrink-0 w-8 h-8 flex items-center justify-center" onClick={() => removeSchedule(i)}>✕</button>
               </div>
             </div>
           ))}
