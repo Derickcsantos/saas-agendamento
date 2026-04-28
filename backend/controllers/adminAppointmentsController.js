@@ -8,6 +8,72 @@ import { google } from "googleapis";
 import { sendWhatsAppMessage } from "../lib/whatsapp.js";
 import { getEmployeeIntervalsForDate, hasIntervalConflict } from "../utils/employeeIntervals.js";
 
+async function loadAdditionalServicesByAppointments(appointmentIds = []) {
+  const uniqueAppointmentIds = [...new Set(
+    (Array.isArray(appointmentIds) ? appointmentIds : [])
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0)
+  )];
+
+  if (!uniqueAppointmentIds.length) {
+    return new Map();
+  }
+
+  const { data: appointmentLinks, error: linksError } = await supabase
+    .from("additional_services_appointments")
+    .select("appointment_id, additional_id")
+    .in("appointment_id", uniqueAppointmentIds);
+
+  if (linksError) throw linksError;
+
+  if (!appointmentLinks?.length) {
+    return new Map();
+  }
+
+  const additionalIds = [...new Set(appointmentLinks.map((item) => item.additional_id).filter(Boolean))];
+
+  const { data: additionalLinks, error: additionalError } = await supabase
+    .from("additional_services")
+    .select("additional_id, subservice_id")
+    .in("additional_id", additionalIds);
+
+  if (additionalError) throw additionalError;
+
+  const subserviceIds = [...new Set((additionalLinks || []).map((item) => item.subservice_id).filter(Boolean))];
+
+  const { data: subservices, error: subservicesError } = await supabase
+    .from("services")
+    .select("id, name, duration, price")
+    .in("id", subserviceIds);
+
+  if (subservicesError) throw subservicesError;
+
+  const additionalById = new Map((additionalLinks || []).map((item) => [item.additional_id, item]));
+  const subserviceById = new Map((subservices || []).map((item) => [item.id, item]));
+
+  const grouped = new Map();
+  for (const link of appointmentLinks) {
+    const additional = additionalById.get(link.additional_id);
+    const subservice = additional ? subserviceById.get(additional.subservice_id) : null;
+    if (!additional || !subservice) continue;
+
+    const row = {
+      additional_id: link.additional_id,
+      subservice_id: additional.subservice_id,
+      name: subservice.name,
+      duration: subservice.duration,
+      price: subservice.price,
+    };
+
+    if (!grouped.has(link.appointment_id)) {
+      grouped.set(link.appointment_id, []);
+    }
+    grouped.get(link.appointment_id).push(row);
+  }
+
+  return grouped;
+}
+
 export const getAdminAppointments = async (req, res) => {
   try {
     const { search, date, employee, start_date, end_date } = req.query;
@@ -59,6 +125,8 @@ export const getAdminAppointments = async (req, res) => {
     const { data, error } = await query;
 
     if (error) throw error;
+
+    const additionalMap = await loadAdditionalServicesByAppointments((data || []).map((item) => item.id));
     
     let filteredData = data;
     if (employee) {
@@ -67,7 +135,11 @@ export const getAdminAppointments = async (req, res) => {
       );
     }
 
-    res.json(filteredData);
+    res.json((filteredData || []).map((appt) => ({
+      ...appt,
+      additional_services: additionalMap.get(appt.id) || [],
+      total_duration: Number(appt.services?.duration || 0) + (additionalMap.get(appt.id) || []).reduce((sum, item) => sum + Number(item.duration || 0), 0),
+    })));
   } catch (error) {
     console.error('Error fetching appointments:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -125,6 +197,9 @@ export const getAdminAppointmentById = async (req, res) => {
     if (error) throw error;
     if (!data) return res.status(404).json({ error: "Agendamento não encontrado" });
 
+    const additionalMap = await loadAdditionalServicesByAppointments([data.id]);
+    const additionalServices = additionalMap.get(data.id) || [];
+
     // Formatar resposta
     return res.json({
       id: data.id,
@@ -154,6 +229,9 @@ export const getAdminAppointmentById = async (req, res) => {
         image: data.services?.imagem_service,
         category: data.services?.categories || null,
       },
+
+      additional_services: additionalServices,
+      total_duration: Number(data.services?.duration || 0) + additionalServices.reduce((sum, item) => sum + Number(item.duration || 0), 0),
 
       employee: {
         id: data.employees?.id,

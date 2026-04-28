@@ -272,9 +272,13 @@ export default function AppointmentsTab({ org, setActiveTab }) {
             backgroundColor = colorMap[a.employee_id];
           }
           
+              const additionalNames = Array.isArray(a.additional_services) && a.additional_services.length
+            ? ` + ${a.additional_services.map((item) => item.name).join(", ")}`
+            : "";
+
           return {
             id: a.id,
-            title: `${a.client_name} — ${a.services?.name || 'Serviço não informado'}`,
+            title: `${a.client_name} — ${a.services?.name || 'Serviço não informado'}${additionalNames}`,
             start: `${a.appointment_date}T${a.start_time}`,
             end: `${a.appointment_date}T${a.end_time}`,
             backgroundColor,
@@ -413,10 +417,10 @@ export default function AppointmentsTab({ org, setActiveTab }) {
       }));
 
       if (data.services?.duration) {
-        await loadEditAvailableTimes(
-          data.employees.id,
-          data.appointment_date,
-          data.services.duration
+            await loadEditAvailableTimes(
+              data.employees.id,
+              data.appointment_date,
+              data.total_duration || data.services.duration
         );
       }
 
@@ -675,7 +679,7 @@ export default function AppointmentsTab({ org, setActiveTab }) {
               loadEditAvailableTimes(
                 editData.employee.id,
                 e.target.value,
-                a.services.duration
+                a.total_duration || a.services.duration
               );
             }}
           />
@@ -873,7 +877,7 @@ export default function AppointmentsTab({ org, setActiveTab }) {
           <table className="w-full text-sm min-w-[900px]">
             <thead className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
               <tr>
-                {["Cliente","Serviço","Profissional","Data","Horário","Status","Ações"].map((h)=>(
+                {["Cliente","Serviço","Adicionais","Profissional","Data","Horário","Status","Ações"].map((h)=>(
                   <th key={h} className="px-4 py-3 text-left font-medium border-b dark:border-gray-700">
                     {h}
                   </th>
@@ -884,7 +888,7 @@ export default function AppointmentsTab({ org, setActiveTab }) {
             <tbody>
               {!appointments.length ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-gray-400">
+                  <td colSpan={8} className="py-8 text-center text-gray-400">
                     Nenhum agendamento encontrado.
                   </td>
                 </tr>
@@ -916,6 +920,11 @@ export default function AppointmentsTab({ org, setActiveTab }) {
                         </div>
                       </td>
                       <td className="px-4 py-3">{a.services?.name || '—'}</td>
+                      <td className="px-4 py-3">
+                        {Array.isArray(a.additional_services) && a.additional_services.length
+                          ? a.additional_services.map((item) => item.name).join(", ")
+                          : "—"}
+                      </td>
                       <td className="px-4 py-3">{a.employees.name}</td>
                       <td className="px-4 py-3">{formatDateFromYYYYMMDD(a.appointment_date)}</td>
                       <td className="px-4 py-3">
