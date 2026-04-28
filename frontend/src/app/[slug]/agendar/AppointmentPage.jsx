@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from 'react-toastify'
@@ -65,6 +65,14 @@ export default function AppointmentPage({ slug }) {
     0
   );
   const totalBasePrice = servicePrice + additionalServicesPrice;
+  const totalDuration = useMemo(() => {
+    const serviceDuration = Number(selected?.service?.duration || 0);
+    const additionalDuration = (selected?.additionalServices || []).reduce(
+      (sum, item) => sum + Number(item?.subservice?.duration || 0),
+      0
+    );
+    return Math.max(serviceDuration + additionalDuration, 0);
+  }, [selected?.service?.duration, selected?.additionalServices]);
   const hasAdditionalStep = additionalServicesOptions.length > 0;
   const DATE_STEP = hasAdditionalStep ? 5 : 4;
   const TIME_STEP = hasAdditionalStep ? 6 : 5;
@@ -295,7 +303,7 @@ export default function AppointmentPage({ slug }) {
 
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/closed-periods/${slug}/all?employeeId=${selected.employee.id}&duration=${selected.service.duration}`, {
+          `${process.env.NEXT_PUBLIC_API_URL}/api/closed-periods/${slug}/all?employeeId=${selected.employee.id}&duration=${totalDuration}`, {
             credentials: 'include'
           }
         );
@@ -309,7 +317,7 @@ export default function AppointmentPage({ slug }) {
     };
 
     loadUnavailableDays();
-  }, [selected.employee, selected.service, slug]);
+  }, [selected.employee, selected.service, totalDuration, slug]);
 
   useEffect(() => {
   const loadAvailableTimes = async () => {
@@ -318,7 +326,7 @@ export default function AppointmentPage({ slug }) {
     try {
       setLoading(true);
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/available-times/${slug}?employeeId=${selected.employee.id}&date=${selected.date}&duration=${selected.service.duration}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/available-times/${slug}?employeeId=${selected.employee.id}&date=${selected.date}&duration=${totalDuration}`
       );
 
       const data = await res.json();
@@ -331,7 +339,7 @@ export default function AppointmentPage({ slug }) {
   };
 
   loadAvailableTimes();
-}, [selected.employee, selected.date, selected.service, slug]);
+}, [selected.employee, selected.date, selected.service, totalDuration, slug]);
 
   const validateCoupon = async () => {
     if (!couponInput || !selected.service) {
@@ -534,10 +542,10 @@ const sendWhatsappConfirmation = async () => {
         console.error("❌ Erro ao criar agendamento:", data);
         toast.error(data?.details || data?.error || "Erro ao confirmar o agendamento.");
 
-        if (res.status === 409 && selected?.employee?.id && selected?.date && selected?.service?.duration) {
+        if (res.status === 409 && selected?.employee?.id && selected?.date && totalDuration) {
           try {
             const refreshSlotsRes = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/available-times/${slug}?employeeId=${selected.employee.id}&date=${selected.date}&duration=${selected.service.duration}`
+              `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/available-times/${slug}?employeeId=${selected.employee.id}&date=${selected.date}&duration=${totalDuration}`
             );
             const refreshedSlots = await refreshSlotsRes.json();
             setTimeSlots(Array.isArray(refreshedSlots) ? refreshedSlots : []);
@@ -807,6 +815,7 @@ const sendWhatsappConfirmation = async () => {
             {!!a.additionalServices?.length && (
               <p><strong>Adicionais:</strong> {a.additionalServices.map((item) => item.subservice?.name).join(", ")}</p>
             )}
+            <p><strong>Tempo total:</strong> {totalDuration} min</p>
             <p><strong>Profissional:</strong> {a.employee?.name}</p>
             <p><strong>Data:</strong> {formatDateBR(a.date)}</p>
             <p><strong>Horário:</strong> {a.time?.start} - {a.time?.end}</p>
