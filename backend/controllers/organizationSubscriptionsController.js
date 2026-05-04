@@ -11,6 +11,18 @@ const asInt = (v, d) => {
   return Number.isFinite(n) ? n : d;
 };
 
+const normalizePaymentMode = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["credit", "credito", "crédito"].includes(normalized)) return "credit";
+  if (["debit", "debito", "débito"].includes(normalized)) return "debit";
+  return "any";
+};
+
+const getVerifiedPaymentMode = (funding) => {
+  if (funding === "credit" || funding === "debit") return funding;
+  return null;
+};
+
 const safeJson = (res, status, payload) => res.status(status).json(payload);
 
 // ==================== CONTROLLERS ====================
@@ -88,13 +100,27 @@ export const OrganizationSubscriptionsController = {
       let stripeData = null;
       if (data.stripe_subscription_id) {
         stripeData = await stripe.subscriptions.retrieve(data.stripe_subscription_id, {
-          expand: ["customer", "items.data.price.product"],
+          expand: ["customer", "items.data.price.product", "default_payment_method"],
         });
       }
+
+      const stripeDefaultPaymentMethod = stripeData?.default_payment_method;
+      const fundingFromDefaultPaymentMethod =
+        stripeDefaultPaymentMethod && typeof stripeDefaultPaymentMethod === "object"
+          ? stripeDefaultPaymentMethod.card?.funding || null
+          : null;
+      const verifiedPaymentMode = getVerifiedPaymentMode(fundingFromDefaultPaymentMethod);
+      const paymentModeFromMetadata = stripeData?.metadata?.payment_mode || null;
+      const paymentModeValidationFromMetadata = stripeData?.metadata?.payment_mode_validation || null;
+      const cardFundingFromMetadata = stripeData?.metadata?.card_funding || null;
 
       return safeJson(res, 200, {
         data: {
           ...data,
+          payment_mode: paymentModeFromMetadata,
+          payment_mode_validation: paymentModeValidationFromMetadata,
+          card_funding: fundingFromDefaultPaymentMethod || cardFundingFromMetadata,
+          card_funding_verified: verifiedPaymentMode,
           stripe: stripeData,
         },
       });
@@ -107,8 +133,9 @@ export const OrganizationSubscriptionsController = {
   // Criar nova assinatura para organização
   createSubscription: async (req, res) => {
     try {
-      const { priceId, customerEmail, paymentMethodId, organizationData } = req.body;
+      const { priceId, customerEmail, paymentMethodId, organizationData, paymentMode } = req.body;
       const { slug } = req.params;
+      const normalizedPaymentMode = normalizePaymentMode(paymentMode);
      
       const { data: org, orgError } = await supabase
       .from("organizations")
@@ -122,6 +149,10 @@ export const OrganizationSubscriptionsController = {
 
       if (!priceId || !customerEmail) {
         return safeJson(res, 400, { error: "priceId e customerEmail são obrigatórios" });
+      }
+
+      if (normalizedPaymentMode !== "any" && !paymentMethodId) {
+        return safeJson(res, 400, { error: "paymentMethodId é obrigatório para validar a modalidade escolhida" });
       }
 
       // Buscar ou criar customer no Stripe
@@ -144,8 +175,33 @@ export const OrganizationSubscriptionsController = {
         customerId = customer.id;
       }
 
+      let cardFunding = null;
+      let paymentModeValidation = "fallback_selected";
+
       // Se um paymentMethodId foi fornecido, anexá-lo ao customer
       if (paymentMethodId) {
+        const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+
+        if (!paymentMethod || paymentMethod.type !== "card") {
+          return safeJson(res, 400, { error: "A assinatura recorrente aceita apenas cartão" });
+        }
+
+        cardFunding = paymentMethod.card?.funding || null;
+        const verifiedPaymentMode = getVerifiedPaymentMode(cardFunding);
+
+        if (normalizedPaymentMode !== "any") {
+          if (verifiedPaymentMode && verifiedPaymentMode !== normalizedPaymentMode) {
+            return safeJson(res, 400, {
+              error:
+                normalizedPaymentMode === "debit"
+                  ? "Você selecionou débito, mas o cartão informado é de crédito."
+                  : "Você selecionou crédito, mas o cartão informado é de débito.",
+            });
+          }
+
+          paymentModeValidation = verifiedPaymentMode ? "stripe_verified" : "fallback_selected";
+        }
+
         await stripe.paymentMethods.attach(paymentMethodId, {
           customer: customerId,
         });
@@ -171,6 +227,9 @@ export const OrganizationSubscriptionsController = {
         expand: ["latest_invoice.payment_intent", "items.data.price.product"],
         metadata: {
           organization_id: org.id,
+          payment_mode: normalizedPaymentMode,
+          card_funding: cardFunding || "unknown",
+          payment_mode_validation: paymentModeValidation,
         },
       });
 
@@ -219,6 +278,9 @@ export const OrganizationSubscriptionsController = {
       return safeJson(res, 201, {
         data: subscription,
         clientSecret,
+        paymentMode: normalizedPaymentMode,
+        cardFunding: cardFunding,
+        paymentModeValidation,
       });
     } catch (error) {
       console.error("Erro ao criar assinatura:", error);

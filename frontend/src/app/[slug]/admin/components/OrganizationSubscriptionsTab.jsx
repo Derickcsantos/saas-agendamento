@@ -509,6 +509,7 @@ function PaymentModal({
   const [cardholderName, setCardholderName] = useState("");
   const [cardError, setCardError] = useState("");
   const [cardComplete, setCardComplete] = useState(false);
+  const [paymentMode, setPaymentMode] = useState("credit");
 
   const handleCreateSubscription = async () => {
     if (!selectedPlan) {
@@ -558,6 +559,16 @@ function PaymentModal({
         return;
       }
 
+      const detectedFunding = paymentMethod?.card?.funding || null;
+      if (detectedFunding && ["credit", "debit"].includes(detectedFunding) && detectedFunding !== paymentMode) {
+        toast.error(
+          paymentMode === "debit"
+            ? "Você selecionou débito, mas o cartão informado é de crédito"
+            : "Você selecionou crédito, mas o cartão informado é de débito"
+        );
+        return;
+      }
+
       const response = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_API_URL}/api/organization-subscriptions/${org.slug_organization}`,
         {
@@ -569,6 +580,7 @@ function PaymentModal({
             priceId: selectedPlan.id,
             customerEmail: user.email,
             paymentMethodId: paymentMethod.id,
+            paymentMode,
             organizationData: {
               name: org.name,
             },
@@ -701,6 +713,40 @@ function PaymentModal({
                 {/* Nome do Titular */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Modalidade do Cartão
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMode("credit")}
+                      className={`px-4 py-3 rounded-lg border text-sm font-semibold transition ${
+                        paymentMode === "credit"
+                          ? "border-blue-600 bg-blue-50 text-blue-700"
+                          : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      Cartão de Crédito
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMode("debit")}
+                      className={`px-4 py-3 rounded-lg border text-sm font-semibold transition ${
+                        paymentMode === "debit"
+                          ? "border-blue-600 bg-blue-50 text-blue-700"
+                          : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      Cartão de Débito
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Validamos automaticamente a modalidade escolhida com o Stripe antes de criar a assinatura.
+                  </p>
+                </div>
+
+                {/* Nome do Titular */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
                     Nome do Titular do Cartão
                   </label>
                   <input
@@ -757,7 +803,7 @@ function PaymentModal({
                     </span>
                   </div>
                   <p className="text-sm text-gray-600">
-                    Seu cartão será cobrado automaticamente. Você pode cancelar a qualquer momento.
+                    Modalidade selecionada: <strong>{paymentMode === "debit" ? "Débito" : "Crédito"}</strong>. Seu cartão será cobrado automaticamente e você pode cancelar a qualquer momento.
                   </p>
                 </div>
 
