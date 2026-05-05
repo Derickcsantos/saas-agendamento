@@ -30,7 +30,21 @@ export default async function requireActiveSubscription(req, res, next) {
 
         const hasActivePlan = organization.is_active === true
 
-        if (!hasActivePlan && diffDays >= trial_days) {
+        const { data: latestSubscription, error: subscriptionError } = await supabase
+            .from("subscriptions")
+            .select("billing_type, status, created_at")
+            .eq("organization_id", organization.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (subscriptionError && subscriptionError.code !== "PGRST116") {
+            console.error("Erro ao verificar assinatura da organização:", subscriptionError);
+        }
+
+        const hasPixBilling = latestSubscription?.billing_type === "pix";
+
+        if (!hasActivePlan && diffDays >= trial_days && !hasPixBilling) {
             return res.status(402).json({
                 code: "TRIAL_EXPIRED",
                 message: "Seu período de teste expirou"
