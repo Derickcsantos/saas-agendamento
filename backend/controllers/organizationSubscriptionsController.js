@@ -6,22 +6,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
 });
 
 // ==================== HELPERS ====================
-const asInt = (v, d) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : d;
-};
-
-const normalizePaymentMode = (value) => {
-  const normalized = String(value || "").trim().toLowerCase();
-  if (["credit", "credito", "crédito"].includes(normalized)) return "credit";
-  if (["debit", "debito", "débito"].includes(normalized)) return "debit";
-  return "any";
-};
-
-const getVerifiedPaymentMode = (funding) => {
-  if (funding === "credit" || funding === "debit") return funding;
-  return null;
-};
+import { asInt, normalizePaymentMode, getVerifiedPaymentMode } from "../utils/subscriptionHelpers.js";
 
 const safeJson = (res, status, payload) => res.status(status).json(payload);
 
@@ -190,16 +175,15 @@ export const OrganizationSubscriptionsController = {
         const verifiedPaymentMode = getVerifiedPaymentMode(cardFunding);
 
         if (normalizedPaymentMode !== "any") {
-          if (verifiedPaymentMode && verifiedPaymentMode !== normalizedPaymentMode) {
-            return safeJson(res, 400, {
-              error:
-                normalizedPaymentMode === "debit"
-                  ? "Você selecionou débito, mas o cartão informado é de crédito."
-                  : "Você selecionou crédito, mas o cartão informado é de débito.",
-            });
+          const mismatch = verifiedPaymentMode && verifiedPaymentMode !== normalizedPaymentMode;
+          if (mismatch) {
+            console.warn(
+              `Payment mode mismatch for organization ${org.id}: requested=${normalizedPaymentMode} but card funding=${verifiedPaymentMode}. Proceeding and recording as 'mismatch_allowed'.`
+            );
+            paymentModeValidation = "mismatch_allowed";
+          } else {
+            paymentModeValidation = verifiedPaymentMode ? "stripe_verified" : "fallback_selected";
           }
-
-          paymentModeValidation = verifiedPaymentMode ? "stripe_verified" : "fallback_selected";
         }
 
         await stripe.paymentMethods.attach(paymentMethodId, {
