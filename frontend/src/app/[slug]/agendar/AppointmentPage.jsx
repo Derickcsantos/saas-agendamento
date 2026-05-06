@@ -60,6 +60,22 @@ export default function AppointmentPage({ slug }) {
   const [refreshingPix, setRefreshingPix] = useState(false);
   const [checkingPaymentStatus, setCheckingPaymentStatus] = useState(false);
   const longPressTimersRef = useRef({});
+  const pressIdCounterRef = useRef(0);
+  const [isDesktop, setIsDesktop] = useState(true);
+
+  useEffect(() => {
+    const checkDevice = () => {
+      setIsDesktop(window.matchMedia("(hover: hover)").matches);
+    };
+    checkDevice();
+    window.addEventListener("resize", checkDevice);
+    return () => window.removeEventListener("resize", checkDevice);
+  }, []);
+
+  const clearAllLongPressTimers = () => {
+    Object.values(longPressTimersRef.current).forEach((timer) => clearTimeout(timer));
+    longPressTimersRef.current = {};
+  };
 
   const servicePrice = Number(selected?.service?.price ?? 0);
   const additionalServicesPrice = (selected?.additionalServices || []).reduce(
@@ -652,6 +668,8 @@ const sendWhatsappConfirmation = async () => {
 
   // Avança sem verificação (usado nos handlers de seleção)
   const next = () => {
+    clearAllLongPressTimers();
+    closeImagePreview();
     setStep((s) => Math.min(s + 1, CONFIRM_STEP));
   };
 
@@ -661,13 +679,18 @@ const sendWhatsappConfirmation = async () => {
     next();
   };
 
-  const back = () => setStep((s) => Math.max(s - 1, 1));
+  const back = () => {
+    clearAllLongPressTimers();
+    closeImagePreview();
+    setStep((s) => Math.max(s - 1, 1));
+  };
 
   const handleSelect = (field, value) => {
     setSelected((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSelectCategory = (cat) => {
+    clearAllLongPressTimers();
     closeImagePreview();
     setSelected((prev) => ({
       ...prev,
@@ -691,6 +714,7 @@ const sendWhatsappConfirmation = async () => {
   };
 
   const handleSelectService = (srv) => {
+    clearAllLongPressTimers();
     closeImagePreview();
     setSelected((prev) => ({
       ...prev,
@@ -712,6 +736,7 @@ const sendWhatsappConfirmation = async () => {
   };
 
   const handleSelectEmployee = async (emp) => {
+    clearAllLongPressTimers();
     closeImagePreview();
     setSelected((prev) => ({
       ...prev,
@@ -727,6 +752,7 @@ const sendWhatsappConfirmation = async () => {
   };
 
   const handleToggleAdditionalService = (additional) => {
+    clearAllLongPressTimers();
     closeImagePreview();
     setSelected((prev) => {
       const exists = (prev.additionalServices || []).some(
@@ -750,6 +776,7 @@ const sendWhatsappConfirmation = async () => {
   };
 
   const handleSelectDate = (dateIso) => {
+    clearAllLongPressTimers();
     closeImagePreview();
     setSelected((prev) => ({
       ...prev,
@@ -814,13 +841,16 @@ const sendWhatsappConfirmation = async () => {
   };
 
   const pressPreviewHandlers = (preview) => {
-    const timerId = `preview_${preview?.src || preview?.title || Math.random()}`;
+    // Preview desabilitado no mobile para evitar bugs
+    if (!isDesktop) return {};
+
+    const timerId = ++pressIdCounterRef.current;
     
     return {
       onPointerDown: () => {
         const timer = setTimeout(() => {
           openImagePreview(preview);
-        }, 1500); // 1.5 segundos
+        }, 1500);
         
         longPressTimersRef.current[timerId] = timer;
       },
@@ -839,7 +869,7 @@ const sendWhatsappConfirmation = async () => {
       onTouchStart: () => {
         const timer = setTimeout(() => {
           openImagePreview(preview);
-        }, 1500); // 1.5 segundos
+        }, 1500);
         
         longPressTimersRef.current[timerId] = timer;
       },
