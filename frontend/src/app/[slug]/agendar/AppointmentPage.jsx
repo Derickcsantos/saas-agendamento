@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from 'react-toastify'
@@ -59,7 +59,7 @@ export default function AppointmentPage({ slug }) {
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutos em segundos
   const [refreshingPix, setRefreshingPix] = useState(false);
   const [checkingPaymentStatus, setCheckingPaymentStatus] = useState(false);
-  const [longPressTimers, setLongPressTimers] = useState({});
+  const longPressTimersRef = useRef({});
 
   const servicePrice = Number(selected?.service?.price ?? 0);
   const additionalServicesPrice = (selected?.additionalServices || []).reduce(
@@ -169,6 +169,13 @@ export default function AppointmentPage({ slug }) {
       clearInterval(intervalId);
     };
   }, [showPaymentModal, paymentData?.transactionId, slug]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(longPressTimersRef.current).forEach((timer) => clearTimeout(timer));
+      longPressTimersRef.current = {};
+    };
+  }, []);
 
   const formatDateBR = (iso) => {
     if (!iso) return "";
@@ -661,6 +668,7 @@ const sendWhatsappConfirmation = async () => {
   };
 
   const handleSelectCategory = (cat) => {
+    closeImagePreview();
     setSelected((prev) => ({
       ...prev,
       category: cat,
@@ -683,6 +691,7 @@ const sendWhatsappConfirmation = async () => {
   };
 
   const handleSelectService = (srv) => {
+    closeImagePreview();
     setSelected((prev) => ({
       ...prev,
       service: srv,
@@ -703,6 +712,7 @@ const sendWhatsappConfirmation = async () => {
   };
 
   const handleSelectEmployee = async (emp) => {
+    closeImagePreview();
     setSelected((prev) => ({
       ...prev,
       employee: emp,
@@ -717,6 +727,7 @@ const sendWhatsappConfirmation = async () => {
   };
 
   const handleToggleAdditionalService = (additional) => {
+    closeImagePreview();
     setSelected((prev) => {
       const exists = (prev.additionalServices || []).some(
         (item) => item.additional_id === additional.additional_id
@@ -739,6 +750,7 @@ const sendWhatsappConfirmation = async () => {
   };
 
   const handleSelectDate = (dateIso) => {
+    closeImagePreview();
     setSelected((prev) => ({
       ...prev,
       date: dateIso,
@@ -793,8 +805,16 @@ const sendWhatsappConfirmation = async () => {
 
   const closeImagePreview = () => setImagePreview(null);
 
+  const clearLongPressTimer = (timerId) => {
+    const timer = longPressTimersRef.current[timerId];
+    if (!timer) return;
+
+    clearTimeout(timer);
+    delete longPressTimersRef.current[timerId];
+  };
+
   const pressPreviewHandlers = (preview) => {
-    const timerId = `preview_${preview?.title || Math.random()}`;
+    const timerId = `preview_${preview?.src || preview?.title || Math.random()}`;
     
     return {
       onPointerDown: () => {
@@ -802,42 +822,18 @@ const sendWhatsappConfirmation = async () => {
           openImagePreview(preview);
         }, 1500); // 1.5 segundos
         
-        setLongPressTimers((prev) => ({ ...prev, [timerId]: timer }));
+        longPressTimersRef.current[timerId] = timer;
       },
       onPointerUp: () => {
-        const timer = longPressTimers[timerId];
-        if (timer) {
-          clearTimeout(timer);
-          setLongPressTimers((prev) => {
-            const newTimers = { ...prev };
-            delete newTimers[timerId];
-            return newTimers;
-          });
-        }
+        clearLongPressTimer(timerId);
         closeImagePreview();
       },
       onPointerCancel: () => {
-        const timer = longPressTimers[timerId];
-        if (timer) {
-          clearTimeout(timer);
-          setLongPressTimers((prev) => {
-            const newTimers = { ...prev };
-            delete newTimers[timerId];
-            return newTimers;
-          });
-        }
+        clearLongPressTimer(timerId);
         closeImagePreview();
       },
       onPointerLeave: () => {
-        const timer = longPressTimers[timerId];
-        if (timer) {
-          clearTimeout(timer);
-          setLongPressTimers((prev) => {
-            const newTimers = { ...prev };
-            delete newTimers[timerId];
-            return newTimers;
-          });
-        }
+        clearLongPressTimer(timerId);
         closeImagePreview();
       },
       onTouchStart: () => {
@@ -845,30 +841,14 @@ const sendWhatsappConfirmation = async () => {
           openImagePreview(preview);
         }, 1500); // 1.5 segundos
         
-        setLongPressTimers((prev) => ({ ...prev, [timerId]: timer }));
+        longPressTimersRef.current[timerId] = timer;
       },
       onTouchEnd: () => {
-        const timer = longPressTimers[timerId];
-        if (timer) {
-          clearTimeout(timer);
-          setLongPressTimers((prev) => {
-            const newTimers = { ...prev };
-            delete newTimers[timerId];
-            return newTimers;
-          });
-        }
+        clearLongPressTimer(timerId);
         closeImagePreview();
       },
       onTouchCancel: () => {
-        const timer = longPressTimers[timerId];
-        if (timer) {
-          clearTimeout(timer);
-          setLongPressTimers((prev) => {
-            const newTimers = { ...prev };
-            delete newTimers[timerId];
-            return newTimers;
-          });
-        }
+        clearLongPressTimer(timerId);
         closeImagePreview();
       },
     };
