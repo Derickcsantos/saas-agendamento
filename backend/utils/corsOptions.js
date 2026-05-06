@@ -3,6 +3,8 @@
 export const corsOptions = {
   origin: [
     'http://localhost:3000', 
+    'http://localhost:3003',
+    'http://192.168.1.55:3003',
     'https://reimagined-zebra-r47wq4wj4ggq3p5jj-3000.app.github.dev', 
     'https://marcafy.com.br', 
     'https://www.marcafy.com.br', 
