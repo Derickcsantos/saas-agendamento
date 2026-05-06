@@ -55,9 +55,11 @@ export default function AppointmentPage({ slug }) {
   const [appointmentData, setAppointmentData] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutos em segundos
   const [refreshingPix, setRefreshingPix] = useState(false);
   const [checkingPaymentStatus, setCheckingPaymentStatus] = useState(false);
+  const [longPressTimers, setLongPressTimers] = useState({});
 
   const servicePrice = Number(selected?.service?.price ?? 0);
   const additionalServicesPrice = (selected?.additionalServices || []).reduce(
@@ -784,10 +786,153 @@ const sendWhatsappConfirmation = async () => {
     }
   };
 
+  const openImagePreview = (preview) => {
+    if (!preview?.src) return;
+    setImagePreview(preview);
+  };
+
+  const closeImagePreview = () => setImagePreview(null);
+
+  const pressPreviewHandlers = (preview) => {
+    const timerId = `preview_${preview?.title || Math.random()}`;
+    
+    return {
+      onPointerDown: () => {
+        const timer = setTimeout(() => {
+          openImagePreview(preview);
+        }, 1500); // 1.5 segundos
+        
+        setLongPressTimers((prev) => ({ ...prev, [timerId]: timer }));
+      },
+      onPointerUp: () => {
+        const timer = longPressTimers[timerId];
+        if (timer) {
+          clearTimeout(timer);
+          setLongPressTimers((prev) => {
+            const newTimers = { ...prev };
+            delete newTimers[timerId];
+            return newTimers;
+          });
+        }
+        closeImagePreview();
+      },
+      onPointerCancel: () => {
+        const timer = longPressTimers[timerId];
+        if (timer) {
+          clearTimeout(timer);
+          setLongPressTimers((prev) => {
+            const newTimers = { ...prev };
+            delete newTimers[timerId];
+            return newTimers;
+          });
+        }
+        closeImagePreview();
+      },
+      onPointerLeave: () => {
+        const timer = longPressTimers[timerId];
+        if (timer) {
+          clearTimeout(timer);
+          setLongPressTimers((prev) => {
+            const newTimers = { ...prev };
+            delete newTimers[timerId];
+            return newTimers;
+          });
+        }
+        closeImagePreview();
+      },
+      onTouchStart: () => {
+        const timer = setTimeout(() => {
+          openImagePreview(preview);
+        }, 1500); // 1.5 segundos
+        
+        setLongPressTimers((prev) => ({ ...prev, [timerId]: timer }));
+      },
+      onTouchEnd: () => {
+        const timer = longPressTimers[timerId];
+        if (timer) {
+          clearTimeout(timer);
+          setLongPressTimers((prev) => {
+            const newTimers = { ...prev };
+            delete newTimers[timerId];
+            return newTimers;
+          });
+        }
+        closeImagePreview();
+      },
+      onTouchCancel: () => {
+        const timer = longPressTimers[timerId];
+        if (timer) {
+          clearTimeout(timer);
+          setLongPressTimers((prev) => {
+            const newTimers = { ...prev };
+            delete newTimers[timerId];
+            return newTimers;
+          });
+        }
+        closeImagePreview();
+      },
+    };
+  };
+
+  const getPreviewData = (kind, item) => {
+    const fallbackImage = "/placeholder.png";
+
+    if (!item) return null;
+
+    if (kind === "category") {
+      return {
+        title: item.name || "Categoria",
+        subtitle: "Categoria do agendamento",
+        src: item.imagem_category || fallbackImage,
+      };
+    }
+
+    if (kind === "service") {
+      return {
+        title: item.name || "Serviço",
+        subtitle: item.duration ? `${item.duration} min` : "Serviço selecionado",
+        src: item.imagem_service || fallbackImage,
+      };
+    }
+
+    if (kind === "employee") {
+      return {
+        title: item.name || "Profissional",
+        subtitle: "Profissional selecionado",
+        src: item.imagem_funcionario || fallbackImage,
+      };
+    }
+
+    if (kind === "additional") {
+      return {
+        title: item.subservice?.name || "Serviço adicional",
+        subtitle: item.subservice?.duration ? `${item.subservice.duration} min` : "Serviço adicional",
+        src:
+          item.subservice?.imagem_service ||
+          item.subservice?.imagem_subservice ||
+          item.subservice?.image ||
+          fallbackImage,
+      };
+    }
+
+    return null;
+  };
+
+  const calculateAppointmentDuration = (appointment) => {
+    if (!appointment) return 0;
+    const serviceDuration = Number(appointment?.service?.duration || 0);
+    const additionalDuration = (appointment?.additionalServices || []).reduce(
+      (sum, item) => sum + Number(item?.subservice?.duration || 0),
+      0
+    );
+    return serviceDuration + additionalDuration;
+  };
+
   const ModalConfirm = () => {
     if (!showModal || !appointmentData) return null;
 
     const a = appointmentData;
+    const appointmentDuration = calculateAppointmentDuration(a);
 
     const whatsappMessage = encodeURIComponent(
       `Olá! Aqui está a confirmação do seu agendamento:\n\n` +
@@ -815,7 +960,7 @@ const sendWhatsappConfirmation = async () => {
             {!!a.additionalServices?.length && (
               <p><strong>Adicionais:</strong> {a.additionalServices.map((item) => item.subservice?.name).join(", ")}</p>
             )}
-            <p><strong>Tempo total:</strong> {totalDuration} min</p>
+            <p><strong>Tempo total:</strong> {appointmentDuration} min</p>
             <p><strong>Profissional:</strong> {a.employee?.name}</p>
             <p><strong>Data:</strong> {formatDateBR(a.date)}</p>
             <p><strong>Horário:</strong> {a.time?.start} - {a.time?.end}</p>
@@ -857,6 +1002,24 @@ const sendWhatsappConfirmation = async () => {
             Fechar
           </button>
         </div>
+      </div>
+    );
+  };
+
+  const ImagePreviewModal = () => {
+    if (!imagePreview?.src) return null;
+
+    return (
+      <div
+        className="fixed inset-0 z-[70] flex items-center justify-center pointer-events-auto"
+        onClick={closeImagePreview}
+      >
+        <img
+          src={imagePreview.src}
+          alt=""
+          onClick={(e) => e.stopPropagation()}
+          className="max-h-[90vh] max-w-[90vw] object-contain"
+        />
       </div>
     );
   };
@@ -1080,6 +1243,7 @@ const sendWhatsappConfirmation = async () => {
                     <div
                       key={cat.id}
                       onClick={() => handleSelectCategory(cat)}
+                      {...pressPreviewHandlers(getPreviewData("category", cat))}
                       className={`cursor-pointer p-4 rounded-xl border text-center transition-all ${
                         selected.category?.id === cat.id
                           ? "border-gray-600 bg-purple-50"
@@ -1109,6 +1273,7 @@ const sendWhatsappConfirmation = async () => {
                     <div
                       key={srv.id}
                       onClick={() => handleSelectService(srv)}
+                      {...pressPreviewHandlers(getPreviewData("service", srv))}
                       className={`cursor-pointer p-4 rounded-xl border transition-all ${
                         selected.service?.id === srv.id
                           ? "border-gray-600 bg-purple-50"
@@ -1144,6 +1309,7 @@ const sendWhatsappConfirmation = async () => {
                     <div
                       key={emp.id}
                       onClick={() => handleSelectEmployee(emp)}
+                      {...pressPreviewHandlers(getPreviewData("employee", emp))}
                       className={`cursor-pointer p-4 rounded-xl border text-center transition-all ${
                         selected.employee?.id === emp.id
                           ? "border-gray-600 bg-purple-50"
@@ -1188,6 +1354,7 @@ const sendWhatsappConfirmation = async () => {
                         <button
                           key={additional.additional_id}
                           onClick={() => handleToggleAdditionalService(additional)}
+                          {...pressPreviewHandlers(getPreviewData("additional", additional))}
                           className={`text-left border rounded-xl p-4 transition-all ${
                             isSelected
                               ? "border-gray-700 bg-purple-50"
@@ -1522,6 +1689,7 @@ const sendWhatsappConfirmation = async () => {
         </div>
         <ModalConfirm />
         <PaymentModal />
+        <ImagePreviewModal />
       </main>
     </div>
   );
