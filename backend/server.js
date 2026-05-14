@@ -1,5 +1,10 @@
 import dotenv from 'dotenv';
 dotenv.config();
+
+// Validar variáveis de ambiente ANTES de importar anything
+import { validateEnvironment } from './utils/validateEnv.js';
+validateEnvironment();
+
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -63,8 +68,18 @@ const port = process.env.PORT || 3000;
 // Criar servidor HTTP para suportar WebSocket
 const server = http.createServer(app);
 
-// Inicializar WebSocket Manager
-export const queueWebSocket = new QueueWebSocketManager(server);
+// Inicializar WebSocket Manager com error handling
+let queueWebSocket = null;
+try {
+  queueWebSocket = new QueueWebSocketManager(server);
+  console.log('✅ WebSocket Manager inicializado com sucesso');
+} catch (error) {
+  console.error('❌ Erro ao inicializar WebSocket Manager:', error.message);
+  console.warn('⚠️  WebSocket desabilitado - fila em tempo real não funcionará');
+  queueWebSocket = null;
+}
+
+export { queueWebSocket };
 
 app.set("trust proxy", 1);
 
@@ -78,9 +93,31 @@ setupSwagger(app)
 
 app.use(passport.initialize());
 
-scheduleJob("0 8 * * *", "08:00");
-startUnavailableDaysCacheJob({ intervalMs: 180000 });
-startPixBillingJob({ intervalMs: 24 * 60 * 60 * 1000 });
+// Inicializar jobs com error handling
+console.log('\n📋 Inicializando tarefas agendadas...');
+
+try {
+  scheduleJob("0 8 * * *", "08:00");
+  console.log('✅ CRON diário (08:00) - Agendado');
+} catch (error) {
+  console.error('❌ Erro ao agendar CRON diário:', error.message);
+}
+
+try {
+  startUnavailableDaysCacheJob({ intervalMs: 180000 });
+  console.log('✅ Cache de dias indisponíveis - Iniciado (a cada 3 min)');
+} catch (error) {
+  console.error('❌ Erro ao iniciar cache de dias indisponíveis:', error.message);
+}
+
+try {
+  startPixBillingJob({ intervalMs: 24 * 60 * 60 * 1000 });
+  console.log('✅ Faturamento PIX - Agendado (a cada 24h)');
+} catch (error) {
+  console.error('❌ Erro ao iniciar faturamento PIX:', error.message);
+}
+
+console.log('📋 Tarefas agendadas inicializadas\n');
 
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
 
@@ -131,7 +168,26 @@ app.use('/api/salaries', salariesRouter)
 app.use('/api/employee-intervals', employeeIntervalsRouter)
 // app.use("/api/whatsapp-send", sendWhatsappRouter);
 
+// Error handler para não capturados
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Promise rejeitada não tratada:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Erro não capturado:', error);
+  process.exit(1);
+});
+
 server.listen(port, () => {
-  console.log(`Servidor rodando em http://localhost:${port}`);
-  console.log(`WebSocket disponível em ws://localhost:${port}`);
+  console.log('\n' + '='.repeat(60));
+  console.log('🚀 SERVIDOR INICIADO COM SUCESSO');
+  console.log('='.repeat(60));
+  console.log(`📍 API disponível em: http://localhost:${port}`);
+  console.log(`📍 WebSocket disponível em: ws://localhost:${port}`);
+  if (queueWebSocket) {
+    console.log(`✅ Fila em tempo real: HABILITADA`);
+  } else {
+    console.log(`⚠️  Fila em tempo real: DESABILITADA`);
+  }
+  console.log('='.repeat(60) + '\n');
 });
