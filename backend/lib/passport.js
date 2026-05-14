@@ -15,9 +15,22 @@ passport.use(
     },
     async (req, accessToken, refreshToken, profile, done) => {
       try {
-        const state = JSON.parse(req.query.state);
+        let state = {};
+        
+        // Parse state com error handling
+        try {
+          state = JSON.parse(req.query.state || '{}');
+        } catch (parseError) {
+          console.error('❌ Erro ao fazer parse do state OAuth:', parseError.message);
+          return done(new Error('Estado OAuth inválido'));
+        }
+
         const organizationId = state.organization_id;
-        const email = profile.emails[0].value;
+        const email = profile.emails[0]?.value;
+
+        if (!organizationId || !email) {
+          return done(new Error('Estado OAuth incompleto: faltam organization_id ou email'));
+        }
 
         const { data: existingUser } = await supabase
           .from("users")
@@ -45,6 +58,7 @@ passport.use(
         return done(null, newUser);
 
       } catch (err) {
+        console.error('❌ Erro na autenticação Google:', err.message);
         return done(err, null);
       }
     }
