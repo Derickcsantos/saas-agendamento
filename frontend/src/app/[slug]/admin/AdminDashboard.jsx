@@ -10,6 +10,7 @@ import Card from "./components/Card";
 import ChartCard from "./components/ChartCard";
 import ServicesDoughnutChartCard from "./components/ServicesDoughnutChartCard";
 import Table from "./components/Table";
+import ScheduleLinkCard from "./components/ScheduleLinkCard";
 import CategoriesTab from "./components/CategoriesTab";
 import ServicesTab from "./components/ServicesTab";
 import EmployeesTab from "./components/EmployeesTab";
@@ -217,6 +218,10 @@ export default function AdminDashboard({ slug }) {
               <Card title="Agendamentos" value={stats?.totalAppointments} org={org} icon={<CalendarCheck size={18} />} />
               <Card title="Despesas (30 dias)" value={formatBRL(stats?.totalExpenses)} org={org} icon={<ReceiptText size={18} />} />
               <Card title="Clientes" value={stats?.totalClients} org={org} icon={<Users size={18} />} />
+            </section>
+
+            <section className="mt-6">
+              <ScheduleLinkCard slug={slug} org={org} />
             </section>
 
               <section className="mt-6">
