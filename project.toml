@@ -1,0 +1,11 @@
+[[build.env]]
+name = "GOOGLE_NODEJS_VERSION"
+value = "20.x"
+
+[[build.env]]
+name = "PUPPETEER_SKIP_DOWNLOAD"
+value = "true"
+
+[[build.env]]
+name = "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD"
+value = "1"

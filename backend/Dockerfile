@@ -2,7 +2,7 @@
 # Build: gcloud builds submit --tag gcr.io/PROJECT_ID/IMAGE_NAME
 # Deploy: gcloud run deploy SERVICE_NAME --image gcr.io/PROJECT_ID/IMAGE_NAME
 
-FROM node:20-alpine
+FROM node:20.11.0-alpine
 
 # Definir workdir
 WORKDIR /workspace
@@ -10,8 +10,9 @@ WORKDIR /workspace
 # Copiar package.json e package-lock.json
 COPY package*.json ./
 
-# Instalar dependências (sem devDependencies em produção)
-RUN npm ci --only=production
+# Limpar cache npm e instalar dependências (sem devDependencies em produção)
+RUN npm cache clean --force && \
+    npm ci --omit=dev --legacy-peer-deps
 
 # Copiar resto do código
 COPY . .
@@ -19,6 +20,7 @@ COPY . .
 # Cloud Run escuta na porta definida por PORT, padrão 8080
 # Mas nossa app usa 3000, então precisa ouvir em 8080
 ENV PORT=8080
+ENV NODE_ENV=production
 
 # Expor porta
 EXPOSE 8080

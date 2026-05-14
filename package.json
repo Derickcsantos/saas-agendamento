@@ -1,0 +1,13 @@
+{
+  "name": "saas-agendamento",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "gcp-build": "npm --prefix backend ci --omit=dev",
+    "start": "npm --prefix backend start"
+  },
+  "engines": {
+    "node": "20.x",
+    "npm": ">=9.0.0"
+  }
+}
