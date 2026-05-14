@@ -56,7 +56,6 @@ export const googleCalendarRouter = Router();
  */
 googleCalendarRouter.get(
   "/status",
-  requireActiveSubscription,
   getCalendarStatus
 );
 
