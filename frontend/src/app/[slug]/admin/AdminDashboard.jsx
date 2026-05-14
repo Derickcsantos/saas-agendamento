@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { DollarSign, Users, CalendarCheck, ReceiptText } from "lucide-react";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import Sidebar from "./components/Sidebar";
@@ -41,6 +41,7 @@ function formatBRL(value) {
 
 export default function AdminDashboard({ slug }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [org, setOrg] = useState(null);
   const [stats, setStats] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
@@ -89,6 +90,13 @@ export default function AdminDashboard({ slug }) {
 
     checkAuth();
   }, [router, slug]);
+
+  useEffect(() => {
+    if (searchParams?.get("calendar") === "connected") {
+      setActiveTab("calendar-google");
+      router.replace(`/${slug}/admin`);
+    }
+  }, [router, searchParams, slug]);
 
   useEffect(() => {
     if (activeTab === "exit") {
