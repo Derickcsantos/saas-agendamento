@@ -1,5 +1,9 @@
 import { Router } from 'express'
-import { getLoggedInUserAppointments } from '../controllers/loggedInUserController.js'
+import {
+  cancelLoggedInUserAppointment,
+  getLoggedInUserAppointments,
+} from '../controllers/loggedInUserController.js'
+import { authenticateJWT } from '../middlewares/authMiddleware.js'
 
 export const loggedInUserRouter = Router()
 
@@ -48,4 +52,5 @@ export const loggedInUserRouter = Router()
  *       500:
  *         description: Erro interno do servidor
  */
-loggedInUserRouter.get('/appointments', getLoggedInUserAppointments)
+loggedInUserRouter.get('/appointments', authenticateJWT, getLoggedInUserAppointments)
+loggedInUserRouter.delete('/:slug/appointments/:id', authenticateJWT, cancelLoggedInUserAppointment)
