@@ -2,6 +2,10 @@ import { supabase } from '../lib/supabase.js';
 import { getEmployeeGoogleBusyIntervals } from "../utils/googleCalendarAvailability.js";
 import { getEmployeeIntervalsForDate, rangesOverlap } from "../utils/employeeIntervals.js";
 import { normalizeEmployeeImage } from "../utils/normalizeEmployeeImage.js";
+import {
+  getCatalogCache,
+  setCatalogCache,
+} from "../utils/catalogCache.js";
 
 export const getAppointmentCategories = async (req, res) => {
   try {
@@ -21,24 +25,30 @@ export const getAppointmentCategories = async (req, res) => {
       return res.status(404).json({ error: 'Organização não encontrada' });
     }
 
-    const { data, error } = await supabase
-      .from('categories')
-      .select('id, name, imagem_category')
-      .eq('organization_id', orgData.id)
-      .not('name', 'eq', 'Interno')
-      .order('name', { ascending: true });
+    let categoriesWithImages = getCatalogCache("appointment_categories", orgData.id);
 
-    if (error) throw error;
-    
-    // Converter imagens base64 para URLs de dados
-    const categoriesWithImages = data.map(category => {
-      return {
-        ...category,
-        imagem_category: category.imagem_category 
-          ? category.imagem_category
-          : null
-      };
-    });
+    if (!categoriesWithImages) {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name, imagem_category, order_category')
+        .eq('organization_id', orgData.id)
+        .not('name', 'eq', 'Interno')
+        .order('order_category', { ascending: true, nullsFirst: false })
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+
+      categoriesWithImages = data.map(category => {
+        return {
+          ...category,
+          imagem_category: category.imagem_category
+            ? category.imagem_category
+            : null
+        };
+      });
+
+      setCatalogCache("appointment_categories", orgData.id, categoriesWithImages);
+    }
     
     res.json(categoriesWithImages);
   } catch (error) {
@@ -51,8 +61,9 @@ export const getAppointmentServices =  async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('services')
-      .select('id, name, category_id, duration, price, imagem_service, durability_days')
+      .select('id, name, category_id, duration, price, imagem_service, durability_days, order_service')
       .eq('organization_id', req.organizationId)
+      .order('order_service', { ascending: true, nullsFirst: false })
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -82,24 +93,31 @@ export const getAppointmentServicesByCategory = async (req, res) => {
       return res.status(404).json({ error: 'Organização não encontrada' });
     }
 
-    const { data, error } = await supabase
-      .from('services')
-      .select('id, name, price, duration, imagem_service, durability_days')
-      .eq('category_id', categoryId)
-      .eq('organization_id', orgData.id)
-      .order('name', { ascending: true });
+    const cacheSuffix = `category:${categoryId}`;
+    let servicesWithImages = getCatalogCache("appointment_services", orgData.id, cacheSuffix);
 
-    if (error) throw error;
-    
-    // Converter imagens base64 para URLs de dados
-    const servicesWithImages = data.map(service => {
-      return {
-        ...service,
-        imagem_service: service.imagem_service 
-          ? service.imagem_service
-          : null
-      };
-    });
+    if (!servicesWithImages) {
+      const { data, error } = await supabase
+        .from('services')
+        .select('id, name, price, duration, imagem_service, durability_days, order_service')
+        .eq('category_id', categoryId)
+        .eq('organization_id', orgData.id)
+        .order('order_service', { ascending: true, nullsFirst: false })
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+
+      servicesWithImages = data.map(service => {
+        return {
+          ...service,
+          imagem_service: service.imagem_service
+            ? service.imagem_service
+            : null
+        };
+      });
+
+      setCatalogCache("appointment_services", orgData.id, servicesWithImages, cacheSuffix);
+    }
     
     res.json(servicesWithImages);
   } catch (error) {
@@ -206,9 +224,11 @@ export const getAppointmentAdditionalServices = async (req, res) => {
 
     const { data: subservices, error: subservicesError } = await supabase
       .from('services')
-      .select('id, name, price, duration, durability_days, imagem_service')
+      .select('id, name, price, duration, durability_days, imagem_service, order_service')
       .in('id', [...allowedSubserviceIds])
-      .eq('organization_id', orgData.id);
+      .eq('organization_id', orgData.id)
+      .order('order_service', { ascending: true, nullsFirst: false })
+      .order('name', { ascending: true });
 
     if (subservicesError) throw subservicesError;
 
@@ -220,7 +240,14 @@ export const getAppointmentAdditionalServices = async (req, res) => {
         subservice_id: item.subservice_id,
         subservice: subservicesById.get(item.subservice_id) || null,
       }))
-      .filter((item) => !!item.subservice);
+      .filter((item) => !!item.subservice)
+      .sort((a, b) => {
+        const orderA = a.subservice.order_service ?? Number.MAX_SAFE_INTEGER;
+        const orderB = b.subservice.order_service ?? Number.MAX_SAFE_INTEGER;
+
+        if (orderA !== orderB) return orderA - orderB;
+        return String(a.subservice.name || "").localeCompare(String(b.subservice.name || ""));
+      });
 
     return res.json(payload);
   } catch (error) {

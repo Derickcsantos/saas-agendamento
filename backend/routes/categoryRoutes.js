@@ -6,6 +6,7 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
+  reorderCategories,
 } from '../controllers/categoriesController.js';
 import { authenticateJWT } from '../middlewares/authMiddleware.js';
 import { requireAdminOfOrganization } from '../middlewares/requireAdminOfOrganization.js';
@@ -56,6 +57,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         description: Erro interno do servidor
  */
 categoryRouter.get('/:slug', authenticateJWT, requireActiveSubscription, getAllCategories);
+categoryRouter.put('/:slug/reorder', authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, reorderCategories);
 
 
 /**

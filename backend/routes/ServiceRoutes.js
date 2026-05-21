@@ -19,7 +19,8 @@ import {
   updateService,
   deleteService,
   getAdditionalServicesByServiceSlug,
-  updateAdditionalServicesByServiceSlug
+  updateAdditionalServicesByServiceSlug,
+  reorderServices
 } from '../controllers/servicesController.js';
 import requireActiveSubscription from '../middlewares/requireActiveSubscription.js';
 
@@ -98,6 +99,7 @@ serviceRouter.get('/', authenticateJWT, requireActiveSubscription, getServices);
  *         description: Erro interno do servidor
  */
 serviceRouter.get('/slug/:slug', authenticateJWT, requireActiveSubscription, getServicesBySlug)
+serviceRouter.put('/slug/:slug/reorder', authenticateJWT, requireActiveSubscription, reorderServices)
 
 serviceRouter.get('/slug/:slug/:serviceId/additional-services', authenticateJWT, requireActiveSubscription, getAdditionalServicesByServiceSlug);
 serviceRouter.put('/slug/:slug/:serviceId/additional-services', authenticateJWT, requireActiveSubscription, updateAdditionalServicesByServiceSlug);
@@ -263,4 +265,4 @@ serviceRouter.put('/:slug/:id', upload.single('image'), authenticateJWT, require
  *       500:
  *         description: Erro interno do servidor
  */
-serviceRouter.delete('/:slug/:id', authenticateJWT, requireActiveSubscription, deleteService); 
+serviceRouter.delete('/:slug/:id', authenticateJWT, requireActiveSubscription, deleteService);

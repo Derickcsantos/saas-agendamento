@@ -6,6 +6,7 @@ import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import ImageDropzone from "./ImageDropzone"
 import { useConfirm } from "@/components/ConfirmDialogProvider";
 import TrialExpiredModal from "./TrialExpireModal";
+import { GripVertical, Loader2 } from "lucide-react";
 
 export default function ServicesTab({ org, setActiveTab }) {
   const [services, setServices] = useState([]);
@@ -31,6 +32,8 @@ export default function ServicesTab({ org, setActiveTab }) {
   const [searchAdditionalService, setSearchAdditionalService] = useState("");
   const [selectedAdditionalIds, setSelectedAdditionalIds] = useState([]);
   const [savingAdditional, setSavingAdditional] = useState(false);
+  const [draggingId, setDraggingId] = useState(null);
+  const [savingOrder, setSavingOrder] = useState(false);
   const { palette } = useOrganizationColors(org.slug_organization);
   const [showPaywall, setShowPaywall] = useState(false);
 
@@ -224,6 +227,54 @@ export default function ServicesTab({ org, setActiveTab }) {
     }
 
     loadServices(searchQuery); // 🔍 Mantém a busca após deletar
+  };
+
+  const persistOrder = async (nextServices) => {
+    try {
+      setSavingOrder(true);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/services/slug/${org.slug_organization}/reorder`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: nextServices.map((service) => service.id) }),
+        }
+      );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
+      if (!res.ok) throw new Error();
+
+      toast.success("Ordem dos servicos atualizada.");
+    } catch {
+      toast.error("Nao foi possivel salvar a ordem dos servicos.");
+      loadServices(searchQuery);
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  const moveService = (sourceId, targetId) => {
+    if (!sourceId || !targetId || sourceId === targetId || searchQuery || savingOrder) return;
+
+    const sourceIndex = services.findIndex((service) => service.id === sourceId);
+    const targetIndex = services.findIndex((service) => service.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const nextServices = [...services];
+    const [moved] = nextServices.splice(sourceIndex, 1);
+    nextServices.splice(targetIndex, 0, moved);
+    const normalized = nextServices.map((service, index) => ({
+      ...service,
+      order_service: index + 1,
+    }));
+
+    setServices(normalized);
+    persistOrder(normalized);
   };
 
   const openAdditionalModal = async (service) => {
@@ -442,7 +493,20 @@ export default function ServicesTab({ org, setActiveTab }) {
 
       {/* TABELA */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700">
-        <h4 className="text-lg font-bold text-gray-700 dark:text-gray-200 mb-4">Serviços</h4>
+        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h4 className="text-lg font-bold text-gray-700 dark:text-gray-200">Serviços</h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Arraste pela alça para definir a ordem exibida no agendamento.
+            </p>
+          </div>
+          {savingOrder && (
+            <span className="inline-flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-300">
+              <Loader2 size={14} className="animate-spin" />
+              Salvando ordem
+            </span>
+          )}
+        </div>
 
         {/* 🔍 Search Input */}
         <div className="mb-4 flex gap-2">
@@ -467,7 +531,9 @@ export default function ServicesTab({ org, setActiveTab }) {
           <table className="w-full text-sm">
             <thead className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
               <tr>
+                <th className="px-4 py-3 text-left w-10"></th>
                 <th className="px-4 py-3 text-left">ID</th>
+                <th className="px-4 py-3 text-left">Ordem</th>
                 <th className="px-4 py-3 text-left">Nome</th>
                 <th className="px-4 py-3 text-left">Categoria</th>
                 <th className="px-4 py-3 text-left">Duração</th>
@@ -482,9 +548,24 @@ export default function ServicesTab({ org, setActiveTab }) {
               {services.map((s) => (
                 <tr
                   key={s.id}
-                  className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                  draggable={!searchQuery && !savingOrder}
+                  onDragStart={() => setDraggingId(s.id)}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={() => moveService(draggingId, s.id)}
+                  onDragEnd={() => setDraggingId(null)}
+                  className={`border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition ${
+                    draggingId === s.id ? "opacity-50" : ""
+                  }`}
                 >
+                  <td className="px-4 py-3 text-gray-400">
+                    {!searchQuery ? (
+                      <GripVertical size={18} className="cursor-grab active:cursor-grabbing" />
+                    ) : (
+                      "-"
+                    )}
+                  </td>
                   <td className="px-4 py-3">{s.id}</td>
+                  <td className="px-4 py-3">{s.order_service || "-"}</td>
                   <td className="px-4 py-3">{s.name}</td>
                   <td className="px-4 py-3">{s.categories?.name || "-"}</td>
                   <td className="px-4 py-3">{s.duration} min</td>
@@ -516,7 +597,7 @@ export default function ServicesTab({ org, setActiveTab }) {
 
               {!services.length && (
                 <tr>
-                  <td colSpan={6} className="text-center text-gray-400 py-6">
+                  <td colSpan={10} className="text-center text-gray-400 py-6">
                     Nenhum serviço cadastrado.
                   </td>
                 </tr>
