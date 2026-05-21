@@ -1,6 +1,6 @@
 [[build.env]]
 name = "GOOGLE_NODEJS_VERSION"
-value = "20.x"
+value = "22.22.3"
 
 [[build.env]]
 name = "PUPPETEER_SKIP_DOWNLOAD"

@@ -2,7 +2,7 @@
 # Build: gcloud builds submit --tag gcr.io/PROJECT_ID/IMAGE_NAME
 # Deploy: gcloud run deploy SERVICE_NAME --image gcr.io/PROJECT_ID/IMAGE_NAME
 
-FROM node:20.11.0-alpine
+FROM node:22-alpine
 
 # Definir workdir
 WORKDIR /workspace
