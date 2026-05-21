@@ -885,7 +885,7 @@ const sendWhatsappConfirmation = async () => {
   };
 
   const getPreviewData = (kind, item) => {
-    const fallbackImage = "/placeholder.png";
+    const fallbackImage = "/placeholder.svg";
 
     if (!item) return null;
 
@@ -1261,7 +1261,7 @@ const sendWhatsappConfirmation = async () => {
                       }`}
                     >
                       <img
-                        src={cat.imagem_category || "/placeholder.png"}
+                        src={cat.imagem_category || "/placeholder.svg"}
                         alt={cat.name}
                         className="w-16 h-16 mx-auto rounded-full object-cover mb-2"
                       />
@@ -1292,7 +1292,7 @@ const sendWhatsappConfirmation = async () => {
                     >
                       <div className="flex items-center gap-3">
                         <img
-                          src={srv.imagem_service || "/placeholder.png"}
+                          src={srv.imagem_service || "/placeholder.svg"}
                           alt={srv.name}
                           className="w-12 h-12 rounded-full object-cover"
                         />
@@ -1327,7 +1327,7 @@ const sendWhatsappConfirmation = async () => {
                       }`}
                     >
                       <img
-                        src={emp.imagem_funcionario || "/placeholder.png"}
+                        src={emp.imagem_funcionario || "/placeholder.svg"}
                         alt={emp.name}
                         className="w-16 h-16 rounded-full object-cover mx-auto mb-2"
                       />

@@ -815,7 +815,7 @@ export default function QueuePage({ slug }) {
                       className="p-3 rounded-xl border-2 border-gray-200 hover:border-indigo-500 hover:bg-indigo-50 transition-all text-center"
                     >
                       <img
-                        src={cat.imagem_category || "/placeholder.png"}
+                        src={cat.imagem_category || "/placeholder.svg"}
                         alt={cat.name}
                         className="w-10 h-10 rounded-full mx-auto mb-2 object-cover"
                       />
@@ -852,7 +852,7 @@ export default function QueuePage({ slug }) {
                     >
                       <div className="flex items-center gap-3">
                         <img
-                          src={srv.imagem_service || "/placeholder.png"}
+                          src={srv.imagem_service || "/placeholder.svg"}
                           alt={srv.name}
                           className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover flex-shrink-0"
                         />
@@ -890,7 +890,7 @@ export default function QueuePage({ slug }) {
                       className="p-3 rounded-xl border-2 border-gray-200 hover:border-indigo-500 hover:bg-indigo-50 transition-all text-center"
                     >
                       <img
-                        src={emp.imagem_funcionario || "/placeholder.png"}
+                        src={emp.imagem_funcionario || "/placeholder.svg"}
                         alt={emp.name}
                         className="w-12 h-12 rounded-full mx-auto mb-2 object-cover"
                       />

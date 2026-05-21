@@ -6,6 +6,7 @@ import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import ImageDropzone from "./ImageDropzone"
 import { useConfirm } from "@/components/ConfirmDialogProvider";
 import TrialExpiredModal from "./TrialExpireModal";
+import { GripVertical, Loader2 } from "lucide-react";
 
 export default function CategoriesTab({ org, setActiveTab }) {
   const [categories, setCategories] = useState([]);
@@ -16,6 +17,8 @@ export default function CategoriesTab({ org, setActiveTab }) {
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState(""); // 🔍 Search state
+  const [draggingId, setDraggingId] = useState(null);
+  const [savingOrder, setSavingOrder] = useState(false);
   const formRef = useRef(null);
   const { palette } = useOrganizationColors(org.slug_organization);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -143,6 +146,54 @@ export default function CategoriesTab({ org, setActiveTab }) {
     loadCategories(searchQuery); // 🔍 Mantém a busca após deletar
   };
 
+  const persistOrder = async (nextCategories) => {
+    try {
+      setSavingOrder(true);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/categories/${org.slug_organization}/reorder`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: nextCategories.map((category) => category.id) }),
+        }
+      );
+
+      if (res.status === 402) {
+        setShowPaywall(true);
+        return;
+      }
+
+      if (!res.ok) throw new Error();
+
+      toast.success("Ordem das categorias atualizada.");
+    } catch {
+      toast.error("Nao foi possivel salvar a ordem das categorias.");
+      loadCategories(searchQuery);
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  const moveCategory = (sourceId, targetId) => {
+    if (!sourceId || !targetId || sourceId === targetId || searchQuery || savingOrder) return;
+
+    const sourceIndex = categories.findIndex((category) => category.id === sourceId);
+    const targetIndex = categories.findIndex((category) => category.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const nextCategories = [...categories];
+    const [moved] = nextCategories.splice(sourceIndex, 1);
+    nextCategories.splice(targetIndex, 0, moved);
+    const normalized = nextCategories.map((category, index) => ({
+      ...category,
+      order_category: index + 1,
+    }));
+
+    setCategories(normalized);
+    persistOrder(normalized);
+  };
+
   return (
     <div className="space-y-8">
       <TrialExpiredModal
@@ -214,7 +265,20 @@ export default function CategoriesTab({ org, setActiveTab }) {
       </form>
 
       <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border border-gray-200 dark:border-gray-700">
-        <h4 className="text-lg font-bold text-gray-700 dark:text-gray-200 mb-4">Categorias</h4>
+        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h4 className="text-lg font-bold text-gray-700 dark:text-gray-200">Categorias</h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Arraste pela alca para definir a ordem no agendamento.
+            </p>
+          </div>
+          {savingOrder && (
+            <span className="inline-flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-300">
+              <Loader2 size={14} className="animate-spin" />
+              Salvando ordem
+            </span>
+          )}
+        </div>
 
         {/* 🔍 Search Input */}
         <div className="mb-4 flex gap-2">
@@ -242,7 +306,9 @@ export default function CategoriesTab({ org, setActiveTab }) {
             <table className="w-full text-sm bg-white dark:bg-gray-800 rounded-lg">
               <thead className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
                 <tr>
+                  <th className="px-4 py-3 text-left w-10"></th>
                   <th className="px-4 py-3 text-left">ID</th>
+                  <th className="px-4 py-3 text-left">Ordem</th>
                   <th className="px-4 py-3 text-left">Nome</th>
                   <th className="px-4 py-3 text-left">Imagem</th>
                   <th className="px-4 py-3 text-left">Ações</th>
@@ -253,9 +319,24 @@ export default function CategoriesTab({ org, setActiveTab }) {
                 {categories.map((cat) => (
                   <tr
                     key={cat.id}
-                    className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    draggable={!searchQuery && !savingOrder}
+                    onDragStart={() => setDraggingId(cat.id)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => moveCategory(draggingId, cat.id)}
+                    onDragEnd={() => setDraggingId(null)}
+                    className={`border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition ${
+                      draggingId === cat.id ? "opacity-50" : ""
+                    }`}
                   >
+                    <td className="px-4 py-3 text-gray-400">
+                      {!searchQuery ? (
+                        <GripVertical size={18} className="cursor-grab active:cursor-grabbing" />
+                      ) : (
+                        "-"
+                      )}
+                    </td>
                     <td className="px-4 py-3">{cat.id}</td>
+                    <td className="px-4 py-3">{cat.order_category || "-"}</td>
                     <td className="px-4 py-3">{cat.name}</td>
                     <td className="px-4 py-3">
                       {cat.imagem_category ? (
@@ -286,7 +367,7 @@ export default function CategoriesTab({ org, setActiveTab }) {
 
                 {!categories.length && (
                   <tr>
-                    <td colSpan={4} className="text-center text-gray-400 py-6">
+                    <td colSpan={6} className="text-center text-gray-400 py-6">
                       Nenhuma categoria cadastrada.
                     </td>
                   </tr>

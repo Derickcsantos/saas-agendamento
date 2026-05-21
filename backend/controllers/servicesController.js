@@ -1,10 +1,11 @@
 import { v4 as uuidv4 } from "uuid";
 import sharp from "sharp";
 import { supabase } from "../lib/supabase.js";
+import { invalidateCatalogCache } from "../utils/catalogCache.js";
 
 // 🚀 CACHE SYSTEM
 const cacheStore = new Map(); // { organizationId: { data: [...], timestamp: number } }
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 1 dia
 
 function setServiceCache(orgId, data) {
   cacheStore.set(`services_${orgId}`, {
@@ -69,6 +70,19 @@ async function uploadServiceImage(file) {
   return publicUrl.publicUrl;
 }
 
+async function getNextServiceOrder(organizationId) {
+  const { data, error } = await supabase
+    .from("services")
+    .select("order_service")
+    .eq("organization_id", organizationId)
+    .order("order_service", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return Number(data?.order_service || 0) + 1;
+}
+
 export const getServices = async (req, res) => {
   try {
     const { name } = req.query;
@@ -95,8 +109,9 @@ export const getServices = async (req, res) => {
     if (!services) {
       let query = supabase
         .from('services')
-        .select('id, name, category_id, duration, price, categories(name), is_online, durability_days, imagem_service')
+        .select('id, name, category_id, duration, price, order_service, categories(name), is_online, durability_days, imagem_service')
         .eq('organization_id', org.id)
+        .order('order_service', { ascending: true, nullsFirst: false })
         .order('name', { ascending: true });
 
       // Se o parâmetro `name` for fornecido, aplica o filtro
@@ -177,8 +192,9 @@ export const getServicesBySlug = async (req, res) => {
     if (!services) {
       let query = supabase
         .from('services')
-        .select('id, name, category_id, duration, price, categories(name), is_online, durability_days, imagem_service')
+        .select('id, name, category_id, duration, price, order_service, categories(name), is_online, durability_days, imagem_service')
         .eq('organization_id', orgData.id)
+        .order('order_service', { ascending: true, nullsFirst: false })
         .order('name', { ascending: true });
 
       // Aplica filtro de busca se fornecido
@@ -346,6 +362,9 @@ export const updateAdditionalServicesByServiceSlug = async (req, res) => {
       if (insertError) throw insertError;
     }
 
+    invalidateServiceCache(orgData.id);
+    invalidateCatalogCache(orgData.id);
+
     return res.json({ success: true });
   } catch (error) {
     console.error("Error updating additional services:", error);
@@ -391,6 +410,7 @@ export const createService = async (req, res) => {
       durability_days: toNumberOrNull(durability_days) ?? 0,
       is_online: toBoolean(is_online),
       imagem_service: imageUrl,
+      order_service: await getNextServiceOrder(orgData.id),
     };
 
     const { data, error } = await supabase.from("services").insert([payload]).select();
@@ -399,6 +419,7 @@ export const createService = async (req, res) => {
     
     // 🚀 Invalida cache após criar
     invalidateServiceCache(orgData.id);
+    invalidateCatalogCache(orgData.id);
     
     console.log('✅ Serviço criado com sucesso:', data[0].id);
     return res.status(201).json(data[0]);
@@ -459,6 +480,7 @@ export const updateService = async (req, res) => {
 
     // 🚀 Invalida cache após atualizar
     invalidateServiceCache(orgData.id);
+    invalidateCatalogCache(orgData.id);
 
     console.log('✅ Serviço atualizado com sucesso:', id);
     return res.json(data[0]);
@@ -491,10 +513,88 @@ export const deleteService = async (req, res) => {
     
     // 🚀 Invalida cache após deletar
     invalidateServiceCache(orgData.id);
+    invalidateCatalogCache(orgData.id);
     
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting service:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const reorderServices = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const ids = Array.isArray(req.body?.ids)
+      ? req.body.ids.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)
+      : [];
+
+    if (!ids.length || ids.length !== new Set(ids).size) {
+      return res.status(400).json({ error: "Lista de servicos invalida" });
+    }
+
+    const { data: orgData, error: orgError } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug_organization", slug)
+      .single();
+
+    if (orgError || !orgData) {
+      return res.status(404).json({ error: "Organizacao nao encontrada" });
+    }
+
+    const { data: existing, error: existingError } = await supabase
+      .from("services")
+      .select("id, order_service")
+      .eq("organization_id", orgData.id);
+
+    if (existingError) throw existingError;
+
+    const existingIds = new Set((existing || []).map((service) => service.id));
+    const includesEveryService = (existing || []).length === ids.length
+      && ids.every((id) => existingIds.has(id));
+
+    if (!includesEveryService) {
+      return res.status(400).json({ error: "Ha servicos invalidos para esta organizacao" });
+    }
+
+    const maxOrder = Math.max(
+      0,
+      ...(existing || []).map((service) => Number(service.order_service) || 0)
+    );
+
+    const temporaryResults = await Promise.all(
+      ids.map((id, index) =>
+        supabase
+          .from("services")
+          .update({ order_service: maxOrder + index + 1 })
+          .eq("id", id)
+          .eq("organization_id", orgData.id)
+      )
+    );
+
+    const temporaryFailed = temporaryResults.find((result) => result.error);
+    if (temporaryFailed?.error) throw temporaryFailed.error;
+
+    const results = await Promise.all(
+      ids.map((id, index) =>
+        supabase
+          .from("services")
+          .update({ order_service: index + 1 })
+          .eq("id", id)
+          .eq("organization_id", orgData.id)
+      )
+    );
+
+    const failed = results.find((result) => result.error);
+    if (failed?.error) throw failed.error;
+
+    invalidateServiceCache(orgData.id);
+    invalidateCatalogCache(orgData.id);
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("Error reordering services:", error);
+    return res.status(500).json({ error: error.message || "Internal server error" });
   }
 };
