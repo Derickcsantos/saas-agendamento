@@ -61,6 +61,7 @@ import QueueWebSocketManager from './lib/websocket.js';
 import http from 'http';
 import { salariesRouter } from './routes/salaryRoutes.js';
 import { employeeIntervalsRouter } from './routes/employeeIntervalsRoutes.js';
+import { receiveEvolutionWebhook } from './controllers/whatsappOrganizationController.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -120,6 +121,7 @@ try {
 console.log('📋 Tarefas agendadas inicializadas\n');
 
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
+app.post('/whatsapp/evolution/webhook', receiveEvolutionWebhook);
 
 app.use('/api/appointments', appointmentProcessRouter);
 app.use('/api/forgot-password', forgotPasswordRouter) 
