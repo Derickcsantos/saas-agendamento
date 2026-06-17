@@ -1,15 +1,15 @@
 import fetch from "node-fetch";
 import { supabase } from "./supabase.js";
 
-const WASENDER_API_URL = "https://wasenderapi.com/api/send-message";
+const WASENDER_BASE_URL = (process.env.WASENDER_API_URL || "https://wasenderapi.com").replace(/\/$/, "");
+const WASENDER_API_URL = `${WASENDER_BASE_URL}/api/send-message`;
 const WASENDER_API_KEY = process.env.WASENDER_API_KEY;
+const EVOLUTION_BASE_URL = (process.env.EVOLUTION_API_URL || "").replace(/\/$/, "");
+const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY;
 
-// =====================================================
-// 🔄 FILA DE MENSAGENS (Rate Limit: 1 msg a cada 5s)
-// =====================================================
 const messageQueue = [];
 let isProcessingQueue = false;
-const QUEUE_DELAY = 5000; // 5 segundos entre mensagens
+const QUEUE_DELAY = 5000;
 let lastSentAt = 0;
 
 function sleep(ms) {
@@ -18,18 +18,13 @@ function sleep(ms) {
 
 function toWhatsAppJid(phone) {
   const raw = String(phone || "").trim();
-
   if (!raw) return null;
-
-  if (raw.includes("@")) {
-    return raw;
-  }
+  if (raw.includes("@")) return raw;
 
   const digits = raw.replace(/\D/g, "");
   if (!digits) return null;
 
   let nationalNumber = digits;
-
   if (digits.startsWith("55") && digits.length > 11) {
     nationalNumber = digits.slice(2);
   }
@@ -45,6 +40,12 @@ function toWhatsAppJid(phone) {
   return null;
 }
 
+function toPhoneDigits(phone) {
+  if (!phone) return null;
+  const raw = String(phone).includes("@") ? String(phone).split("@")[0] : String(phone);
+  return raw.replace(/\D/g, "") || null;
+}
+
 async function processQueue() {
   if (isProcessingQueue || messageQueue.length === 0) return;
 
@@ -52,17 +53,16 @@ async function processQueue() {
 
   while (messageQueue.length > 0) {
     const task = messageQueue.shift();
-
-    // Garante 5s mínimos desde o último envio, mesmo com fila vazia entre requisições
     const elapsedSinceLastSend = Date.now() - lastSentAt;
     const waitTime = Math.max(0, QUEUE_DELAY - elapsedSinceLastSend);
+
     if (waitTime > 0) {
-      console.log(`⏳ Aguardando ${(waitTime / 1000).toFixed(1)}s para respeitar limite da API...`);
+      console.log(`Aguardando ${(waitTime / 1000).toFixed(1)}s para respeitar limite da API...`);
       await sleep(waitTime);
     }
-    
+
     try {
-      console.log(`📤 Processando fila: ${messageQueue.length} mensagens restantes`);
+      console.log(`Processando fila: ${messageQueue.length} mensagens restantes`);
       await task.execute();
       lastSentAt = Date.now();
       task.resolve();
@@ -70,9 +70,7 @@ async function processQueue() {
       task.reject(error);
     }
 
-    // Aguardar 5 segundos antes da próxima mensagem (se houver mais na fila)
     if (messageQueue.length > 0) {
-      console.log(`⏳ Aguardando ${QUEUE_DELAY / 1000}s antes da próxima mensagem...`);
       await sleep(QUEUE_DELAY);
     }
   }
@@ -87,161 +85,181 @@ function addToQueue(executeFunc) {
   });
 }
 
+async function sendWasender({ apiKey, to, message }) {
+  if (!apiKey) {
+    throw new Error("Nenhuma API key de WhatsApp configurada");
+  }
+
+  let targetTo = to;
+
+  const sendOnce = async () => {
+    const response = await fetch(WASENDER_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: targetTo,
+        text: message,
+      }),
+    });
+
+    const rawText = await response.text();
+    console.log("Status Wasender:", response.status);
+    console.log("Resposta Wasender:", rawText.substring(0, 200));
+
+    let data;
+    try {
+      data = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      throw new Error("Resposta invalida da Wasender (nao e JSON)");
+    }
+
+    return { response, data };
+  };
+
+  let { response, data } = await sendOnce();
+
+  if (
+    response.status === 422 &&
+    String(data?.message || "").toLowerCase().includes("valid whatsapp jid")
+  ) {
+    if (targetTo.endsWith("@s.whatsapp.net")) {
+      targetTo = targetTo.replace("@s.whatsapp.net", "@c.us");
+      ({ response, data } = await sendOnce());
+    } else if (targetTo.endsWith("@c.us")) {
+      targetTo = targetTo.replace("@c.us", "@s.whatsapp.net");
+      ({ response, data } = await sendOnce());
+    }
+  }
+
+  if (response.status === 429) {
+    const retryAfterSeconds = Number(data?.retry_after);
+    const retryDelayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+      ? retryAfterSeconds * 1000
+      : QUEUE_DELAY;
+
+    console.warn(`Rate limit 429. Reenviando em ${retryDelayMs / 1000}s...`);
+    await sleep(retryDelayMs);
+    ({ response, data } = await sendOnce());
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.message || `Erro HTTP ${response.status}`);
+  }
+
+  return data;
+}
+
+async function sendEvolution({ instanceName, phone, message }) {
+  if (!EVOLUTION_BASE_URL || !EVOLUTION_API_KEY || !instanceName) {
+    throw new Error("Evolution nao configurada para envio");
+  }
+
+  const response = await fetch(`${EVOLUTION_BASE_URL}/message/sendText/${encodeURIComponent(instanceName)}`, {
+    method: "POST",
+    headers: {
+      apikey: EVOLUTION_API_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      number: toPhoneDigits(phone),
+      textMessage: {
+        text: message,
+      },
+    }),
+  });
+
+  const rawText = await response.text();
+  console.log("Status Evolution:", response.status);
+  console.log("Resposta Evolution:", rawText.substring(0, 200));
+
+  let data;
+  try {
+    data = rawText ? JSON.parse(rawText) : {};
+  } catch {
+    throw new Error("Resposta invalida da Evolution (nao e JSON)");
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.message || data?.error || `Erro HTTP ${response.status}`);
+  }
+
+  return data;
+}
+
 /**
  * Envia mensagem WhatsApp usando:
- * 1. WhatsApp da organização (se conectado e useDefaultApiKey=false)
- * 2. API Key padrão do .env (se useDefaultApiKey=true ou sem organização)
- * 
- * @param {string} phone - Telefone do destinatário
- * @param {string} message - Mensagem a enviar
- * @param {string|null} organizationId - ID da organização (opcional)
- * @param {boolean} useDefaultApiKey - Se true, força uso da API key padrão (.env)
+ * 1. Evolution da organizacao, quando a linha nao tiver wasender_session_id.
+ * 2. Wasender da organizacao, quando wasender_session_id estiver preenchido.
+ * 3. Wasender padrao do .env como fallback imediato.
  */
 export async function sendWhatsAppMessage(phone, message, organizationId = null, useDefaultApiKey = false) {
   if (!phone || !message) {
-    console.error("❌ Telefone e mensagem são obrigatórios");
-    throw new Error("Telefone e mensagem são obrigatórios");
+    throw new Error("Telefone e mensagem sao obrigatorios");
   }
 
   const normalizedTo = toWhatsAppJid(phone);
   if (!normalizedTo) {
-    console.error("❌ Telefone inválido para WhatsApp:", phone);
-    throw new Error("Telefone inválido para WhatsApp");
+    throw new Error("Telefone invalido para WhatsApp");
   }
 
-  // Adicionar à fila
   return addToQueue(async () => {
-    const to = normalizedTo;
+    let provider = "wasender";
+    let source = "WASENDER_PADRAO";
+    let wasenderApiKey = WASENDER_API_KEY;
+    let evolutionInstanceName = null;
 
-    let apiKey = WASENDER_API_KEY; // Fallback padrão
-    let source = "API_KEY_PADRAO";
-
-    // ✅ Se useDefaultApiKey=true, sempre usa a API key padrão (representante)
-    if (useDefaultApiKey) {
-      console.log("🔑 Forçando uso da API key padrão (.env) - mensagem para representante");
-      apiKey = WASENDER_API_KEY;
-      source = "API_KEY_PADRAO";
-    }
-    // ✅ Verificar se organização tem WhatsApp conectado (apenas para clientes)
-    else if (organizationId) {
+    if (!useDefaultApiKey && organizationId) {
       try {
-        console.log(`🔍 Buscando WhatsApp da organização: ${organizationId}`);
-        
         const { data: orgWhatsapp, error } = await supabase
           .from("whatsapp_organization")
-          .select("whatsapp_api_key")
+          .select("whatsapp_api_key, wasender_session_id")
           .eq("organization_id", organizationId)
           .maybeSingle();
 
         if (error) {
-          console.warn("⚠️ Erro ao buscar WhatsApp da organização:", error.message);
-        }
-
-        if (!error && orgWhatsapp?.whatsapp_api_key) {
-          apiKey = orgWhatsapp.whatsapp_api_key;
-          source = "WHATSAPP_ORGANIZACAO";
-          console.log("✅ Usando WhatsApp da organização:", organizationId);
-        } else if (!orgWhatsapp) {
-          console.log("ℹ️ Organização sem WhatsApp conectado, usando API key padrão");
+          console.warn("Erro ao buscar WhatsApp da organizacao:", error.message);
+        } else if (orgWhatsapp?.whatsapp_api_key) {
+          if (orgWhatsapp.wasender_session_id) {
+            provider = "wasender";
+            source = "WASENDER_ORGANIZACAO";
+            wasenderApiKey = orgWhatsapp.whatsapp_api_key;
+          } else {
+            provider = "evolution";
+            source = "EVOLUTION_ORGANIZACAO";
+            evolutionInstanceName = orgWhatsapp.whatsapp_api_key;
+          }
         }
       } catch (err) {
-        console.error("⚠️ Erro ao buscar WhatsApp da organização, usando fallback:", err.message);
+        console.error("Erro ao buscar WhatsApp da organizacao, usando fallback:", err.message);
       }
-    } else {
-      console.log("ℹ️ organizationId não fornecido, usando API key padrão");
     }
 
-    if (!apiKey) {
-      console.error("❌ Nenhuma API key disponível (organização ou .env)");
-      throw new Error("Nenhuma API key de WhatsApp configurada");
-    }
+    console.log(`Enviando WhatsApp via ${source}`);
+    console.log("To:", provider === "evolution" ? toPhoneDigits(phone) : normalizedTo);
+    console.log("Message preview:", `${message.substring(0, 100)}...`);
 
-    console.log(`📤 Enviando WhatsApp via ${source}`);
-    console.log("To:", to);
-    console.log("Message preview:", message.substring(0, 100) + "...");
-
-    try {
-      let targetTo = to;
-
-      const sendOnce = async () => {
-        const response = await fetch(WASENDER_API_URL, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            to: targetTo,
-            text: message,
-          }),
+    if (provider === "evolution") {
+      try {
+        return await sendEvolution({
+          instanceName: evolutionInstanceName,
+          phone,
+          message,
         });
-
-        const rawText = await response.text();
-        console.log("📩 Status Wasender:", response.status);
-        console.log("📩 Resposta Wasender:", rawText.substring(0, 200));
-
-        let data;
-        try {
-          data = JSON.parse(rawText);
-        } catch {
-          console.error("❌ Resposta inválida da Wasender (não é JSON):", rawText);
-          throw new Error("Resposta inválida da Wasender (não é JSON)");
-        }
-
-        return { response, data };
-      };
-
-      let { response, data } = await sendOnce();
-
-      if (
-        response.status === 422 &&
-        String(data?.message || "").toLowerCase().includes("valid whatsapp jid")
-      ) {
-        if (targetTo.endsWith("@s.whatsapp.net")) {
-          targetTo = targetTo.replace("@s.whatsapp.net", "@c.us");
-          console.warn("⚠️ JID @s.whatsapp.net rejeitado. Tentando @c.us...");
-          ({ response, data } = await sendOnce());
-        } else if (targetTo.endsWith("@c.us")) {
-          targetTo = targetTo.replace("@c.us", "@s.whatsapp.net");
-          console.warn("⚠️ JID @c.us rejeitado. Tentando @s.whatsapp.net...");
-          ({ response, data } = await sendOnce());
-        }
+      } catch (evolutionError) {
+        console.error("Evolution falhou, tentando fallback Wasender:", evolutionError.message);
+        source = "WASENDER_FALLBACK";
+        wasenderApiKey = WASENDER_API_KEY;
       }
-
-      if (response.status === 429) {
-        const retryAfterSeconds = Number(data?.retry_after);
-        const retryDelayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
-          ? retryAfterSeconds * 1000
-          : QUEUE_DELAY;
-
-        console.warn(`⚠️ Rate limit 429. Reenviando em ${retryDelayMs / 1000}s...`);
-        await sleep(retryDelayMs);
-        ({ response, data } = await sendOnce());
-      }
-
-      if (!response.ok) {
-        console.error("❌ Erro ao enviar WhatsApp:", {
-          status: response.status,
-          message: data?.message || "Erro desconhecido",
-          data
-        });
-        throw new Error(data?.message || `Erro HTTP ${response.status}`);
-      }
-
-      console.log("✅ WhatsApp enviado com sucesso:", {
-        to: targetTo,
-        messageId: data?.id || data?.message_id || "N/A",
-        status: data?.status || "sent"
-      });
-
-      return data;
-    } catch (err) {
-      console.error("❌ Erro ao enviar WhatsApp:", {
-        phone: to,
-        source,
-        error: err.message
-      });
-      throw err;
     }
+
+    console.log(`Enviando WhatsApp via ${source}`);
+    return sendWasender({
+      apiKey: wasenderApiKey,
+      to: normalizedTo,
+      message,
+    });
   });
 }

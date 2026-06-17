@@ -218,7 +218,7 @@ export default function WhatsappTab({ org, setActiveTab }) {
 
       if (res.ok && data.success) {
         // Verificar se há QR code (pode vir como qrCode ou qr)
-        const qrCodeData = data.qrCode || data.data?.qrCode || data.data?.qr || null;
+        const qrCodeData = data.qrCode || data.data?.qrCode || data.data?.qr || data.data?.code || data.data?.base64 || data.data?.qrcode?.code || data.data?.qrcode?.base64 || null;
         
         if (qrCodeData) {
           setQrCode(qrCodeData);
@@ -627,11 +627,19 @@ export default function WhatsappTab({ org, setActiveTab }) {
               ref={qrContainerRef}
               className="bg-white p-6 rounded-lg inline-block mb-4 w-full sm:w-auto shadow-inner"
             >
-              <QRCodeCanvas
-                value={qrCode}
-                size={qrSize}
-                style={{ width: "100%", height: "auto", maxWidth: 360 }}
-              />
+              {String(qrCode).startsWith("data:image") ? (
+                <img
+                  src={qrCode}
+                  alt="QR Code WhatsApp"
+                  className="mx-auto h-auto w-full max-w-[360px]"
+                />
+              ) : (
+                <QRCodeCanvas
+                  value={qrCode}
+                  size={qrSize}
+                  style={{ width: "100%", height: "auto", maxWidth: 360 }}
+                />
+              )}
             </div>
             <p className="text-gray-600 mb-2">
               1. Abra o WhatsApp no seu celular

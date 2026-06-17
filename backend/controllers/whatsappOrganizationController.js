@@ -10,7 +10,11 @@ import { redis } from '../lib/redis.js';
  */
 const WASENDER_BASE_URL = (process.env.WASENDER_API_URL || 'https://www.wasenderapi.com').replace(/\/$/, '');
 const WASENDER_PERSONAL_ACCESS_TOKEN = process.env.WASENDER_PERSONAL_ACCESS_TOKEN;
+const WASENDER_API_KEY = process.env.WASENDER_API_KEY;
+const EVOLUTION_BASE_URL = (process.env.EVOLUTION_API_URL || '').replace(/\/$/, '');
+const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY;
 const BACKEND_URL = (process.env.BACKEND_URL || '').replace(/\/$/, '');
+const EVOLUTION_WEBHOOK_PATH = '/whatsapp/evolution/webhook';
 
 // ===== helpers =====
 function assertEnv() {
@@ -21,6 +25,19 @@ function assertEnv() {
   }
   if (!BACKEND_URL) {
     const err = new Error('BACKEND_URL não configurado (necessário para webhook_url).');
+    err.statusCode = 500;
+    throw err;
+  }
+}
+
+function assertEvolutionEnv() {
+  if (!EVOLUTION_BASE_URL || !EVOLUTION_API_KEY) {
+    const err = new Error('EVOLUTION_API_URL ou EVOLUTION_API_KEY nao configurados.');
+    err.statusCode = 500;
+    throw err;
+  }
+  if (!BACKEND_URL) {
+    const err = new Error('BACKEND_URL nao configurado (necessario para webhook_url).');
     err.statusCode = 500;
     throw err;
   }
@@ -49,6 +66,46 @@ function extractPhoneFromJid(jid) {
   // mantém apenas dígitos
   const digits = base.replace(/\D/g, '');
   return digits || base;
+}
+
+function normalizePhoneDigits(phone) {
+  if (!phone) return null;
+  const base = String(phone).includes('@') ? String(phone).split('@')[0] : String(phone);
+  return base.replace(/\D/g, '') || null;
+}
+
+function buildEvolutionInstanceName(slug, sessionName) {
+  const raw = sessionName || `org_${slug}`;
+  return String(raw)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .replace(/_+/g, '_')
+    .slice(0, 64);
+}
+
+function isWasenderRow(row) {
+  return Boolean(row?.wasender_session_id);
+}
+
+function getEvolutionWebhookUrl() {
+  assertEvolutionEnv();
+  return `${BACKEND_URL}${EVOLUTION_WEBHOOK_PATH}`;
+}
+
+function normalizeEvolutionWebhookStatus(payload) {
+  const state = String(
+    payload?.data?.state ||
+    payload?.data?.status ||
+    payload?.state ||
+    payload?.status ||
+    ''
+  ).toLowerCase();
+
+  if (['open', 'connected', 'connect'].includes(state)) return 'CONNECTED';
+  if (['close', 'closed', 'disconnected', 'disconnect', 'loggedout'].includes(state)) return 'DISCONNECTED';
+  if (['connecting', 'qrcode', 'qr', 'pairing'].includes(state)) return 'CONNECTING';
+  return state ? state.toUpperCase() : null;
 }
 
 async function getOrgIdBySlug(slug) {
@@ -220,7 +277,199 @@ async function getSessionQRCode(sessionId) {
   }
 }
 
+// ===== Evolution API calls =====
+function evolutionApi() {
+  assertEvolutionEnv();
+  return axios.create({
+    baseURL: EVOLUTION_BASE_URL,
+    headers: {
+      apikey: EVOLUTION_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    timeout: 30000,
+  });
+}
+
+function extractEvolutionQr(data) {
+  return data?.qrcode?.code || data?.code || data?.qrcode?.base64 || data?.base64 || data?.qrCode || data?.qr || null;
+}
+
+function extractEvolutionStatus(instance) {
+  return String(
+    instance?.status ||
+    instance?.connectionStatus?.state ||
+    instance?.connectionStatus?.status ||
+    instance?.state ||
+    ''
+  ).toLowerCase();
+}
+
+async function fetchEvolutionInstance(instanceName) {
+  const api = evolutionApi();
+  const { data } = await api.get('/instance/fetchInstances');
+  const instances = Array.isArray(data) ? data : data?.instances || data?.data || [];
+  return instances.find((item) => {
+    const instance = item?.instance || item;
+    return instance?.instanceName === instanceName || instance?.name === instanceName;
+  }) || null;
+}
+
+async function createEvolutionInstance({ instanceName, phone_number, webhook_url }) {
+  const api = evolutionApi();
+  const payload = {
+    instanceName,
+    qrcode: true,
+    integration: 'WHATSAPP-BAILEYS',
+    number: normalizePhoneDigits(phone_number),
+    webhook: {
+      enabled: true,
+      url: webhook_url,
+      events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
+    },
+  };
+
+  console.log('[Evolution] Criando instancia:', JSON.stringify({ ...payload, webhook: payload.webhook }, null, 2));
+  const { data } = await api.post('/instance/create', payload);
+  return data;
+}
+
+async function setEvolutionWebhook(instanceName) {
+  const api = evolutionApi();
+  const webhookUrl = getEvolutionWebhookUrl();
+  const payload = {
+    enabled: true,
+    url: webhookUrl,
+    events: ['CONNECTION_UPDATE', 'QRCODE_UPDATED', 'MESSAGES_UPSERT'],
+    headers: {},
+    base64: true,
+  };
+
+  console.log(`[Evolution] Configurando webhook da instancia ${instanceName}: ${webhookUrl}`);
+  const { data } = await api.post(`/webhook/set/${encodeURIComponent(instanceName)}`, payload);
+  return data;
+}
+
+async function getEvolutionWebhook(instanceName) {
+  const api = evolutionApi();
+  const { data } = await api.get(`/webhook/find/${encodeURIComponent(instanceName)}`);
+  return data;
+}
+
+async function ensureEvolutionWebhook(instanceName) {
+  const expectedUrl = getEvolutionWebhookUrl();
+
+  try {
+    const current = await getEvolutionWebhook(instanceName);
+    const currentWebhook = current?.webhook || current?.data || current;
+    if (currentWebhook?.enabled === true && currentWebhook?.url === expectedUrl) {
+      return current;
+    }
+  } catch (error) {
+    console.warn('[Evolution] Nao foi possivel consultar webhook atual, tentando configurar:', error.response?.data || error.message);
+  }
+
+  return setEvolutionWebhook(instanceName);
+}
+
+async function connectEvolutionInstance(instanceName) {
+  const api = evolutionApi();
+  const { data } = await api.get(`/instance/connect/${encodeURIComponent(instanceName)}`);
+  return data;
+}
+
+async function sendEvolutionText(instanceName, number, message) {
+  const api = evolutionApi();
+  const { data } = await api.post(`/message/sendText/${encodeURIComponent(instanceName)}`, {
+    number: normalizePhoneDigits(number),
+    textMessage: {
+      text: String(message),
+    },
+  });
+  return data;
+}
+
+async function findEvolutionContacts(instanceName, { page, limit } = {}) {
+  const api = evolutionApi();
+  const take = Number(limit) || 1000;
+  const skip = page ? Math.max(Number(page) - 1, 0) * take : 0;
+  const { data } = await api.post(`/chat/findContacts/${encodeURIComponent(instanceName)}`, {
+    where: {},
+    take,
+    skip,
+    orderBy: {},
+  });
+  return Array.isArray(data) ? data : data?.data || data?.contacts || [];
+}
+
+async function sendWasenderDefault(number, message) {
+  if (!WASENDER_API_KEY) {
+    throw new Error('WASENDER_API_KEY nao configurado para fallback.');
+  }
+
+  const api = axios.create({
+    baseURL: `${WASENDER_BASE_URL}/api`,
+    headers: {
+      Authorization: `Bearer ${WASENDER_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    timeout: 30000,
+  });
+
+  const { data } = await api.post('/send-message', {
+    to: normalizePhoneE164(number),
+    text: String(message),
+  });
+  return data;
+}
+
 // ===== Controllers =====
+
+export const receiveEvolutionWebhook = async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const instanceName = payload?.instance || payload?.instanceName || payload?.data?.instance || payload?.data?.instanceName;
+    const event = payload?.event || payload?.type || payload?.data?.event || null;
+    const normalizedStatus = normalizeEvolutionWebhookStatus(payload);
+
+    console.log('[Evolution Webhook] Evento recebido:', {
+      instanceName,
+      event,
+      status: normalizedStatus,
+    });
+
+    if (!instanceName) {
+      return res.status(200).json({ success: true, ignored: true, reason: 'missing_instance' });
+    }
+
+    const updates = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (normalizedStatus) {
+      updates.status = normalizedStatus;
+    } else if (event === 'QRCODE_UPDATED') {
+      updates.status = 'CONNECTING';
+    }
+
+    if (Object.keys(updates).length > 1) {
+      const { error } = await supabase
+        .from('whatsapp_organization')
+        .update(updates)
+        .eq('whatsapp_api_key', instanceName)
+        .is('wasender_session_id', null);
+
+      if (error) {
+        console.error('[Evolution Webhook] Erro ao atualizar status:', error);
+        throw error;
+      }
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('[Evolution Webhook] Erro ao processar webhook:', error.response?.data || error.message);
+    return res.status(200).json({ success: false, error: error.message });
+  }
+};
 
 // 1) Status
 export const getWhatsappStatus = async (req, res) => {
@@ -232,6 +481,32 @@ export const getWhatsappStatus = async (req, res) => {
     if (!row?.whatsapp_api_key) {
       console.log(`[WhatsApp] Sem API key para organização ${slug}`);
       return res.json({ isConnected: false });
+    }
+
+    if (!isWasenderRow(row)) {
+      const instanceName = row.whatsapp_api_key;
+      let evolutionInstance = null;
+      try {
+        evolutionInstance = await fetchEvolutionInstance(instanceName);
+      } catch (error) {
+        console.warn('[Evolution] Erro ao consultar instancia, usando status local:', error.response?.data || error.message);
+      }
+      const instance = evolutionInstance?.instance || evolutionInstance;
+      const rowStatus = String(row.status || '').toLowerCase();
+      const status = rowStatus === 'connected'
+        ? rowStatus
+        : extractEvolutionStatus(instance) || rowStatus;
+      const isConnected = ['open', 'connected'].includes(status);
+
+      console.log(`[Evolution] Status para ${slug}: ${status} (conectado: ${isConnected})`);
+
+      return res.json({
+        isConnected,
+        status,
+        provider: 'evolution',
+        sessionId: instanceName,
+        data: evolutionInstance,
+      });
     }
 
     // Status é GET /api/status com Authorization Bearer SESSION_API_KEY
@@ -246,6 +521,7 @@ export const getWhatsappStatus = async (req, res) => {
     return res.json({
       isConnected,
       status,
+      provider: 'wasender',
       sessionId: row.wasender_session_id,
       data,
     });
@@ -275,69 +551,135 @@ export const connectWhatsapp = async (req, res) => {
     let row = await getWhatsappRow(orgId);
     let isNewSession = false;
 
-    // Se não existe sessão, cria uma
-    if (!row?.wasender_session_id || !row?.whatsapp_api_key) {
-      if (!phone_number) {
-        return res.status(400).json({
-          error: 'phone_number é obrigatório para criar a primeira sessão (formato E.164).',
+    if (isWasenderRow(row)) {
+      console.log(`[WhatsApp] Usando sessão Wasender existente: ${row.wasender_session_id}`);
+      const connected = await connectSession(row.wasender_session_id);
+
+      return res.json({
+        success: true,
+        provider: 'wasender',
+        sessionId: row.wasender_session_id,
+        apiKey: row.whatsapp_api_key,
+        status: connected.status,
+        qrCode: connected.qrCode || connected.qr || null,
+        isNewSession,
+        message:
+          connected.status === 'NEED_SCAN' || connected.status === 'SCAN_QR_CODE'
+            ? 'Escaneie o QR Code no seu WhatsApp'
+            : connected.status === 'CONNECTED'
+            ? 'WhatsApp já está conectado'
+            : 'Sessão inicializada',
+        data: connected,
+      });
+    }
+
+    try {
+      let instanceName = row?.whatsapp_api_key;
+
+      if (!instanceName) {
+        if (!phone_number) {
+          return res.status(400).json({
+            error: 'phone_number é obrigatório para criar a primeira sessão (formato E.164).',
+          });
+        }
+
+        isNewSession = true;
+        const webhookUrl = getEvolutionWebhookUrl();
+        instanceName = buildEvolutionInstanceName(slug, session_name);
+
+        console.log(`[Evolution] Criando nova instancia: ${instanceName}`);
+        const created = await createEvolutionInstance({
+          instanceName,
+          phone_number,
+          webhook_url: webhookUrl,
         });
+
+        row = await upsertWhatsappRow(orgId, {
+          wasender_session_id: null,
+          phone_organization: phone_number,
+          whatsapp_api_key: instanceName,
+          webhook_secret: created?.hash || null,
+          status: created?.instance?.status || 'CREATED',
+        });
+
+        await ensureEvolutionWebhook(instanceName);
+
+        const createdQr = extractEvolutionQr(created);
+        if (createdQr) {
+          return res.json({
+            success: true,
+            provider: 'evolution',
+            sessionId: instanceName,
+            apiKey: EVOLUTION_API_KEY,
+            status: created?.instance?.status || 'connecting',
+            qrCode: createdQr,
+            isNewSession,
+            message: 'Escaneie o QR Code no seu WhatsApp',
+            data: created,
+          });
+        }
+      } else {
+        console.log(`[Evolution] Usando instancia existente: ${instanceName}`);
       }
 
-      console.log('[WhatsApp] Criando nova sessão...');
-      isNewSession = true;
+      await ensureEvolutionWebhook(instanceName);
+      const connected = await connectEvolutionInstance(instanceName);
 
-      const phoneE164 = normalizePhoneE164(phone_number);
+      return res.json({
+        success: true,
+        provider: 'evolution',
+        sessionId: instanceName,
+        apiKey: EVOLUTION_API_KEY,
+        status: connected?.status || 'connecting',
+        qrCode: extractEvolutionQr(connected),
+        isNewSession,
+        message: 'Escaneie o QR Code no seu WhatsApp',
+        data: connected,
+      });
+    } catch (evolutionError) {
+      console.error('[Evolution] Falha ao conectar. Acionando fallback Wasender:', evolutionError.response?.data || evolutionError.message);
+
+      if (!phone_number && !row?.phone_organization) {
+        throw evolutionError;
+      }
+
+      const phoneE164 = normalizePhoneE164(phone_number || row.phone_organization);
       const webhookUrl = `${BACKEND_URL}/api/whatsapp-webhook/${slug}`;
       const finalSessionName = session_name || `org_${slug}`;
-
-      // Create: POST /api/whatsapp-sessions (Personal Access Token)
       const created = await createWhatsappSession({
         name: finalSessionName,
         phone_number: phoneE164,
         webhook_url: webhookUrl,
       });
 
-      console.log(`[WhatsApp] Sessão criada com ID: ${created.id}`);
-
-      // Salvar no banco de dados IMEDIATAMENTE
       row = await upsertWhatsappRow(orgId, {
         wasender_session_id: created.id,
-        phone_organization: phone_number,
+        phone_organization: phone_number || row?.phone_organization,
         whatsapp_api_key: created.api_key,
         webhook_secret: created.webhook_secret || null,
+        status: created.status || 'CREATED',
       });
 
-      console.log('[WhatsApp] Dados salvos no banco de dados');
-
-      // Aguardar um pouco para garantir que a sessão foi criada no Wasender
       await new Promise(resolve => setTimeout(resolve, 2000));
-    } else {
-      console.log(`[WhatsApp] Usando sessão existente: ${row.wasender_session_id}`);
+      const connected = await connectSession(row.wasender_session_id);
+
+      return res.json({
+        success: true,
+        provider: 'wasender',
+        fallbackFrom: 'evolution',
+        sessionId: row.wasender_session_id,
+        apiKey: row.whatsapp_api_key,
+        status: connected.status,
+        qrCode: connected.qrCode || connected.qr || null,
+        isNewSession: true,
+        message:
+          connected.status === 'NEED_SCAN' || connected.status === 'SCAN_QR_CODE'
+            ? 'Escaneie o QR Code no seu WhatsApp'
+            : 'Sessão inicializada via fallback Wasender',
+        data: connected,
+      });
     }
 
-    // Connect: POST /api/whatsapp-sessions/{id}/connect
-    console.log('[WhatsApp] Iniciando conexão da sessão...');
-    const connected = await connectSession(row.wasender_session_id);
-
-    const response = {
-      success: true,
-      sessionId: row.wasender_session_id,
-      apiKey: row.whatsapp_api_key,
-      status: connected.status,
-      qrCode: connected.qrCode || connected.qr || null,
-      isNewSession,
-      message:
-        connected.status === 'NEED_SCAN' || connected.status === 'SCAN_QR_CODE'
-          ? 'Escaneie o QR Code no seu WhatsApp'
-          : connected.status === 'CONNECTED'
-          ? 'WhatsApp já está conectado'
-          : 'Sessão inicializada',
-      data: connected, // Retornar dados completos para debug
-    };
-
-    console.log('[WhatsApp] Resposta final:', JSON.stringify(response, null, 2));
-
-    return res.json(response);
   } catch (error) {
     console.error('[WhatsApp] Erro ao conectar WhatsApp:', {
       message: error.message,
@@ -453,6 +795,70 @@ export const getContacts = async (req, res) => {
       } catch (cacheErr) {
         console.warn('[WhatsApp] Erro ao buscar cache Redis:', cacheErr?.message || String(cacheErr));
       }
+    }
+
+    if (!isWasenderRow(row)) {
+      const instanceName = row.whatsapp_api_key;
+      console.log(`[Evolution] Buscando contatos para ${slug}...`);
+      const contactsApi = await findEvolutionContacts(instanceName, { page, limit });
+
+      const mapped = contactsApi.map((c) => {
+        const phone = normalizePhoneDigits(c.number || c.id || c.jid);
+        return {
+          ...c,
+          jid: c.id || c.jid || (phone ? `${phone}@s.whatsapp.net` : null),
+          phone_contact: phone,
+          name_api: c.pushName || c.name || null,
+          imgUrl: c.profilePictureUrl || c.imgUrl || null,
+        };
+      }).filter((c) => !!c.phone_contact);
+
+      const now = new Date().toISOString();
+      const upserts = mapped.map((c) => ({
+        organization_id: orgId,
+        phone_contact: c.phone_contact,
+        whatsapp_jid: c.jid,
+        name_contact: c.name_api,
+        image_contact: c.imgUrl,
+        last_sync_at: now,
+        updated_at: now,
+      }));
+
+      if (upserts.length > 0) {
+        const { error: upsertErr } = await supabase
+          .from('whatsapp_contacts')
+          .upsert(upserts, { onConflict: 'organization_id,phone_contact' });
+
+        if (upsertErr) {
+          console.warn('[Evolution] Erro ao sincronizar contatos no banco:', upsertErr.message);
+        }
+      }
+
+      let contacts = mapped.map((c) => ({
+        ...c,
+        name: c.name_api || 'Sem nome',
+        phone: c.phone_contact,
+        image: c.imgUrl || null,
+        observation: null,
+      }));
+
+      if (search) {
+        const s = String(search).toLowerCase();
+        contacts = contacts.filter((c) => {
+          const name = (c?.name || '').toLowerCase();
+          const jid = String(c?.jid || '');
+          return name.includes(s) || jid.includes(String(search)) || String(c.phone_contact || '').includes(String(search));
+        });
+      }
+
+      return res.json({
+        success: true,
+        contacts,
+        total: contacts.length,
+        cached: false,
+        provider: 'evolution',
+        source: 'evolution_api_with_db_sync',
+      });
     }
 
     // GET /api/contacts com Authorization Bearer API_KEY
@@ -687,9 +1093,41 @@ export const getContactInfo = async (req, res) => {
       return res.status(400).json({ error: 'WhatsApp não conectado' });
     }
 
-    const api = wasenderSession(row.whatsapp_api_key);
     const targetJid = decodeURIComponent(jid);
     const phone = extractPhoneFromJid(targetJid);
+
+    if (!isWasenderRow(row)) {
+      const contactsApi = await findEvolutionContacts(row.whatsapp_api_key, { limit: 1000 });
+      const apiContact = contactsApi.find((c) => {
+        const contactPhone = normalizePhoneDigits(c.number || c.id || c.jid);
+        return contactPhone === phone;
+      }) || {};
+
+      const { data: existing } = await supabase
+        .from('whatsapp_contacts')
+        .select('*')
+        .eq('organization_id', orgId)
+        .eq('phone_contact', phone)
+        .maybeSingle();
+
+      const responseContact = {
+        ...apiContact,
+        jid: apiContact.id || apiContact.jid || targetJid,
+        phone_contact: phone,
+        name: existing?.name_contact || apiContact.pushName || apiContact.name || null,
+        observation: existing?.observation_contact || null,
+        image: existing?.image_contact || apiContact.profilePictureUrl || apiContact.imgUrl || null,
+      };
+
+      return res.json({
+        success: true,
+        provider: 'evolution',
+        contact: responseContact,
+        raw: apiContact,
+      });
+    }
+
+    const api = wasenderSession(row.whatsapp_api_key);
 
     console.log(`[WhatsApp] Buscando informações detalhadas do contato ${phone}...`);
 
@@ -890,6 +1328,17 @@ export const sendMessage = async (req, res) => {
       return res.status(400).json({ error: 'WhatsApp não conectado' });
     }
 
+    if (!isWasenderRow(row)) {
+      try {
+        const data = await sendEvolutionText(row.whatsapp_api_key, number, message);
+        return res.json({ success: true, provider: 'evolution', data });
+      } catch (evolutionError) {
+        console.error('[Evolution] Erro ao enviar mensagem. Tentando fallback Wasender:', evolutionError.response?.data || evolutionError.message);
+        const data = await sendWasenderDefault(number, message);
+        return res.json({ success: true, provider: 'wasender', fallbackFrom: 'evolution', data });
+      }
+    }
+
     // POST /api/send-message com Authorization Bearer API_KEY
     const api = wasenderSession(row.whatsapp_api_key);
 
@@ -936,8 +1385,38 @@ export const sendBulkMessages = async (req, res) => {
       return res.status(400).json({ error: 'WhatsApp não conectado' });
     }
 
-    const api = wasenderSession(row.whatsapp_api_key);
     const results = { success: 0, failed: 0, errors: [] };
+
+    if (!isWasenderRow(row)) {
+      for (const n of numbers) {
+        try {
+          try {
+            await sendEvolutionText(row.whatsapp_api_key, n, message);
+          } catch (evolutionError) {
+            console.error('[Evolution] Erro no envio em lote. Tentando fallback Wasender:', evolutionError.response?.data || evolutionError.message);
+            await sendWasenderDefault(n, message);
+          }
+          results.success++;
+          await new Promise((r) => setTimeout(r, 1200));
+        } catch (e) {
+          results.failed++;
+          results.errors.push({
+            number: n,
+            error: e.response?.data || e.message,
+          });
+        }
+      }
+
+      return res.json({
+        success: true,
+        provider: 'evolution',
+        fallback: results.errors.length > 0 ? 'partial' : 'available',
+        results,
+        message: `${results.success} mensagens enviadas, ${results.failed} falharam`,
+      });
+    }
+
+    const api = wasenderSession(row.whatsapp_api_key);
 
     for (const n of numbers) {
       try {
@@ -984,6 +1463,34 @@ export const getStatistics = async (req, res) => {
     const row = await getWhatsappRow(orgId);
     if (!row?.whatsapp_api_key) {
       return res.json({ isConnected: false, totalContacts: 0, connectedSince: null });
+    }
+
+    if (!isWasenderRow(row)) {
+      let status = 'unknown';
+      let totalContacts = 0;
+
+      try {
+        const evolutionInstance = await fetchEvolutionInstance(row.whatsapp_api_key);
+        status = extractEvolutionStatus(evolutionInstance?.instance || evolutionInstance) || 'unknown';
+      } catch (e) {
+        console.warn('[Evolution] Erro ao buscar status para estatísticas:', e?.message);
+      }
+
+      try {
+        const contacts = await findEvolutionContacts(row.whatsapp_api_key, { limit: 1000 });
+        totalContacts = contacts.length;
+      } catch (e) {
+        console.warn('[Evolution] Erro ao buscar contatos para estatísticas:', e?.message);
+      }
+
+      return res.json({
+        isConnected: ['open', 'connected'].includes(status),
+        status,
+        provider: 'evolution',
+        totalContacts,
+        connectedSince: row.created_at || null,
+        sessionId: row.whatsapp_api_key,
+      });
     }
 
     const api = wasenderSession(row.whatsapp_api_key);
@@ -1040,6 +1547,22 @@ export const getQRCode = async (req, res) => {
     const orgId = await getOrgIdBySlug(slug);
 
     const row = await getWhatsappRow(orgId);
+
+    if (row?.whatsapp_api_key && !isWasenderRow(row)) {
+      console.log(`[Evolution] Obtendo QR Code para organização ${slug}`);
+      await ensureEvolutionWebhook(row.whatsapp_api_key);
+      const qrData = await connectEvolutionInstance(row.whatsapp_api_key);
+
+      return res.json({
+        success: true,
+        provider: 'evolution',
+        sessionId: row.whatsapp_api_key,
+        status: qrData?.status || 'connecting',
+        qrCode: extractEvolutionQr(qrData),
+        message: 'Escaneie o QR Code no seu WhatsApp',
+        data: qrData,
+      });
+    }
     
     if (!row?.wasender_session_id) {
       return res.status(404).json({
