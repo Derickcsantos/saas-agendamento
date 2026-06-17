@@ -108,6 +108,28 @@ function normalizeEvolutionWebhookStatus(payload) {
   return state ? state.toUpperCase() : null;
 }
 
+function serializeProviderError(error) {
+  return {
+    status: error?.response?.status || null,
+    data: error?.response?.data || null,
+    message: error?.message || 'Erro desconhecido',
+  };
+}
+
+function isEvolutionInstanceAlreadyExistsError(error) {
+  const status = Number(error?.response?.status);
+  const raw = error?.response?.data || {};
+  const text = JSON.stringify(raw).toLowerCase();
+
+  return (
+    status === 409 ||
+    text.includes('already exists') ||
+    text.includes('already exist') ||
+    text.includes('instance already') ||
+    text.includes('instancia') && text.includes('existe')
+  );
+}
+
 async function getOrgIdBySlug(slug) {
   const { data: org, error } = await supabase
     .from('organizations')
@@ -588,11 +610,21 @@ export const connectWhatsapp = async (req, res) => {
         instanceName = buildEvolutionInstanceName(slug, session_name);
 
         console.log(`[Evolution] Criando nova instancia: ${instanceName}`);
-        const created = await createEvolutionInstance({
-          instanceName,
-          phone_number,
-          webhook_url: webhookUrl,
-        });
+        let created = null;
+        try {
+          created = await createEvolutionInstance({
+            instanceName,
+            phone_number,
+            webhook_url: webhookUrl,
+          });
+        } catch (createError) {
+          if (!isEvolutionInstanceAlreadyExistsError(createError)) {
+            throw createError;
+          }
+
+          console.warn(`[Evolution] Instancia ${instanceName} ja existe. Reaproveitando para conectar.`);
+          created = await fetchEvolutionInstance(instanceName);
+        }
 
         row = await upsertWhatsappRow(orgId, {
           wasender_session_id: null,
@@ -643,7 +675,8 @@ export const connectWhatsapp = async (req, res) => {
         throw evolutionError;
       }
 
-      const phoneE164 = normalizePhoneE164(phone_number || row.phone_organization);
+      try {
+        const phoneE164 = normalizePhoneE164(phone_number || row.phone_organization);
       const webhookUrl = `${BACKEND_URL}/api/whatsapp-webhook/${slug}`;
       const finalSessionName = session_name || `org_${slug}`;
       const created = await createWhatsappSession({
@@ -678,6 +711,21 @@ export const connectWhatsapp = async (req, res) => {
             : 'Sessão inicializada via fallback Wasender',
         data: connected,
       });
+      } catch (wasenderError) {
+        console.error('[Wasender] Fallback falhou:', wasenderError.response?.data || wasenderError.message);
+
+        return res.status(502).json({
+          success: false,
+          error: 'Erro ao conectar WhatsApp',
+          provider: 'evolution',
+          fallbackTried: true,
+          details: {
+            evolution: serializeProviderError(evolutionError),
+            wasender: serializeProviderError(wasenderError),
+          },
+          message: 'A Evolution falhou e o fallback Wasender tambem falhou.',
+        });
+      }
     }
 
   } catch (error) {
