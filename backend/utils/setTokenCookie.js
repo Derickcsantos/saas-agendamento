@@ -4,7 +4,7 @@ export default function setTokenCookie(res, token) {
     secure: true,
     sameSite: 'none',   // <- ESSENCIAL para cross-site quando precisar
     path: '/',
-    maxAge: 60 * 60 * 3 * 1000,
+    maxAge: 60 * 60 * 24 * 7 * 1000,
   });
 
   // Envia também no header para fallback em clientes que bloqueiam cookie third-party
