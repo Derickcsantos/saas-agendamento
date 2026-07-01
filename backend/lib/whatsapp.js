@@ -152,15 +152,15 @@ async function sendWasender({ apiKey, to, message }) {
   return data;
 }
 
-async function sendEvolution({ instanceName, phone, message }) {
-  if (!EVOLUTION_BASE_URL || !EVOLUTION_API_KEY || !instanceName) {
+async function sendEvolution({ instanceName, apiKey, phone, message }) {
+  if (!EVOLUTION_BASE_URL || !(apiKey || EVOLUTION_API_KEY) || !instanceName) {
     throw new Error("Evolution nao configurada para envio");
   }
 
   const response = await fetch(`${EVOLUTION_BASE_URL}/message/sendText/${encodeURIComponent(instanceName)}`, {
     method: "POST",
     headers: {
-      apikey: EVOLUTION_API_KEY,
+      apikey: apiKey || EVOLUTION_API_KEY,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -210,12 +210,13 @@ export async function sendWhatsAppMessage(phone, message, organizationId = null,
     let source = "WASENDER_PADRAO";
     let wasenderApiKey = WASENDER_API_KEY;
     let evolutionInstanceName = null;
+    let evolutionInstanceApiKey = null;
 
     if (!useDefaultApiKey && organizationId) {
       try {
         const { data: orgWhatsapp, error } = await supabase
           .from("whatsapp_organization")
-          .select("whatsapp_api_key, wasender_session_id")
+          .select("whatsapp_api_key, wasender_session_id, evolution_instance_name")
           .eq("organization_id", organizationId)
           .maybeSingle();
 
@@ -229,7 +230,10 @@ export async function sendWhatsAppMessage(phone, message, organizationId = null,
           } else {
             provider = "evolution";
             source = "EVOLUTION_ORGANIZACAO";
-            evolutionInstanceName = orgWhatsapp.whatsapp_api_key;
+            evolutionInstanceName = orgWhatsapp.evolution_instance_name || orgWhatsapp.whatsapp_api_key;
+            evolutionInstanceApiKey = orgWhatsapp.evolution_instance_name
+              ? orgWhatsapp.whatsapp_api_key
+              : EVOLUTION_API_KEY;
           }
         }
       } catch (err) {
@@ -245,6 +249,7 @@ export async function sendWhatsAppMessage(phone, message, organizationId = null,
       try {
         return await sendEvolution({
           instanceName: evolutionInstanceName,
+          apiKey: evolutionInstanceApiKey,
           phone,
           message,
         });
