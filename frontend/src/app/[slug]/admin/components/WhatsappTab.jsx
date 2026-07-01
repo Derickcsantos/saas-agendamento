@@ -328,8 +328,10 @@ export default function WhatsappTab({ org, setActiveTab }) {
     }
   }
 
-  async function handleSendMessage(number) {
-    if (!message.trim()) {
+  async function handleSendMessage(number, messageOverride = null) {
+    const textToSend = typeof messageOverride === "string" ? messageOverride : message;
+
+    if (!textToSend.trim()) {
       toast.error("Digite uma mensagem");
       return;
     }
@@ -342,7 +344,7 @@ export default function WhatsappTab({ org, setActiveTab }) {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ number, message })
+          body: JSON.stringify({ number, message: textToSend })
         }
       );
 
@@ -798,9 +800,8 @@ export default function WhatsappTab({ org, setActiveTab }) {
                             <button
                               onClick={() => {
                                 const msg = prompt("Digite a mensagem:");
-                                if (msg) {
-                                  setMessage(msg);
-                                  handleSendMessage(contact.jid);
+                                if (msg?.trim()) {
+                                  handleSendMessage(contact.jid, msg);
                                 }
                               }}
                               className="text-blue-600 hover:underline flex items-center gap-1"

@@ -1121,7 +1121,7 @@ Valor: ${
           `.trim();
 
           // ✅ Enviar para representante usando API key padrão (.env)
-          await sendWhatsAppMessage(user.phone, message, null, true);
+          await sendWhatsAppMessage(user.phone, message, orgData.id);
 
           console.log("📲 WhatsApp enviado ao representante:", user.username);
         }
