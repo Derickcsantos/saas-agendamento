@@ -54,6 +54,7 @@ import { expensesRouter } from './routes/expensesRoutes.js';
 import queueRouter from './routes/queueRoutes.js';
 import { userInvitesRouter } from './routes/userInvitesRoutes.js';
 import { organizationSubscriptionsRouter } from './routes/organizationSubscriptionsRoutes.js';
+import { contactRouter } from './routes/contactRoutes.js';
 import scheduleJob from './utils/screduleJobs.js';
 import { startUnavailableDaysCacheJob } from './utils/unavailableDaysCacheJob.js';
 import { startPixBillingJob } from './jobs/pixBillingJob.js';
@@ -166,6 +167,8 @@ app.use('/api/admin/expenses', expensesRouter)
 app.use('/api/queues', queueRouter)
 app.use('/api/user-invites', userInvitesRouter)
 app.use('/api/organization-subscriptions', organizationSubscriptionsRouter)
+app.use('/api/contact', contactRouter)
+app.use('/api/contato', contactRouter)
 app.use('/api/salaries', salariesRouter)
 app.use('/api/employee-intervals', employeeIntervalsRouter)
 // app.use("/api/whatsapp-send", sendWhatsappRouter);

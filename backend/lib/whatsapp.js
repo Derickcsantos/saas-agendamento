@@ -46,6 +46,16 @@ function toPhoneDigits(phone) {
   return raw.replace(/\D/g, "") || null;
 }
 
+function extractProviderMessage(data) {
+  if (!data) return null;
+  if (typeof data?.message === "string") return data.message;
+  if (Array.isArray(data?.message)) return data.message.flat(Infinity).join(" ");
+  if (typeof data?.error === "string") return data.error;
+  if (typeof data?.response?.message === "string") return data.response.message;
+  if (Array.isArray(data?.response?.message)) return data.response.message.flat(Infinity).join(" ");
+  return null;
+}
+
 async function processQueue() {
   if (isProcessingQueue || messageQueue.length === 0) return;
 
@@ -145,8 +155,8 @@ async function sendWasender({ apiKey, to, message }) {
     ({ response, data } = await sendOnce());
   }
 
-  if (!response.ok) {
-    throw new Error(data?.message || `Erro HTTP ${response.status}`);
+  if (!response.ok || data?.success === false) {
+    throw new Error(extractProviderMessage(data) || `Erro HTTP ${response.status}`);
   }
 
   return data;
@@ -165,9 +175,7 @@ async function sendEvolution({ instanceName, apiKey, phone, message }) {
     },
     body: JSON.stringify({
       number: toPhoneDigits(phone),
-      textMessage: {
-        text: message,
-      },
+      text: String(message),
     }),
   });
 
@@ -182,8 +190,8 @@ async function sendEvolution({ instanceName, apiKey, phone, message }) {
     throw new Error("Resposta invalida da Evolution (nao e JSON)");
   }
 
-  if (!response.ok) {
-    throw new Error(data?.message || data?.error || `Erro HTTP ${response.status}`);
+  if (!response.ok || data?.success === false) {
+    throw new Error(extractProviderMessage(data) || `Erro HTTP ${response.status}`);
   }
 
   return data;

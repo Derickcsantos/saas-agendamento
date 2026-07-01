@@ -128,10 +128,10 @@ export default function WhatsappTab({ org, setActiveTab }) {
 
       const data = await res.json();
 
-      if (res.ok && data.isConnected) {
-        setIsConnected(true);
+      if (res.ok) {
+        setIsConnected(Boolean(data.isConnected));
         setSessionId(data.sessionId);
-        loadContacts();
+        await loadContacts();
       } else {
         setIsConnected(false);
         setSessionId(null);
@@ -160,8 +160,9 @@ export default function WhatsappTab({ org, setActiveTab }) {
         // Mapear contatos para formato interno
         const mappedContacts = (data.contacts || []).map((c) => {
           const numberFromJid = c.jid?.split('@')[0] || c.phone || c.phone_contact || '';
+          const jid = c.jid || c.whatsapp_jid || (numberFromJid ? `${numberFromJid}@s.whatsapp.net` : '');
           return {
-            jid: c.jid,
+            jid,
             name: c.name || c.verifiedName || c.notify || "Sem nome",
             number: numberFromJid,
             notify: c.notify,
@@ -592,7 +593,7 @@ export default function WhatsappTab({ org, setActiveTab }) {
       </div>
 
       {/* CONEXÃO OU CONTEÚDO */}
-      {!isConnected && !qrCode && (
+      {!isConnected && !qrCode && contacts.length === 0 && (
         <div className="bg-white p-10 rounded-lg shadow-sm border text-center">
           <div className="max-w-md mx-auto">
             <div className="p-4 rounded-full inline-block mb-4" style={{ backgroundColor: light }}>
@@ -659,8 +660,21 @@ export default function WhatsappTab({ org, setActiveTab }) {
       )}
 
       {/* LISTA DE CONTATOS */}
-      {isConnected && (
+      {(isConnected || contacts.length > 0) && (
         <>
+          {!isConnected && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-900 p-4 rounded-lg flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <span>WhatsApp desconectado. Os contatos salvos continuam disponiveis.</span>
+              <button
+                onClick={() => setShowPhoneModal(true)}
+                disabled={connecting}
+                className="px-4 py-2 text-white rounded-lg font-medium transition disabled:opacity-50"
+                style={{ backgroundColor: strong }}
+              >
+                Reconectar
+              </button>
+            </div>
+          )}
           {/* AÇÕES E BUSCA */}
           <div className="bg-white p-4 rounded-lg shadow-sm border">
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">

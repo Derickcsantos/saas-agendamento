@@ -1007,6 +1007,54 @@ Qualquer dúvida, entre em contato conosco! 💬
     }
 
     // ===============================
+    // NOTIFICAR PROFISSIONAL DO AGENDAMENTO
+    // ===============================
+    try {
+      const { data: employeeInfo } = await supabase
+        .from("employees")
+        .select("name, phone")
+        .eq("id", employee_id)
+        .single();
+
+      if (!employeeInfo?.phone) {
+        console.log("Profissional sem telefone cadastrado - mensagem nao enviada");
+      } else {
+        const { data: service } = await supabase
+          .from("services")
+          .select("name")
+          .eq("id", service_id)
+          .single();
+
+        const formattedDate = date.split("-").reverse().join("/");
+        const professionalMessage = `
+*Novo agendamento recebido*
+
+Ola, *${employeeInfo.name || "profissional"}*.
+
+Cliente: ${client_name}
+Telefone: ${normalizedClientPhone || "-"}
+Servico: ${service?.name || "-"}
+${additionalSummary.items.length ? `Adicionais: ${additionalSummary.items.map((item) => item.name).join(", ")}` : ""}
+Data: ${formattedDate}
+Horario: ${start_time} - ${end_time}
+Valor: ${
+  finalPriceToUse
+    ? finalPriceToUse.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      })
+    : "-"
+}
+        `.trim();
+
+        await sendWhatsAppMessage(employeeInfo.phone, professionalMessage, orgData.id);
+        console.log("WhatsApp enviado ao profissional:", employeeInfo.name);
+      }
+    } catch (employeeNotifyErr) {
+      console.error("Erro ao notificar profissional:", employeeNotifyErr);
+    }
+
+    // ===============================
     // 🔔 NOTIFICAR REPRESENTANTE DA ORGANIZAÇÃO
     // ===============================
     try {

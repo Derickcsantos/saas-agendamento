@@ -99,7 +99,7 @@ Qualquer dúvida, estamos à disposição 💬
 
     // ✅ Telefone será normalizado automaticamente no sendWhatsAppMessage
     // Aceita qualquer formato: +55..., 55..., 11..., (11) 9999-9999, etc.
-    await sendWhatsAppMessage(client.phone, message);
+    await sendWhatsAppMessage(client.phone, message, org.id);
 
     return res.status(200).json({ success: true });
   } catch (err) {
