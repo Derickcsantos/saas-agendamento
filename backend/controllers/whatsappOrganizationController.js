@@ -129,6 +129,101 @@ function serializeProviderError(error) {
   };
 }
 
+function extractProviderMessage(data) {
+  if (!data) return null;
+  if (typeof data?.message === 'string') return data.message;
+  if (Array.isArray(data?.message)) return data.message.flat(Infinity).join(' ');
+  if (typeof data?.error === 'string') return data.error;
+  if (typeof data?.response?.message === 'string') return data.response.message;
+  if (Array.isArray(data?.response?.message)) return data.response.message.flat(Infinity).join(' ');
+  return null;
+}
+
+function normalizeDbContact(row) {
+  const phone = row?.phone_contact || extractPhoneFromJid(row?.whatsapp_jid);
+  const jid = row?.whatsapp_jid || (phone ? `${phone}@s.whatsapp.net` : null);
+
+  return {
+    jid,
+    id: jid,
+    phone,
+    phone_contact: phone,
+    name: row?.name_contact || 'Sem nome',
+    notify: row?.name_contact || null,
+    verifiedName: row?.name_contact || null,
+    image: row?.image_contact || null,
+    imgUrl: row?.image_contact || null,
+    observation: row?.observation_contact || null,
+    last_sync_at: row?.last_sync_at || null,
+    updated_at: row?.updated_at || null,
+  };
+}
+
+async function getStoredContacts(orgId) {
+  const pageSize = 1000;
+  let from = 0;
+  let rows = [];
+
+  while (true) {
+    const to = from + pageSize - 1;
+    const { data, error } = await supabase
+      .from('whatsapp_contacts')
+      .select('*')
+      .eq('organization_id', orgId)
+      .order('name_contact', { ascending: true, nullsFirst: false })
+      .order('phone_contact', { ascending: true })
+      .range(from, to);
+
+    if (error) throw error;
+
+    const batch = data || [];
+    rows = rows.concat(batch);
+
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return rows.map(normalizeDbContact).filter((contact) => !!contact.phone_contact);
+}
+
+function filterContacts(contacts, search) {
+  if (!search) return contacts;
+
+  const needle = String(search).toLowerCase();
+  return contacts.filter((c) => {
+    const name = String(c?.name || '').toLowerCase();
+    const notify = String(c?.notify || '').toLowerCase();
+    const jid = String(c?.jid || '').toLowerCase();
+    const phone = String(c?.phone_contact || c?.phone || '').toLowerCase();
+    return name.includes(needle) || notify.includes(needle) || jid.includes(needle) || phone.includes(needle);
+  });
+}
+
+function mergeContacts(apiContacts, storedContacts) {
+  const byPhone = new Map();
+
+  for (const contact of storedContacts) {
+    if (contact?.phone_contact) byPhone.set(contact.phone_contact, contact);
+  }
+
+  for (const contact of apiContacts) {
+    if (!contact?.phone_contact) continue;
+    const stored = byPhone.get(contact.phone_contact);
+    byPhone.set(contact.phone_contact, {
+      ...contact,
+      name: stored?.name && stored.name !== 'Sem nome' ? stored.name : contact.name || 'Sem nome',
+      image: stored?.image || contact.image || contact.imgUrl || null,
+      imgUrl: stored?.imgUrl || contact.imgUrl || contact.image || null,
+      observation: stored?.observation || null,
+      last_sync_at: stored?.last_sync_at || contact.last_sync_at || null,
+    });
+  }
+
+  return [...byPhone.values()].sort((a, b) =>
+    String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR', { sensitivity: 'base' })
+  );
+}
+
 function isEvolutionInstanceAlreadyExistsError(error) {
   const status = Number(error?.response?.status);
   const raw = error?.response?.data || {};
@@ -417,10 +512,11 @@ async function sendEvolutionText(instanceName, apiKey, number, message) {
   const api = evolutionApi(apiKey);
   const { data } = await api.post(`/message/sendText/${encodeURIComponent(instanceName)}`, {
     number: normalizePhoneDigits(number),
-    textMessage: {
-      text: String(message),
-    },
+    text: String(message),
   });
+  if (data?.success === false) {
+    throw new Error(extractProviderMessage(data) || 'Evolution recusou o envio da mensagem');
+  }
   return data;
 }
 
@@ -455,6 +551,9 @@ async function sendWasenderDefault(number, message) {
     to: normalizePhoneE164(number),
     text: String(message),
   });
+  if (data?.success === false) {
+    throw new Error(extractProviderMessage(data) || 'Wasender recusou o envio da mensagem');
+  }
   return data;
 }
 
@@ -808,8 +907,24 @@ export const getContacts = async (req, res) => {
     const orgId = await getOrgIdBySlug(slug);
     const row = await getWhatsappRow(orgId);
 
+    let storedContacts = [];
+    try {
+      storedContacts = await getStoredContacts(orgId);
+    } catch (dbErr) {
+      console.warn('[WhatsApp] Erro ao buscar contatos salvos no banco:', dbErr?.message || String(dbErr));
+    }
+
     if (!row?.whatsapp_api_key) {
-      return res.status(400).json({ error: 'WhatsApp não conectado' });
+      const contacts = filterContacts(storedContacts, search);
+      return res.json({
+        success: true,
+        contacts,
+        total: contacts.length,
+        cached: false,
+        source: 'database',
+        provider: 'none',
+        isConnected: false,
+      });
     }
 
     // Cache key específico para esta organização
@@ -845,16 +960,7 @@ export const getContacts = async (req, res) => {
             }
           }
 
-          // Aplicar filtros em contatos cacheados
-          let filteredContacts = allCachedContacts;
-          if (search) {
-            const s = String(search).toLowerCase();
-            filteredContacts = allCachedContacts.filter((c) => {
-              const name = (c?.name || '').toLowerCase();
-              const jid = String(c?.jid || '');
-              return name.includes(s) || jid.includes(String(search)) || String(c.phone_contact || '').includes(String(search));
-            });
-          }
+          const filteredContacts = filterContacts(allCachedContacts, search);
           
           return res.json({
             success: true,
@@ -873,7 +979,21 @@ export const getContacts = async (req, res) => {
       const instanceName = getEvolutionInstanceName(row);
       const instanceApiKey = getEvolutionInstanceApiKey(row);
       console.log(`[Evolution] Buscando contatos para ${slug}...`);
-      const contactsApi = await findEvolutionContacts(instanceName, instanceApiKey, { page, limit });
+      let contactsApi = [];
+      try {
+        contactsApi = await findEvolutionContacts(instanceName, instanceApiKey, { page, limit });
+      } catch (apiErr) {
+        console.warn('[Evolution] Erro ao buscar contatos na API, usando banco:', apiErr.response?.data || apiErr.message);
+        const contacts = filterContacts(storedContacts, search);
+        return res.json({
+          success: true,
+          contacts,
+          total: contacts.length,
+          cached: false,
+          provider: 'evolution',
+          source: 'database_fallback',
+        });
+      }
 
       const mapped = contactsApi.map((c) => {
         const phone = normalizePhoneDigits(c.number || c.id || c.jid);
@@ -907,7 +1027,7 @@ export const getContacts = async (req, res) => {
         }
       }
 
-      let contacts = mapped.map((c) => ({
+      const apiContacts = mapped.map((c) => ({
         ...c,
         name: c.name_api || 'Sem nome',
         phone: c.phone_contact,
@@ -915,14 +1035,8 @@ export const getContacts = async (req, res) => {
         observation: null,
       }));
 
-      if (search) {
-        const s = String(search).toLowerCase();
-        contacts = contacts.filter((c) => {
-          const name = (c?.name || '').toLowerCase();
-          const jid = String(c?.jid || '');
-          return name.includes(s) || jid.includes(String(search)) || String(c.phone_contact || '').includes(String(search));
-        });
-      }
+      const refreshedStoredContacts = await getStoredContacts(orgId).catch(() => storedContacts);
+      const contacts = filterContacts(mergeContacts(apiContacts, refreshedStoredContacts), search);
 
       return res.json({
         success: true,
@@ -943,7 +1057,22 @@ export const getContacts = async (req, res) => {
     if (limit) params.limit = Number(limit);
 
     console.log(`[WhatsApp] Buscando contatos da API Wasender para ${slug}...`);
-    const { data } = await api.get('/contacts', { params });
+    let data = null;
+    try {
+      const response = await api.get('/contacts', { params });
+      data = response.data;
+    } catch (apiErr) {
+      console.warn('[WhatsApp] Erro ao buscar contatos na Wasender, usando banco:', apiErr.response?.data || apiErr.message);
+      const contacts = filterContacts(storedContacts, search);
+      return res.json({
+        success: true,
+        contacts,
+        total: contacts.length,
+        cached: false,
+        provider: 'wasender',
+        source: 'database_fallback',
+      });
+    }
 
     // Wasender API: { success: true, data: [...] } ou { success: true, data: { items: [...] } }
     let contactsApi = [];
@@ -1046,7 +1175,7 @@ export const getContacts = async (req, res) => {
 
     // Recarregar contatos do banco em LOTES COM PAGINAÇÃO
     console.log(`[WhatsApp] Recarregando ${mapped.length} contatos do banco em lotes de ${BATCH_SIZE}...`);
-    let contacts = [];
+    let apiContacts = [];
     const totalBatchesForReload = Math.ceil(mapped.length / BATCH_SIZE);
 
     for (let batchIdx = 0; batchIdx < totalBatchesForReload; batchIdx++) {
@@ -1084,12 +1213,15 @@ export const getContacts = async (req, res) => {
           };
         });
 
-        contacts = contacts.concat(batchContacts);
+        apiContacts = apiContacts.concat(batchContacts);
         console.log(`[WhatsApp] Recarregados ${batchContacts.length} contatos (lote ${batchIdx + 1}/${totalBatchesForReload})`);
       } catch (reloadErr) {
         console.error(`[WhatsApp] Erro ao recarregar lote ${batchIdx + 1}:`, reloadErr?.message || String(reloadErr));
       }
     }
+
+    const refreshedStoredContacts = await getStoredContacts(orgId).catch(() => storedContacts);
+    let contacts = mergeContacts(apiContacts, refreshedStoredContacts);
 
     console.log(`[WhatsApp] Total de contatos sincronizados: ${contacts.length}`);
 
@@ -1117,15 +1249,7 @@ export const getContacts = async (req, res) => {
       }
     }
 
-    // Aplicar filtro de busca
-    if (search) {
-      const s = String(search).toLowerCase();
-      contacts = contacts.filter((c) => {
-        const name = (c?.name || '').toLowerCase();
-        const jid = String(c?.jid || '');
-        return name.includes(s) || jid.includes(String(search)) || String(c.phone_contact || '').includes(String(search));
-      });
-    }
+    contacts = filterContacts(contacts, search);
 
     return res.json({
       success: true,
@@ -1163,7 +1287,7 @@ export const getContactInfo = async (req, res) => {
     const row = await getWhatsappRow(orgId);
 
     if (!row?.whatsapp_api_key) {
-      return res.status(400).json({ error: 'WhatsApp não conectado' });
+      return res.status(400).json({ error: 'WhatsApp nao conectado' });
     }
 
     const targetJid = decodeURIComponent(jid);
@@ -1400,7 +1524,7 @@ export const sendMessage = async (req, res) => {
     const row = await getWhatsappRow(orgId);
 
     if (!row?.whatsapp_api_key) {
-      return res.status(400).json({ error: 'WhatsApp não conectado' });
+      return res.status(400).json({ error: 'WhatsApp nao conectado' });
     }
 
     if (!isWasenderRow(row)) {
@@ -1462,7 +1586,7 @@ export const sendBulkMessages = async (req, res) => {
     const row = await getWhatsappRow(orgId);
 
     if (!row?.whatsapp_api_key) {
-      return res.status(400).json({ error: 'WhatsApp não conectado' });
+      return res.status(400).json({ error: 'WhatsApp nao conectado' });
     }
 
     const results = { success: 0, failed: 0, errors: [] };
