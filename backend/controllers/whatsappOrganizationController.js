@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase.js';
 import axios from 'axios';
 import { redis } from '../lib/redis.js';
+import crypto from 'crypto';
 
 /**
  * ENV esperadas:
@@ -86,6 +87,18 @@ function buildEvolutionInstanceName(slug, sessionName) {
 
 function isWasenderRow(row) {
   return Boolean(row?.wasender_session_id);
+}
+
+function getEvolutionInstanceName(row) {
+  return row?.evolution_instance_name || row?.whatsapp_api_key || null;
+}
+
+function getEvolutionInstanceApiKey(row) {
+  return row?.evolution_instance_name ? row?.whatsapp_api_key : EVOLUTION_API_KEY;
+}
+
+function generateEvolutionInstanceApiKey() {
+  return crypto.randomBytes(32).toString('hex');
 }
 
 function getEvolutionWebhookUrl() {
@@ -300,12 +313,12 @@ async function getSessionQRCode(sessionId) {
 }
 
 // ===== Evolution API calls =====
-function evolutionApi() {
+function evolutionApi(apiKey = EVOLUTION_API_KEY) {
   assertEvolutionEnv();
   return axios.create({
     baseURL: EVOLUTION_BASE_URL,
     headers: {
-      apikey: EVOLUTION_API_KEY,
+      apikey: apiKey || EVOLUTION_API_KEY,
       'Content-Type': 'application/json',
     },
     timeout: 30000,
@@ -326,8 +339,8 @@ function extractEvolutionStatus(instance) {
   ).toLowerCase();
 }
 
-async function fetchEvolutionInstance(instanceName) {
-  const api = evolutionApi();
+async function fetchEvolutionInstance(instanceName, apiKey) {
+  const api = evolutionApi(apiKey);
   const { data } = await api.get('/instance/fetchInstances');
   const instances = Array.isArray(data) ? data : data?.instances || data?.data || [];
   return instances.find((item) => {
@@ -336,12 +349,13 @@ async function fetchEvolutionInstance(instanceName) {
   }) || null;
 }
 
-async function createEvolutionInstance({ instanceName, phone_number, webhook_url }) {
+async function createEvolutionInstance({ instanceName, phone_number, webhook_url, token }) {
   const api = evolutionApi();
   const payload = {
     instanceName,
     qrcode: true,
     integration: 'WHATSAPP-BAILEYS',
+    token,
     number: normalizePhoneDigits(phone_number),
     webhook: {
       enabled: true,
@@ -355,8 +369,8 @@ async function createEvolutionInstance({ instanceName, phone_number, webhook_url
   return data;
 }
 
-async function setEvolutionWebhook(instanceName) {
-  const api = evolutionApi();
+async function setEvolutionWebhook(instanceName, apiKey) {
+  const api = evolutionApi(apiKey);
   const webhookUrl = getEvolutionWebhookUrl();
   const payload = {
     enabled: true,
@@ -371,17 +385,17 @@ async function setEvolutionWebhook(instanceName) {
   return data;
 }
 
-async function getEvolutionWebhook(instanceName) {
-  const api = evolutionApi();
+async function getEvolutionWebhook(instanceName, apiKey) {
+  const api = evolutionApi(apiKey);
   const { data } = await api.get(`/webhook/find/${encodeURIComponent(instanceName)}`);
   return data;
 }
 
-async function ensureEvolutionWebhook(instanceName) {
+async function ensureEvolutionWebhook(instanceName, apiKey) {
   const expectedUrl = getEvolutionWebhookUrl();
 
   try {
-    const current = await getEvolutionWebhook(instanceName);
+    const current = await getEvolutionWebhook(instanceName, apiKey);
     const currentWebhook = current?.webhook || current?.data || current;
     if (currentWebhook?.enabled === true && currentWebhook?.url === expectedUrl) {
       return current;
@@ -390,17 +404,17 @@ async function ensureEvolutionWebhook(instanceName) {
     console.warn('[Evolution] Nao foi possivel consultar webhook atual, tentando configurar:', error.response?.data || error.message);
   }
 
-  return setEvolutionWebhook(instanceName);
+  return setEvolutionWebhook(instanceName, apiKey);
 }
 
-async function connectEvolutionInstance(instanceName) {
-  const api = evolutionApi();
+async function connectEvolutionInstance(instanceName, apiKey) {
+  const api = evolutionApi(apiKey);
   const { data } = await api.get(`/instance/connect/${encodeURIComponent(instanceName)}`);
   return data;
 }
 
-async function sendEvolutionText(instanceName, number, message) {
-  const api = evolutionApi();
+async function sendEvolutionText(instanceName, apiKey, number, message) {
+  const api = evolutionApi(apiKey);
   const { data } = await api.post(`/message/sendText/${encodeURIComponent(instanceName)}`, {
     number: normalizePhoneDigits(number),
     textMessage: {
@@ -410,8 +424,8 @@ async function sendEvolutionText(instanceName, number, message) {
   return data;
 }
 
-async function findEvolutionContacts(instanceName, { page, limit } = {}) {
-  const api = evolutionApi();
+async function findEvolutionContacts(instanceName, apiKey, { page, limit } = {}) {
+  const api = evolutionApi(apiKey);
   const take = Number(limit) || 1000;
   const skip = page ? Math.max(Number(page) - 1, 0) * take : 0;
   const { data } = await api.post(`/chat/findContacts/${encodeURIComponent(instanceName)}`, {
@@ -451,11 +465,14 @@ export const receiveEvolutionWebhook = async (req, res) => {
     const payload = req.body || {};
     const instanceName = payload?.instance || payload?.instanceName || payload?.data?.instance || payload?.data?.instanceName;
     const event = payload?.event || payload?.type || payload?.data?.event || null;
-    const normalizedStatus = normalizeEvolutionWebhookStatus(payload);
+    const normalizedEvent = String(event || '').replace(/[.-]/g, '_').toUpperCase();
+    const normalizedStatus = normalizedEvent === 'CONNECTION_UPDATE'
+      ? normalizeEvolutionWebhookStatus(payload)
+      : null;
 
     console.log('[Evolution Webhook] Evento recebido:', {
       instanceName,
-      event,
+      event: normalizedEvent,
       status: normalizedStatus,
     });
 
@@ -469,7 +486,7 @@ export const receiveEvolutionWebhook = async (req, res) => {
 
     if (normalizedStatus) {
       updates.status = normalizedStatus;
-    } else if (event === 'QRCODE_UPDATED') {
+    } else if (normalizedEvent === 'QRCODE_UPDATED') {
       updates.status = 'CONNECTING';
     }
 
@@ -477,7 +494,7 @@ export const receiveEvolutionWebhook = async (req, res) => {
       const { error } = await supabase
         .from('whatsapp_organization')
         .update(updates)
-        .eq('whatsapp_api_key', instanceName)
+        .eq('evolution_instance_name', instanceName)
         .is('wasender_session_id', null);
 
       if (error) {
@@ -506,10 +523,11 @@ export const getWhatsappStatus = async (req, res) => {
     }
 
     if (!isWasenderRow(row)) {
-      const instanceName = row.whatsapp_api_key;
+      const instanceName = getEvolutionInstanceName(row);
+      const instanceApiKey = getEvolutionInstanceApiKey(row);
       let evolutionInstance = null;
       try {
-        evolutionInstance = await fetchEvolutionInstance(instanceName);
+        evolutionInstance = await fetchEvolutionInstance(instanceName, instanceApiKey);
       } catch (error) {
         console.warn('[Evolution] Erro ao consultar instancia, usando status local:', error.response?.data || error.message);
       }
@@ -596,7 +614,8 @@ export const connectWhatsapp = async (req, res) => {
     }
 
     try {
-      let instanceName = row?.whatsapp_api_key;
+      let instanceName = getEvolutionInstanceName(row);
+      let instanceApiKey = getEvolutionInstanceApiKey(row);
 
       if (!instanceName) {
         if (!phone_number) {
@@ -608,6 +627,7 @@ export const connectWhatsapp = async (req, res) => {
         isNewSession = true;
         const webhookUrl = getEvolutionWebhookUrl();
         instanceName = buildEvolutionInstanceName(slug, session_name);
+        const generatedApiKey = generateEvolutionInstanceApiKey();
 
         console.log(`[Evolution] Criando nova instancia: ${instanceName}`);
         let created = null;
@@ -616,25 +636,31 @@ export const connectWhatsapp = async (req, res) => {
             instanceName,
             phone_number,
             webhook_url: webhookUrl,
+            token: generatedApiKey,
           });
         } catch (createError) {
           if (!isEvolutionInstanceAlreadyExistsError(createError)) {
             throw createError;
           }
 
-          console.warn(`[Evolution] Instancia ${instanceName} ja existe. Reaproveitando para conectar.`);
-          created = await fetchEvolutionInstance(instanceName);
+          const error = new Error(
+            `A instancia Evolution "${instanceName}" ja existe sem uma chave registrada no banco. Exclua-a na Evolution e tente conectar novamente.`
+          );
+          error.statusCode = 409;
+          throw error;
         }
 
+        instanceApiKey = generatedApiKey;
         row = await upsertWhatsappRow(orgId, {
           wasender_session_id: null,
           phone_organization: phone_number,
-          whatsapp_api_key: instanceName,
-          webhook_secret: created?.hash || null,
+          whatsapp_api_key: instanceApiKey,
+          evolution_instance_name: instanceName,
+          webhook_secret: null,
           status: created?.instance?.status || 'CREATED',
         });
 
-        await ensureEvolutionWebhook(instanceName);
+        await ensureEvolutionWebhook(instanceName, instanceApiKey);
 
         const createdQr = extractEvolutionQr(created);
         if (createdQr) {
@@ -642,7 +668,6 @@ export const connectWhatsapp = async (req, res) => {
             success: true,
             provider: 'evolution',
             sessionId: instanceName,
-            apiKey: EVOLUTION_API_KEY,
             status: created?.instance?.status || 'connecting',
             qrCode: createdQr,
             isNewSession,
@@ -654,14 +679,13 @@ export const connectWhatsapp = async (req, res) => {
         console.log(`[Evolution] Usando instancia existente: ${instanceName}`);
       }
 
-      await ensureEvolutionWebhook(instanceName);
-      const connected = await connectEvolutionInstance(instanceName);
+      await ensureEvolutionWebhook(instanceName, instanceApiKey);
+      const connected = await connectEvolutionInstance(instanceName, instanceApiKey);
 
       return res.json({
         success: true,
         provider: 'evolution',
         sessionId: instanceName,
-        apiKey: EVOLUTION_API_KEY,
         status: connected?.status || 'connecting',
         qrCode: extractEvolutionQr(connected),
         isNewSession,
@@ -846,9 +870,10 @@ export const getContacts = async (req, res) => {
     }
 
     if (!isWasenderRow(row)) {
-      const instanceName = row.whatsapp_api_key;
+      const instanceName = getEvolutionInstanceName(row);
+      const instanceApiKey = getEvolutionInstanceApiKey(row);
       console.log(`[Evolution] Buscando contatos para ${slug}...`);
-      const contactsApi = await findEvolutionContacts(instanceName, { page, limit });
+      const contactsApi = await findEvolutionContacts(instanceName, instanceApiKey, { page, limit });
 
       const mapped = contactsApi.map((c) => {
         const phone = normalizePhoneDigits(c.number || c.id || c.jid);
@@ -1145,7 +1170,9 @@ export const getContactInfo = async (req, res) => {
     const phone = extractPhoneFromJid(targetJid);
 
     if (!isWasenderRow(row)) {
-      const contactsApi = await findEvolutionContacts(row.whatsapp_api_key, { limit: 1000 });
+      const instanceName = getEvolutionInstanceName(row);
+      const instanceApiKey = getEvolutionInstanceApiKey(row);
+      const contactsApi = await findEvolutionContacts(instanceName, instanceApiKey, { limit: 1000 });
       const apiContact = contactsApi.find((c) => {
         const contactPhone = normalizePhoneDigits(c.number || c.id || c.jid);
         return contactPhone === phone;
@@ -1378,7 +1405,12 @@ export const sendMessage = async (req, res) => {
 
     if (!isWasenderRow(row)) {
       try {
-        const data = await sendEvolutionText(row.whatsapp_api_key, number, message);
+        const data = await sendEvolutionText(
+          getEvolutionInstanceName(row),
+          getEvolutionInstanceApiKey(row),
+          number,
+          message
+        );
         return res.json({ success: true, provider: 'evolution', data });
       } catch (evolutionError) {
         console.error('[Evolution] Erro ao enviar mensagem. Tentando fallback Wasender:', evolutionError.response?.data || evolutionError.message);
@@ -1439,7 +1471,12 @@ export const sendBulkMessages = async (req, res) => {
       for (const n of numbers) {
         try {
           try {
-            await sendEvolutionText(row.whatsapp_api_key, n, message);
+            await sendEvolutionText(
+              getEvolutionInstanceName(row),
+              getEvolutionInstanceApiKey(row),
+              n,
+              message
+            );
           } catch (evolutionError) {
             console.error('[Evolution] Erro no envio em lote. Tentando fallback Wasender:', evolutionError.response?.data || evolutionError.message);
             await sendWasenderDefault(n, message);
@@ -1516,16 +1553,18 @@ export const getStatistics = async (req, res) => {
     if (!isWasenderRow(row)) {
       let status = 'unknown';
       let totalContacts = 0;
+      const instanceName = getEvolutionInstanceName(row);
+      const instanceApiKey = getEvolutionInstanceApiKey(row);
 
       try {
-        const evolutionInstance = await fetchEvolutionInstance(row.whatsapp_api_key);
+        const evolutionInstance = await fetchEvolutionInstance(instanceName, instanceApiKey);
         status = extractEvolutionStatus(evolutionInstance?.instance || evolutionInstance) || 'unknown';
       } catch (e) {
         console.warn('[Evolution] Erro ao buscar status para estatísticas:', e?.message);
       }
 
       try {
-        const contacts = await findEvolutionContacts(row.whatsapp_api_key, { limit: 1000 });
+        const contacts = await findEvolutionContacts(instanceName, instanceApiKey, { limit: 1000 });
         totalContacts = contacts.length;
       } catch (e) {
         console.warn('[Evolution] Erro ao buscar contatos para estatísticas:', e?.message);
@@ -1537,7 +1576,7 @@ export const getStatistics = async (req, res) => {
         provider: 'evolution',
         totalContacts,
         connectedSince: row.created_at || null,
-        sessionId: row.whatsapp_api_key,
+        sessionId: instanceName,
       });
     }
 
@@ -1597,14 +1636,16 @@ export const getQRCode = async (req, res) => {
     const row = await getWhatsappRow(orgId);
 
     if (row?.whatsapp_api_key && !isWasenderRow(row)) {
+      const instanceName = getEvolutionInstanceName(row);
+      const instanceApiKey = getEvolutionInstanceApiKey(row);
       console.log(`[Evolution] Obtendo QR Code para organização ${slug}`);
-      await ensureEvolutionWebhook(row.whatsapp_api_key);
-      const qrData = await connectEvolutionInstance(row.whatsapp_api_key);
+      await ensureEvolutionWebhook(instanceName, instanceApiKey);
+      const qrData = await connectEvolutionInstance(instanceName, instanceApiKey);
 
       return res.json({
         success: true,
         provider: 'evolution',
-        sessionId: row.whatsapp_api_key,
+        sessionId: instanceName,
         status: qrData?.status || 'connecting',
         qrCode: extractEvolutionQr(qrData),
         message: 'Escaneie o QR Code no seu WhatsApp',
