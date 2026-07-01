@@ -75,6 +75,15 @@ function normalizePhoneDigits(phone) {
   return base.replace(/\D/g, '') || null;
 }
 
+function normalizeEvolutionSendNumber(phone) {
+  const digits = normalizePhoneDigits(phone);
+  if (!digits) return null;
+
+  if (digits.startsWith('55') && digits.length > 11) return digits;
+  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+  return digits;
+}
+
 function buildEvolutionInstanceName(slug, sessionName) {
   const raw = sessionName || `org_${slug}`;
   return String(raw)
@@ -511,7 +520,7 @@ async function connectEvolutionInstance(instanceName, apiKey) {
 async function sendEvolutionText(instanceName, apiKey, number, message) {
   const api = evolutionApi(apiKey);
   const { data } = await api.post(`/message/sendText/${encodeURIComponent(instanceName)}`, {
-    number: normalizePhoneDigits(number),
+    number: normalizeEvolutionSendNumber(number),
     text: String(message),
   });
   if (data?.success === false) {
@@ -1551,6 +1560,10 @@ export const sendMessage = async (req, res) => {
       text: String(message),
     });
 
+    if (data?.success === false) {
+      throw new Error(extractProviderMessage(data) || 'Wasender recusou o envio da mensagem');
+    }
+
     return res.json({ success: true, data });
   } catch (error) {
     const errorMessage = error.message || 'Erro desconhecido';
@@ -1629,10 +1642,13 @@ export const sendBulkMessages = async (req, res) => {
 
     for (const n of numbers) {
       try {
-        await api.post('/send-message', {
+        const { data } = await api.post('/send-message', {
           to: normalizePhoneE164(n),
           text: String(message),
         });
+        if (data?.success === false) {
+          throw new Error(extractProviderMessage(data) || 'Wasender recusou o envio da mensagem');
+        }
         results.success++;
         await new Promise((r) => setTimeout(r, 1200)); // delay fixo
       } catch (e) {

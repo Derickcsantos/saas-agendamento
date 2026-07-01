@@ -46,6 +46,12 @@ function toPhoneDigits(phone) {
   return raw.replace(/\D/g, "") || null;
 }
 
+function toEvolutionNumber(phone) {
+  const jid = toWhatsAppJid(phone);
+  if (!jid) return null;
+  return jid.split("@")[0];
+}
+
 function extractProviderMessage(data) {
   if (!data) return null;
   if (typeof data?.message === "string") return data.message;
@@ -174,7 +180,7 @@ async function sendEvolution({ instanceName, apiKey, phone, message }) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      number: toPhoneDigits(phone),
+      number: toEvolutionNumber(phone),
       text: String(message),
     }),
   });
@@ -250,7 +256,7 @@ export async function sendWhatsAppMessage(phone, message, organizationId = null,
     }
 
     console.log(`Enviando WhatsApp via ${source}`);
-    console.log("To:", provider === "evolution" ? toPhoneDigits(phone) : normalizedTo);
+    console.log("To:", provider === "evolution" ? toEvolutionNumber(phone) : normalizedTo);
     console.log("Message preview:", `${message.substring(0, 100)}...`);
 
     if (provider === "evolution") {
