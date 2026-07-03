@@ -276,7 +276,7 @@ export default function WhatsappTab({ org, setActiveTab }) {
         if (data.details && typeof data.details === 'object') {
           const detailsStr = JSON.stringify(data.details);
           if (detailsStr.includes("subscription") || detailsStr.includes("plan")) {
-            toast.error("⚠️ Plano WaSender não ativo. Ative seu plano em wasenderapi.com");
+            toast.error("Plano da Evolution API nao ativo ou indisponivel. Verifique a configuracao da Evolution.");
           } else {
             toast.error(`Erro: ${data.details.message || detailsStr}`);
           }
