@@ -36,6 +36,10 @@ export const login = async (req, res) => {
     }
 
 
+    if (!user) {
+      return res.status(401).json({ error: 'Credenciais invÃ¡lidas.' });
+    }
+
     const passwordMatches = await verifyPassword(password, user.password);
     if (!passwordMatches) {
       return res.status(401).json({ error: 'Senha incorreta.' });

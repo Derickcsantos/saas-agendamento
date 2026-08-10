@@ -1,6 +1,31 @@
 import axios from "axios";
 import { supabase } from "../lib/supabase.js";
 import { validateSecretCode, verifySecretCode } from "../utils/encryption.js";
+import { checkAbacatePayPixStatus, parseAbacatePayPaidEvent } from "../utils/abacatePayPayment.js";
+
+async function confirmPixTransaction(transaction) {
+  if (transaction.status !== "confirmed") {
+    const { error } = await supabase.rpc("credit_organization_balance", {
+      p_org_id: transaction.organization_id,
+      p_amount: transaction.net_amount,
+      p_transaction_id: transaction.id,
+    });
+    if (error) throw error;
+  }
+
+  if (transaction.appointment_id) {
+    const { error } = await supabase.from("appointments")
+      .update({ status: "confirmed" })
+      .eq("id", transaction.appointment_id)
+      .in("status", ["pending", "awaiting_payment"]);
+    if (error) throw error;
+  }
+
+  const { error } = await supabase.from("transactions_organizations")
+    .update({ status: "confirmed", confirmed_at: transaction.confirmed_at || new Date().toISOString() })
+    .eq("id", transaction.id);
+  if (error) throw error;
+}
 
 // Retorna histórico de entradas (agendamentos confirmados e transações bem-sucedidas)
 export async function getIncomeHistory(req, res) {
@@ -258,6 +283,7 @@ export async function createPixPayment(req, res) {
  */
 export async function getPixPaymentStatus(req, res) {
   const { slug, transactionId } = req.params;
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
 
   if (!transactionId) {
     return res.status(400).json({ error: "Transaction ID is required" });
@@ -276,13 +302,26 @@ export async function getPixPaymentStatus(req, res) {
 
     const { data: transaction, error: txError } = await supabase
       .from("transactions_organizations")
-      .select("id, status, confirmed_at, appointment_id")
+      .select("id, status, confirmed_at, appointment_id, external_id, organization_id, net_amount")
       .eq("id", transactionId)
       .eq("organization_id", org.id)
       .single();
 
     if (txError || !transaction) {
       return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    if (transaction.status === "pending" && transaction.external_id) {
+      try {
+        const providerStatus = await checkAbacatePayPixStatus(transaction.external_id, axios);
+        if (providerStatus === "PAID") {
+          await confirmPixTransaction(transaction);
+          transaction.status = "confirmed";
+          transaction.confirmed_at = new Date().toISOString();
+        }
+      } catch (providerError) {
+        console.warn("PIX provider status check failed:", providerError.response?.status || providerError.message);
+      }
     }
 
     let appointmentStatus = null;
@@ -319,7 +358,7 @@ export async function abacatePayPixWebhook(req, res) {
   const payload = req.body;
 
   // Segurança: validar segredo do webhook
-  const incomingSecret = req.headers["x-abacatepay-secret"] || req.headers["x-webhook-secret"];
+  const incomingSecret = req.headers["x-abacatepay-secret"] || req.headers["x-webhook-secret"] || req.query.webhookSecret;
   if (process.env.ABACATEPAY_WEBHOOK_SECRET) {
     if (!incomingSecret || incomingSecret !== process.env.ABACATEPAY_WEBHOOK_SECRET) {
       return res.status(401).json({ error: "Invalid webhook secret" });
@@ -327,71 +366,26 @@ export async function abacatePayPixWebhook(req, res) {
   }
 
   try {
-    const {
-      id: external_id,
-      status,
-      amount
-    } = payload;
+    const { externalId, internalId, isPaid } = parseAbacatePayPaidEvent(payload);
 
     // Segurança básica
-    if (!external_id || status !== "paid") {
+    if (!isPaid || (!externalId && !internalId)) {
       return res.status(200).json({ received: true });
     }
 
     // 1️⃣ Buscar transação pelo external_id
     const { data: transaction, error: txError } = await supabase
       .from("transactions_organizations")
-      .select("id, status, organization_id, net_amount, appointment_id")
-      .eq("external_id", external_id)
+      .select("id, status, organization_id, net_amount, appointment_id, confirmed_at")
+      .or(`external_id.eq.${externalId || "__missing__"},id.eq.${internalId || "00000000-0000-0000-0000-000000000000"}`)
       .single();
 
     if (txError || !transaction) {
       return res.status(404).json({ error: "Transaction not found" });
     }
 
-    // 2️⃣ Idempotência: se já confirmou, ignora
-    if (transaction.status === "confirmed") {
-      return res.status(200).json({ received: true });
-    }
-
-    // 3️⃣ Atualizar transação
-    const { error: updateError } = await supabase
-      .from("transactions_organizations")
-      .update({
-        status: "confirmed",
-        confirmed_at: new Date().toISOString()
-      })
-      .eq("id", transaction.id);
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    // 4️⃣ Creditar saldo da organização (fonte da verdade = DB)
-    const { error: creditError } = await supabase.rpc(
-      "credit_organization_balance",
-      {
-        p_org_id: transaction.organization_id,
-        p_amount: transaction.net_amount,
-        p_transaction_id: transaction.id
-      }
-    );
-
-    if (creditError) {
-      throw new Error("Failed to credit organization balance");
-    }
-
-    // 5️⃣ Atualizar status do agendamento, se existir
-    if (transaction.appointment_id) {
-      const { error: appointmentUpdateError } = await supabase
-        .from("appointments")
-        .update({ status: "confirmed" })
-        .eq("id", transaction.appointment_id);
-
-      if (appointmentUpdateError) {
-        throw appointmentUpdateError;
-      }
-    }
+    // Reconcilia todas as etapas; a RPC usa o ID da transação para evitar crédito duplicado.
+    await confirmPixTransaction(transaction);
 
     return res.status(200).json({ received: true });
   } catch (error) {

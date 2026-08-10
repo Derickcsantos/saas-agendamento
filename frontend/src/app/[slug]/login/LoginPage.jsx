@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import useOrganizationColors from "@/app/utils/useOrganizationColors";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import { getUserDestination } from "@/lib/userDestination";
 
 export default function LoginPage({ slug }) {
   const router = useRouter();
@@ -28,31 +29,8 @@ export default function LoginPage({ slug }) {
 
         if (res.ok && data.authenticated && data.user) {
           
-          const tipo = data.user?.tipo;
-
-          switch (tipo) {
-            case "admin":
-              router.push(`/${slug}/admin`);
-              break;
-
-            case "funcionario":
-              router.push(`/${slug}/profissional`);
-              break;
-
-            case "marketing":
-              router.push(`/marketing`);
-              break;
-
-            case "master":
-              router.push(`/admin-dashboard`);
-              break;
-
-            default:
-              router.push(`/${slug}/minha-conta`);
-              break;
-          }
+          router.replace(getUserDestination(slug, data.user));
         }
-      console.log(data.user.tipo)
       } catch (err) {
         console.warn("Não autenticado:", err);
       } finally {
@@ -110,13 +88,10 @@ export default function LoginPage({ slug }) {
         sessionStorage.setItem('token', token);
       }
 
-      const tipo = data.user?.tipo;
       setSuccessMsg("Login realizado com sucesso!");
 
       setTimeout(() => {
-        if (tipo === "admin") router.push(`/${slug}/admin`);
-        else if (tipo === "funcionario") router.push(`/${slug}/profissional`);
-        else router.push(`/${slug}/minha-conta`);
+        router.replace(getUserDestination(slug, data.user));
       }, 1000);
     } catch (err) {
       setErrorMsg(err.message || "Erro ao efetuar login");
