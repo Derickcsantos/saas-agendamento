@@ -63,6 +63,8 @@ import http from 'http';
 import { salariesRouter } from './routes/salaryRoutes.js';
 import { employeeIntervalsRouter } from './routes/employeeIntervalsRoutes.js';
 import { receiveEvolutionWebhook } from './controllers/whatsappOrganizationController.js';
+import { reviewsRouter } from './routes/reviewsRoutes.js';
+import { startReviewRequestJob } from './jobs/reviewRequestJob.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -119,6 +121,13 @@ try {
   console.error('❌ Erro ao iniciar faturamento PIX:', error.message);
 }
 
+try {
+  startReviewRequestJob({ intervalMs: 60 * 1000 });
+  console.log('✅ Solicitações de avaliação - Iniciadas (a cada 1 min)');
+} catch (error) {
+  console.error('❌ Erro ao iniciar solicitações de avaliação:', error.message);
+}
+
 console.log('📋 Tarefas agendadas inicializadas\n');
 
 app.get('/', (req, res) => res.status(200).json({message: 'Servidor rodando'}));
@@ -171,6 +180,7 @@ app.use('/api/contact', contactRouter)
 app.use('/api/contato', contactRouter)
 app.use('/api/salaries', salariesRouter)
 app.use('/api/employee-intervals', employeeIntervalsRouter)
+app.use('/api/reviews', reviewsRouter)
 // app.use("/api/whatsapp-send", sendWhatsappRouter);
 
 // Error handler para não capturados

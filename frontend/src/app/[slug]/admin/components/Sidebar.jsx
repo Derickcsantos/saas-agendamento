@@ -42,6 +42,7 @@ export default function Sidebar({ org, slug, activeTab, setActiveTab }) {
     { name: "Receitas", key: "revenues", icon: "bi-cash-coin" },
     { name: "Despesas", key: "expenses", icon: "bi-receipt" },
     { name: "Cupons", key: "coupons", icon: "bi-wallet2" },
+    { name: "Avaliações", key: "reviews", icon: "bi-star" },
     { name: "Usuários", key: "users", icon: "bi-person-badge" },
     { name: "WhatsApp", key: "whatsapp", icon: "bi-whatsapp" },
     { name: "Galeria", key: "gallery", icon: "bi-image" },

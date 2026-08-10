@@ -31,6 +31,7 @@ import WhatsappTab from "./components/WhatsappTab";
 import ExpensesTab from "./components/ExpensesTab";
 import QueueTab from "@/app/[slug]/admin/components/QueueTab";
 import OrganizationSubscriptionsTab from "./components/OrganizationSubscriptionsTab";
+import ReviewsTab from "./components/ReviewsTab";
 
 function formatBRL(value) {
   return Number(value || 0).toLocaleString("pt-BR", {
@@ -190,6 +191,8 @@ export default function AdminDashboard({ slug }) {
         return <GalleryTab org={org} setActiveTab={setActiveTab} />;
       case "coupons":
         return <CouponsTab org={org} setActiveTab={setActiveTab} />;
+      case "reviews":
+        return <ReviewsTab org={org} palette={palette} />;
       case "users":
         return <UsersTab org={org} setActiveTab={setActiveTab} />;
       case "faster-schedule":

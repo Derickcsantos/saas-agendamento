@@ -1,6 +1,8 @@
 import { supabase } from "../lib/supabase.js";
 import { validateSecretCode, encryptSecretCode, verifySecretCode } from "../utils/encryption.js";
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export const getOrganizationPolicies = async (req, res) => {
   try {
     const { slug } = req.params;
@@ -28,6 +30,8 @@ export const getOrganizationPolicies = async (req, res) => {
         min_hours_before_booking: 0,
         sync_google_calendar: true,
         mandatory_email: true,
+        client_review: false,
+        review_coupon_id: null,
       });
     }
 
@@ -41,7 +45,7 @@ export const getOrganizationPolicies = async (req, res) => {
 export const updateOrganizationPolicies = async (req, res) => {
   try {
     const { slug } = req.params;
-    const { max_schedule_days, allow_same_day, min_hours_before_booking, sync_google_calendar, mandatory_email, secret_code, current_secret_code } =
+    const { max_schedule_days, allow_same_day, min_hours_before_booking, sync_google_calendar, mandatory_email, client_review, review_coupon_id, secret_code, current_secret_code } =
       req.body;
 
     const { data: org, error: orgError } = await supabase
@@ -63,6 +67,19 @@ export const updateOrganizationPolicies = async (req, res) => {
 
     if (mandatory_email !== undefined) {
       updateData.mandatory_email = Boolean(mandatory_email);
+    }
+    if (client_review !== undefined) updateData.client_review = Boolean(client_review);
+    if (review_coupon_id !== undefined) {
+      if (review_coupon_id === null || review_coupon_id === "") {
+        updateData.review_coupon_id = null;
+      } else {
+        const couponId = String(review_coupon_id).trim();
+        if (!UUID_REGEX.test(couponId)) return res.status(400).json({ error: "Cupom inválido" });
+        const { data: coupon } = await supabase.from("coupons").select("id")
+          .eq("id", couponId).eq("organization_id", org.id).maybeSingle();
+        if (!coupon) return res.status(400).json({ error: "Cupom não pertence à organização" });
+        updateData.review_coupon_id = couponId;
+      }
     }
 
     // Se incluiu secret_code, validar e criptografar antes de salvar
