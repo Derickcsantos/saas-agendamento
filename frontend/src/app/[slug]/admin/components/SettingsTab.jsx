@@ -38,6 +38,7 @@ export default function SettingsTab({ org }) {
   const [loading, setLoading] = useState(true);
   const [savingField, setSavingField] = useState(null);
   const [palette, setPalette] = useState(null);
+  const [coupons, setCoupons] = useState([]);
 
   // ORGANIZATION STATE
   const [settings, setSettings] = useState({
@@ -60,6 +61,8 @@ export default function SettingsTab({ org }) {
     pix_key: "",
     secret_code: "",
     mandatory_email: true,
+    client_review: false,
+    review_coupon_id: "",
   });
 
   // SECRET CODE STATE
@@ -76,17 +79,19 @@ export default function SettingsTab({ org }) {
   useEffect(() => {
     const loadAll = async () => {
       try {
-        const [colorsRes, detailsRes, policiesRes, hasSecretRes] = await Promise.all([
+        const [colorsRes, detailsRes, policiesRes, hasSecretRes, couponsRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-colors/${org.slug_organization}`),
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/slug/${org.slug_organization}`),
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}/has-secret-code`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}/has-secret-code`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/coupons/${org.slug_organization}`, { credentials: "include" })
         ]);
 
         const colorsData = await colorsRes.json();
         const detailsData = await detailsRes.json();
         const policiesData = await policiesRes.json();
         const hasSecretData = await hasSecretRes.json();
+        const couponsData = couponsRes.ok ? await couponsRes.json() : [];
 
         setPalette(colorsData);
         setSettings({
@@ -97,10 +102,8 @@ export default function SettingsTab({ org }) {
           timezone: detailsData.timezone || "America/Sao_Paulo",
           logo_organization: detailsData.logo_organization,
         });
-        setPolicies({
-          ...policies,
-          ...policiesData,
-        });
+        setPolicies((current) => ({ ...current, ...policiesData }));
+        setCoupons(Array.isArray(couponsData) ? couponsData.filter((coupon) => coupon.is_active) : []);
         setHasSecretCode(hasSecretData.hasSecretCode);
 
       } catch (e) {
@@ -562,6 +565,29 @@ export default function SettingsTab({ org }) {
                 <p className="text-xs text-gray-500">Usada para saques e identificação de recebimentos.</p>
               </div>
             </div>
+          </div>
+
+          <div className="border rounded-xl p-4 shadow-sm bg-white space-y-4">
+            <div>
+              <h4 className="text-base font-semibold text-gray-800">Avaliações pós-atendimento</h4>
+              <p className="mt-1 text-xs leading-relaxed text-gray-500">Envia automaticamente um convite pelo WhatsApp 3 horas após o fim do atendimento.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-sm text-gray-600">Solicitar avaliação?</label>
+                <select value={policies.client_review ? "true" : "false"} onChange={(e) => handlePolicyChange("client_review")(e.target.value === "true")} onBlur={() => updateField("client_review", policies.client_review, `${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`)} className="w-full rounded-md border px-3 py-2">
+                  <option value="false">Não</option><option value="true">Sim</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm text-gray-600">Cupom após avaliar</label>
+                <select value={policies.review_coupon_id ?? ""} disabled={!policies.client_review} onChange={(e) => handlePolicyChange("review_coupon_id")(e.target.value)} onBlur={() => updateField("review_coupon_id", policies.review_coupon_id || null, `${process.env.NEXT_PUBLIC_API_URL}/api/organization-policies/${org.slug_organization}`)} className="w-full rounded-md border px-3 py-2 disabled:bg-gray-50">
+                  <option value="">Sem cupom</option>
+                  {coupons.map((coupon) => <option key={coupon.id} value={coupon.id}>{coupon.code} — {coupon.discount_value}{coupon.discount_type === "percentage" ? "%" : " reais"}</option>)}
+                </select>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">Crie e ative o cupom na aba Cupons antes de selecioná-lo aqui.</p>
           </div>
 
           {/* PLAN CARD */}

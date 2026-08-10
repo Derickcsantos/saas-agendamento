@@ -5,6 +5,9 @@ import {
   hasSecretCode,
   verifySecretCodeEndpoint,
 } from "../controllers/organizationPoliciesController.js";
+import { authenticateJWT } from "../middlewares/authMiddleware.js";
+import { requireAdminOfOrganization } from "../middlewares/requireAdminOfOrganization.js";
+import requireActiveSubscription from "../middlewares/requireActiveSubscription.js";
 
 export const organizationPoliciesRouter = Router();
 
@@ -82,7 +85,7 @@ organizationPoliciesRouter.get("/:slug", getOrganizationPolicies);
  *       500:
  *         description: Erro ao atualizar políticas
  */
-organizationPoliciesRouter.put("/:slug", updateOrganizationPolicies);
+organizationPoliciesRouter.put("/:slug", authenticateJWT, requireAdminOfOrganization, requireActiveSubscription, updateOrganizationPolicies);
 
 /**
  * @swagger
@@ -114,7 +117,7 @@ organizationPoliciesRouter.put("/:slug", updateOrganizationPolicies);
  *       500:
  *         description: Erro ao verificar secret code
  */
-organizationPoliciesRouter.get("/:slug/has-secret-code", hasSecretCode);
+organizationPoliciesRouter.get("/:slug/has-secret-code", authenticateJWT, requireAdminOfOrganization, hasSecretCode);
 
 /**
  * @swagger
@@ -163,4 +166,4 @@ organizationPoliciesRouter.get("/:slug/has-secret-code", hasSecretCode);
  *       500:
  *         description: Erro ao verificar código
  */
-organizationPoliciesRouter.post("/:slug/verify-secret-code", verifySecretCodeEndpoint);
+organizationPoliciesRouter.post("/:slug/verify-secret-code", authenticateJWT, requireAdminOfOrganization, verifySecretCodeEndpoint);
