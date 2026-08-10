@@ -71,6 +71,7 @@ async function createPixCharge({ organizationId, appointmentId, amountInCents })
         amount: amountInCents,
         description: "Appointment payment",
         expiresIn: 300,  // ✅ 5 minutos
+        metadata: { externalId: transaction.id },
       },
       {
         headers: {

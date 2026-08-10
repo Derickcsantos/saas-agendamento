@@ -10,7 +10,7 @@
     "bot": "node whatsapp-bot.js",
     "postinstall": "echo 'Skipping Chrome install'",
     "build": "echo 'Build não necessário para Node.js'",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test tests/*.test.js"
   },
   "engines": {
     "node": "22.x",

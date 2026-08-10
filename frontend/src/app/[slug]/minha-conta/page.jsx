@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import { getUserDestination } from "@/lib/userDestination";
 import Footer from "../../components/Footer";
 import ProfileModal from "../../components/ProfileModal";
 import { 
@@ -58,6 +59,12 @@ export default function MyAccountPage() {
         
         if (!data.authenticated) {
           router.push(`/${slug}/login`);
+          return;
+        }
+
+        const destination = getUserDestination(slug, data.user);
+        if (destination !== `/${slug}/minha-conta`) {
+          router.replace(destination);
           return;
         }
 

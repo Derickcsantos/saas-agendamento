@@ -8,6 +8,7 @@ import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { getUserDestination } from "@/lib/userDestination";
 
 
 export default function AppointmentPage({ slug }) {
@@ -116,7 +117,7 @@ export default function AppointmentPage({ slug }) {
       }
     };
     checkAuth();
-  }, []);
+  }, [slug]);
 
   // ✅ Contador de tempo para o PIX
   useEffect(() => {
@@ -133,20 +134,19 @@ export default function AppointmentPage({ slug }) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [showPaymentModal, timeLeft]);
+  }, [showPaymentModal]);
 
   useEffect(() => {
     if (!showPaymentModal || !paymentData?.transactionId) return;
 
     let isMounted = true;
 
+    let timeoutId;
     const checkPaymentStatus = async () => {
       try {
-        setCheckingPaymentStatus(true);
-
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/payments/${slug}/pix-status/${paymentData.transactionId}`,
-          { credentials: "include" }
+          { credentials: "include", cache: "no-store" }
         );
 
         const statusData = await res.json();
@@ -159,6 +159,7 @@ export default function AppointmentPage({ slug }) {
           statusData?.appointment_confirmed === null;
 
         if (paymentConfirmed && appointmentReady) {
+          setCheckingPaymentStatus(false);
           setPaymentData((prev) => ({
             ...prev,
             status: "confirmed",
@@ -173,16 +174,17 @@ export default function AppointmentPage({ slug }) {
       } finally {
         if (isMounted) {
           setCheckingPaymentStatus(false);
+          timeoutId = setTimeout(checkPaymentStatus, 3000);
         }
       }
     };
 
+    setCheckingPaymentStatus(true);
     checkPaymentStatus();
-    const intervalId = setInterval(checkPaymentStatus, 3000);
 
     return () => {
       isMounted = false;
-      clearInterval(intervalId);
+      clearTimeout(timeoutId);
     };
   }, [showPaymentModal, paymentData?.transactionId, slug]);
 
@@ -1190,13 +1192,7 @@ const sendWhatsappConfirmation = async () => {
         {authenticated ? (
           <button
             onClick={() => {
-              if (user?.role === 'admin' || user?.is_admin) {
-                router.push(`/${slug}/admin`);
-              } else if (user?.role === 'employee' || user?.is_employee) {
-                router.push(`/${slug}/profissional`);
-              } else {
-                router.push(`/${slug}/minha-conta`);
-              }
+              router.push(getUserDestination(slug, user));
             }}
             className="text-white px-4 py-2 rounded-lg transition-all"
             style={{backgroundColor: palette?.strong_color}}

@@ -176,13 +176,13 @@ export default function GalleryPage({ slug }) {
           {/* Botões de Ação */}
           <div className="flex items-center gap-3">
             <a
-              href={`/${slug}/minha-conta`}
+              href={`/${slug}/login`}
               className="hidden sm:inline-flex items-center justify-center text-gray-700 text-sm font-medium px-4 py-2 rounded-full border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200"
             >
               Entrar
             </a>
             <a
-              href={`/${slug}/minha-conta`}
+              href={`/${slug}/login`}
               className="sm:hidden inline-flex items-center justify-center text-gray-700 p-2 rounded-full border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200"
               aria-label="Login"
             >
