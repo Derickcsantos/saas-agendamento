@@ -2,6 +2,12 @@ import { supabase } from '../lib/supabase.js';
 import axios from 'axios';
 import { redis } from '../lib/redis.js';
 import crypto from 'crypto';
+import {
+  buildEvolutionWebhookPayload,
+  dedupeRecordsByKeys,
+  extractEvolutionConnectionState,
+  extractEvolutionWebhookConfig,
+} from '../utils/evolution.js';
 
 /**
  * ENV esperadas:
@@ -164,6 +170,10 @@ function serializeProviderData(value) {
     );
   }
   return value;
+}
+
+function getErrorStatus(error, fallback = 500) {
+  return Number(error?.statusCode || error?.response?.status || error?.status || fallback);
 }
 
 function attachEvolutionStage(error, stage) {
@@ -492,6 +502,15 @@ function extractEvolutionStatus(instance) {
   ).toLowerCase();
 }
 
+async function fetchEvolutionConnectionState(instanceName, apiKey) {
+  const { data } = await withEvolutionLifecycleFallback(
+    (resolvedApiKey) => evolutionApi(resolvedApiKey).get(`/instance/connectionState/${encodeURIComponent(instanceName)}`),
+    apiKey,
+    'connection_state'
+  );
+  return data;
+}
+
 async function fetchEvolutionInstance(instanceName, apiKey) {
   const { data } = await withEvolutionLifecycleFallback(
     (resolvedApiKey) => evolutionApi(resolvedApiKey).get('/instance/fetchInstances'),
@@ -513,31 +532,19 @@ async function createEvolutionInstance({ instanceName, phone_number, webhook_url
     qrcode: true,
     integration: 'WHATSAPP-BAILEYS',
     token,
-    webhook: {
-      enabled: true,
-      url: webhook_url,
-      events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
-    },
   };
   if (normalizedPhone) {
     payload.number = normalizedPhone;
   }
 
-  console.log('[Evolution] Criando instancia:', JSON.stringify({ ...payload, webhook: payload.webhook }, null, 2));
+  console.log('[Evolution] Criando instancia:', JSON.stringify(payload, null, 2));
   const { data } = await api.post('/instance/create', payload);
   return data;
 }
 
 async function setEvolutionWebhook(instanceName, apiKey) {
   const webhookUrl = getEvolutionWebhookUrl();
-  const payload = {
-    enabled: true,
-    url: webhookUrl,
-    events: ['CONNECTION_UPDATE', 'QRCODE_UPDATED', 'MESSAGES_UPSERT'],
-    webhook_by_events: false,
-    headers: {},
-    base64: true,
-  };
+  const payload = buildEvolutionWebhookPayload(webhookUrl);
 
   console.log(`[Evolution] Configurando webhook da instancia ${instanceName}: ${webhookUrl}`);
   const { data } = await withEvolutionLifecycleFallback(
@@ -562,20 +569,30 @@ async function ensureEvolutionWebhook(instanceName, apiKey) {
 
   try {
     const current = await getEvolutionWebhook(instanceName, apiKey);
-    const currentWebhook = current?.webhook || current?.data || current;
+    const currentWebhook = extractEvolutionWebhookConfig(current);
     if (currentWebhook?.enabled === true && currentWebhook?.url === expectedUrl) {
-      return current;
+      return { configured: true, alreadyConfigured: true, data: current };
     }
   } catch (error) {
     console.warn('[Evolution] Nao foi possivel consultar webhook atual, tentando configurar:', error.response?.data || error.message);
   }
 
-  return setEvolutionWebhook(instanceName, apiKey);
+  try {
+    const data = await setEvolutionWebhook(instanceName, apiKey);
+    return { configured: true, alreadyConfigured: false, data };
+  } catch (error) {
+    const serialized = serializeProviderError(error);
+    console.warn('[Evolution] Nao foi possivel configurar webhook, seguindo com a conexao:', serialized);
+    return { configured: false, alreadyConfigured: false, error: serialized };
+  }
 }
 
-async function connectEvolutionInstance(instanceName, apiKey) {
+async function connectEvolutionInstance(instanceName, apiKey, phoneNumber = null) {
+  const normalizedPhone = normalizePhoneDigits(phoneNumber);
   const { data } = await withEvolutionLifecycleFallback(
-    (resolvedApiKey) => evolutionApi(resolvedApiKey).get(`/instance/connect/${encodeURIComponent(instanceName)}`),
+    (resolvedApiKey) => evolutionApi(resolvedApiKey).get(`/instance/connect/${encodeURIComponent(instanceName)}`, {
+      params: normalizedPhone ? { number: normalizedPhone } : undefined,
+    }),
     apiKey,
     'connect_instance'
   );
@@ -676,16 +693,23 @@ export const getWhatsappStatus = async (req, res) => {
       const instanceName = getEvolutionInstanceName(row);
       const instanceApiKey = getEvolutionInstanceApiKey(row);
       let evolutionInstance = null;
+      let connectionState = null;
       try {
         evolutionInstance = await fetchEvolutionInstance(instanceName, instanceApiKey);
       } catch (error) {
         console.warn('[Evolution] Erro ao consultar instancia, usando status local:', error.response?.data || error.message);
       }
+      try {
+        connectionState = await fetchEvolutionConnectionState(instanceName, instanceApiKey);
+      } catch (error) {
+        console.warn('[Evolution] Erro ao consultar connectionState, usando status alternativo:', error.response?.data || error.message);
+      }
       const instance = evolutionInstance?.instance || evolutionInstance;
       const rowStatus = String(row.status || '').toLowerCase();
+      const liveState = extractEvolutionConnectionState(connectionState);
       const status = rowStatus === 'connected'
         ? rowStatus
-        : extractEvolutionStatus(instance) || rowStatus;
+        : liveState || extractEvolutionStatus(instance) || rowStatus;
       const isConnected = ['open', 'connected'].includes(status);
 
       console.log(`[Evolution] Status para ${slug}: ${status} (conectado: ${isConnected})`);
@@ -695,7 +719,10 @@ export const getWhatsappStatus = async (req, res) => {
         status,
         provider: 'evolution',
         sessionId: instanceName,
-        data: evolutionInstance,
+        data: {
+          instance: evolutionInstance,
+          connectionState,
+        },
       });
     }
 
@@ -726,7 +753,7 @@ export const getWhatsappStatus = async (req, res) => {
       details: error.response?.data,
     });
     
-    return res.status(error.statusCode || 500).json({
+    return res.status(getErrorStatus(error, 500)).json({
       error: 'Erro ao verificar status',
       details: errorMessage,
     });
@@ -748,6 +775,7 @@ export const connectWhatsapp = async (req, res) => {
     try {
       let instanceName = getEvolutionInstanceName(row);
       let instanceApiKey = getEvolutionInstanceApiKey(row);
+      let webhookResult = { configured: false, alreadyConfigured: false, error: null };
 
       if (!instanceName) {
         const phoneForInstance = phone_number || row?.phone_organization;
@@ -793,7 +821,7 @@ export const connectWhatsapp = async (req, res) => {
           status: created?.instance?.status || 'CREATED',
         });
 
-        await ensureEvolutionWebhook(instanceName, instanceApiKey);
+        webhookResult = await ensureEvolutionWebhook(instanceName, instanceApiKey);
 
         const createdQr = extractEvolutionQr(created);
         if (createdQr) {
@@ -805,6 +833,7 @@ export const connectWhatsapp = async (req, res) => {
             qrCode: createdQr,
             isNewSession,
             message: 'Escaneie o QR Code no seu WhatsApp',
+            warnings: webhookResult.configured ? [] : [webhookResult.error],
             data: created,
           });
         }
@@ -812,23 +841,34 @@ export const connectWhatsapp = async (req, res) => {
         console.log(`[Evolution] Usando instancia existente: ${instanceName}`);
       }
 
-      await ensureEvolutionWebhook(instanceName, instanceApiKey);
-      const connected = await connectEvolutionInstance(instanceName, instanceApiKey);
+      webhookResult = await ensureEvolutionWebhook(instanceName, instanceApiKey);
+      const connected = await connectEvolutionInstance(instanceName, instanceApiKey, phone_number || row?.phone_organization);
+      let connectionState = null;
+      try {
+        connectionState = await fetchEvolutionConnectionState(instanceName, instanceApiKey);
+      } catch (stateError) {
+        console.warn('[Evolution] Nao foi possivel consultar connectionState apos connect:', serializeProviderError(stateError));
+      }
+      const connectedStatus = extractEvolutionConnectionState(connectionState) || connected?.status || 'connecting';
 
       return res.json({
         success: true,
         provider: 'evolution',
         sessionId: instanceName,
-        status: connected?.status || 'connecting',
+        status: connectedStatus,
         qrCode: extractEvolutionQr(connected),
         isNewSession,
         message: 'Escaneie o QR Code no seu WhatsApp',
-        data: connected,
+        warnings: webhookResult.configured ? [] : [webhookResult.error],
+        data: {
+          connect: connected,
+          connectionState,
+        },
       });
     } catch (evolutionError) {
-      console.error('[Evolution] Falha ao conectar:', evolutionError.response?.data || evolutionError.message);
+      console.error('[Evolution] Falha ao conectar:', serializeProviderError(evolutionError));
 
-      return res.status(evolutionError.statusCode || 502).json({
+      return res.status(getErrorStatus(evolutionError, 502)).json({
         success: false,
         error: 'Erro ao conectar WhatsApp pela Evolution',
         provider: 'evolution',
@@ -843,7 +883,7 @@ export const connectWhatsapp = async (req, res) => {
       stack: error.stack,
     });
     
-    return res.status(error.statusCode || 500).json({
+    return res.status(getErrorStatus(error, 500)).json({
       success: false,
       error: 'Erro ao conectar WhatsApp',
       details: error.response?.data || error.message,
@@ -876,7 +916,7 @@ export const disconnectWhatsapp = async (req, res) => {
     return res.json({ success: true, message: 'WhatsApp desconectado' });
   } catch (error) {
     console.error('Erro ao desconectar WhatsApp:', error.response?.data || error.message);
-    return res.status(error.statusCode || 500).json({
+    return res.status(getErrorStatus(error, 500)).json({
       error: 'Erro ao desconectar WhatsApp',
       details: error.response?.data || error.message,
     });
@@ -980,7 +1020,7 @@ export const getContacts = async (req, res) => {
         });
       }
 
-      const mapped = contactsApi.map((c) => {
+      const mapped = dedupeRecordsByKeys(contactsApi.map((c) => {
         const phone = normalizePhoneDigits(c.number || c.id || c.jid);
         return {
           ...c,
@@ -989,10 +1029,10 @@ export const getContacts = async (req, res) => {
           name_api: c.pushName || c.name || null,
           imgUrl: c.profilePictureUrl || c.imgUrl || null,
         };
-      }).filter((c) => !!c.phone_contact);
+      }).filter((c) => !!c.phone_contact), ["phone_contact"]);
 
       const now = new Date().toISOString();
-      const upserts = mapped.map((c) => ({
+      const upserts = dedupeRecordsByKeys(mapped.map((c) => ({
         organization_id: orgId,
         phone_contact: c.phone_contact,
         whatsapp_jid: c.jid,
@@ -1000,7 +1040,7 @@ export const getContacts = async (req, res) => {
         image_contact: c.imgUrl,
         last_sync_at: now,
         updated_at: now,
-      }));
+      })), ["organization_id", "phone_contact"]);
 
       if (upserts.length > 0) {
         const { error: upsertErr } = await supabase
@@ -1082,15 +1122,15 @@ export const getContacts = async (req, res) => {
     console.log(`[WhatsApp] Recebidos ${contactsApi.length} contatos da API`);
 
     // Mapeia dados básicos + telefone
-    const mapped = contactsApi.map((c) => {
-      const phone = extractPhoneFromJid(c.jid || c.id);
-      return {
-        ...c,
-        jid: c.jid || c.id,
-        phone_contact: phone,
-        name_api: c.name || c.notify || c.verifiedName || null,
-      };
-    }).filter((c) => !!c.phone_contact);
+      const mapped = dedupeRecordsByKeys(contactsApi.map((c) => {
+        const phone = extractPhoneFromJid(c.jid || c.id);
+        return {
+          ...c,
+          jid: c.jid || c.id,
+          phone_contact: phone,
+          name_api: c.name || c.notify || c.verifiedName || null,
+        };
+    }).filter((c) => !!c.phone_contact), ["phone_contact"]);
 
     console.log(`[WhatsApp] Mapeados ${mapped.length} contatos com telefone válido`);
 
@@ -1108,7 +1148,7 @@ export const getContacts = async (req, res) => {
       console.log(`[WhatsApp] Processando lote ${batchIdx + 1}/${totalBatches} (${batchMapped.length} contatos)...`);
 
       // Buscar existentes DESTE LOTE
-      const phonesInBatch = batchMapped.map((c) => c.phone_contact);
+      const phonesInBatch = [...new Set(batchMapped.map((c) => c.phone_contact))];
       
       let existingMap = {};
       try {
@@ -1134,7 +1174,7 @@ export const getContacts = async (req, res) => {
       }
 
       // Preparar upserts para este lote
-      const upserts = batchMapped.map((c) => {
+      const upserts = dedupeRecordsByKeys(batchMapped.map((c) => {
         const prev = existingMap[c.phone_contact];
         return {
           organization_id: orgId,
@@ -1147,7 +1187,7 @@ export const getContacts = async (req, res) => {
           last_sync_at: now,
           updated_at: now,
         };
-      });
+      }), ["organization_id", "phone_contact"]);
 
       // Fazer upsert
       try {
@@ -1178,7 +1218,7 @@ export const getContacts = async (req, res) => {
     for (let batchIdx = 0; batchIdx < totalBatchesForReload; batchIdx++) {
       const startIdx = batchIdx * BATCH_SIZE;
       const endIdx = Math.min(startIdx + BATCH_SIZE, mapped.length);
-      const phonesInBatch = mapped.slice(startIdx, endIdx).map((c) => c.phone_contact);
+      const phonesInBatch = [...new Set(mapped.slice(startIdx, endIdx).map((c) => c.phone_contact))];
 
       try {
         const { data: refreshedRows, error: refreshErr } = await supabase
@@ -1407,7 +1447,7 @@ export const getContactInfo = async (req, res) => {
       stack: error.stack?.split('\n').slice(0, 3).join(' | '),
     });
     
-    return res.status(error.statusCode || 500).json({
+    return res.status(getErrorStatus(error, 500)).json({
       error: 'Erro ao buscar contato',
       details: errorMessage,
     });
@@ -1500,7 +1540,7 @@ export const updateContactInfo = async (req, res) => {
       stack: error.stack?.split('\n').slice(0, 3).join(' | '),
     });
     
-    return res.status(error.statusCode || 500).json({
+    return res.status(getErrorStatus(error, 500)).json({
       error: 'Erro ao atualizar contato',
       details: errorMessage,
     });
@@ -1809,7 +1849,7 @@ export const getQRCode = async (req, res) => {
       response: error.response?.data,
     });
     
-    return res.status(error.statusCode || 500).json({
+    return res.status(getErrorStatus(error, 500)).json({
       success: false,
       error: 'Erro ao obter QR Code',
       details: error.response?.data || error.message,
