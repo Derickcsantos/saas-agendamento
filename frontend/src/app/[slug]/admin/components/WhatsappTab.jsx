@@ -218,6 +218,12 @@ export default function WhatsappTab({ org, setActiveTab }) {
       console.log("Connect Response:", { status: res.status, data });
 
       if (res.ok && data.success) {
+        if (Array.isArray(data.warnings) && data.warnings[0]?.message) {
+          const warning = data.warnings[0];
+          const stageLabel = warning.stage ? ` (${warning.stage})` : "";
+          toast.warning(`WhatsApp conectado com alerta${stageLabel}: ${warning.message}`);
+        }
+
         // Verificar se há QR code (pode vir como qrCode ou qr)
         const qrCodeData = data.qrCode || data.data?.qrCode || data.data?.qr || data.data?.code || data.data?.base64 || data.data?.qrcode?.code || data.data?.qrcode?.base64 || null;
         
@@ -275,10 +281,11 @@ export default function WhatsappTab({ org, setActiveTab }) {
         // Verificar se é erro de plano não ativo
         if (data.details && typeof data.details === 'object') {
           const detailsStr = JSON.stringify(data.details);
+          const stageLabel = data.details.stage ? ` (${data.details.stage})` : "";
           if (detailsStr.includes("subscription") || detailsStr.includes("plan")) {
             toast.error("Plano da Evolution API nao ativo ou indisponivel. Verifique a configuracao da Evolution.");
           } else {
-            toast.error(`Erro: ${data.details.message || detailsStr}`);
+            toast.error(`Erro${stageLabel}: ${data.details.message || detailsStr}`);
           }
         } else {
           toast.error(errorMsg);
