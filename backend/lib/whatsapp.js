@@ -113,7 +113,9 @@ async function sendEvolution({ instanceName, apiKey, phone, message }) {
     },
     body: JSON.stringify({
       number: toEvolutionNumber(phone),
-      text: String(message),
+      textMessage: {
+        text: String(message),
+      },
     }),
   });
 

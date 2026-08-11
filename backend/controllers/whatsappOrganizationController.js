@@ -140,7 +140,7 @@ function serializeProviderError(error) {
   return {
     status: error?.response?.status || null,
     data: error?.response?.data || null,
-    message: error?.message || 'Erro desconhecido',
+    message: extractProviderMessage(error?.response?.data) || error?.message || 'Erro desconhecido',
   };
 }
 
@@ -461,18 +461,21 @@ async function fetchEvolutionInstance(instanceName, apiKey) {
 
 async function createEvolutionInstance({ instanceName, phone_number, webhook_url, token }) {
   const api = evolutionApi();
+  const normalizedPhone = normalizePhoneDigits(phone_number);
   const payload = {
     instanceName,
     qrcode: true,
     integration: 'WHATSAPP-BAILEYS',
     token,
-    number: normalizePhoneDigits(phone_number),
     webhook: {
       enabled: true,
       url: webhook_url,
       events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
     },
   };
+  if (normalizedPhone) {
+    payload.number = normalizedPhone;
+  }
 
   console.log('[Evolution] Criando instancia:', JSON.stringify({ ...payload, webhook: payload.webhook }, null, 2));
   const { data } = await api.post('/instance/create', payload);
@@ -486,6 +489,7 @@ async function setEvolutionWebhook(instanceName, apiKey) {
     enabled: true,
     url: webhookUrl,
     events: ['CONNECTION_UPDATE', 'QRCODE_UPDATED', 'MESSAGES_UPSERT'],
+    webhook_by_events: false,
     headers: {},
     base64: true,
   };
@@ -527,7 +531,9 @@ async function sendEvolutionText(instanceName, apiKey, number, message) {
   const api = evolutionApi(apiKey);
   const { data } = await api.post(`/message/sendText/${encodeURIComponent(instanceName)}`, {
     number: normalizeEvolutionSendNumber(number),
-    text: String(message),
+    textMessage: {
+      text: String(message),
+    },
   });
   if (data?.success === false) {
     throw new Error(extractProviderMessage(data) || 'Evolution recusou o envio da mensagem');
