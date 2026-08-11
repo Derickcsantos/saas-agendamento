@@ -6,6 +6,7 @@ import { dateInTimeZone, localAppointmentEnd } from "../utils/reviewSchedule.js"
 
 const DEFAULT_INTERVAL_MS = 60 * 1000;
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+const DEFAULT_TIMEZONE = "America/Sao_Paulo";
 let running = false;
 
 async function deliverInvitation(invitation, appointment, organization) {
@@ -52,7 +53,7 @@ export async function processReviewRequests(now = new Date()) {
   running = true;
   try {
     const { data: policies, error: policyError } = await supabase.from("organization_policies")
-      .select("organization_id, organizations (id, name, slug_organization, timezone)")
+      .select("organization_id, organizations (id, name, slug_organization)")
       .eq("client_review", true);
     if (policyError) throw policyError;
 
@@ -60,18 +61,19 @@ export async function processReviewRequests(now = new Date()) {
     for (const policy of policies || []) {
       const organization = policy.organizations;
       if (!organization) continue;
+      const timezone = DEFAULT_TIMEZONE;
       const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const { data: appointments, error } = await supabase.from("appointments")
         .select("id, client_name, client_phone, appointment_date, end_time, status")
         .eq("organization_id", organization.id)
-        .gte("appointment_date", dateInTimeZone(start, organization.timezone || "America/Sao_Paulo"))
-        .lte("appointment_date", dateInTimeZone(now, organization.timezone || "America/Sao_Paulo"))
+        .gte("appointment_date", dateInTimeZone(start, timezone))
+        .lte("appointment_date", dateInTimeZone(now, timezone))
         .in("status", ["confirmed", "completed"])
         .not("client_phone", "is", null);
       if (error) throw error;
 
       for (const appointment of appointments || []) {
-        const scheduledAt = new Date(localAppointmentEnd(appointment, organization.timezone).getTime() + THREE_HOURS_MS);
+        const scheduledAt = new Date(localAppointmentEnd(appointment, timezone).getTime() + THREE_HOURS_MS);
         if (scheduledAt > now) continue;
 
         const token = crypto.randomUUID();
