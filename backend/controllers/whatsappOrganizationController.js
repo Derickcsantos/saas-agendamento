@@ -139,7 +139,8 @@ function normalizeEvolutionWebhookStatus(payload) {
 function serializeProviderError(error) {
   return {
     status: error?.response?.status || null,
-    data: error?.response?.data || null,
+    stage: error?.evolutionStage || null,
+    data: serializeProviderData(error?.response?.data || null),
     message: extractProviderMessage(error?.response?.data) || error?.message || 'Erro desconhecido',
   };
 }
@@ -149,9 +150,51 @@ function extractProviderMessage(data) {
   if (typeof data?.message === 'string') return data.message;
   if (Array.isArray(data?.message)) return data.message.flat(Infinity).join(' ');
   if (typeof data?.error === 'string') return data.error;
+  if (typeof data?.error?.message === 'string') return data.error.message;
   if (typeof data?.response?.message === 'string') return data.response.message;
   if (Array.isArray(data?.response?.message)) return data.response.message.flat(Infinity).join(' ');
   return null;
+}
+
+function serializeProviderData(value) {
+  if (Array.isArray(value)) return value.map(serializeProviderData);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nestedValue]) => [key, serializeProviderData(nestedValue)])
+    );
+  }
+  return value;
+}
+
+function attachEvolutionStage(error, stage) {
+  if (error && !error.evolutionStage) error.evolutionStage = stage;
+  return error;
+}
+
+async function withEvolutionLifecycleFallback(action, apiKey, stage) {
+  try {
+    return await action(apiKey);
+  } catch (error) {
+    const fallbackKey = EVOLUTION_API_KEY;
+    const canRetryWithGlobalKey = Boolean(
+      fallbackKey &&
+      apiKey &&
+      fallbackKey !== apiKey &&
+      [400, 401, 403, 404].includes(Number(error?.response?.status))
+    );
+
+    if (!canRetryWithGlobalKey) {
+      throw attachEvolutionStage(error, stage);
+    }
+
+    console.warn(`[Evolution] ${stage} falhou com a chave da instância; tentando com a chave global.`);
+
+    try {
+      return await action(fallbackKey);
+    } catch (fallbackError) {
+      throw attachEvolutionStage(fallbackError, `${stage}_with_global_key`);
+    }
+  }
 }
 
 function normalizeDbContact(row) {
@@ -450,8 +493,11 @@ function extractEvolutionStatus(instance) {
 }
 
 async function fetchEvolutionInstance(instanceName, apiKey) {
-  const api = evolutionApi(apiKey);
-  const { data } = await api.get('/instance/fetchInstances');
+  const { data } = await withEvolutionLifecycleFallback(
+    (resolvedApiKey) => evolutionApi(resolvedApiKey).get('/instance/fetchInstances'),
+    apiKey,
+    'fetch_instance'
+  );
   const instances = Array.isArray(data) ? data : data?.instances || data?.data || [];
   return instances.find((item) => {
     const instance = item?.instance || item;
@@ -483,7 +529,6 @@ async function createEvolutionInstance({ instanceName, phone_number, webhook_url
 }
 
 async function setEvolutionWebhook(instanceName, apiKey) {
-  const api = evolutionApi(apiKey);
   const webhookUrl = getEvolutionWebhookUrl();
   const payload = {
     enabled: true,
@@ -495,13 +540,20 @@ async function setEvolutionWebhook(instanceName, apiKey) {
   };
 
   console.log(`[Evolution] Configurando webhook da instancia ${instanceName}: ${webhookUrl}`);
-  const { data } = await api.post(`/webhook/set/${encodeURIComponent(instanceName)}`, payload);
+  const { data } = await withEvolutionLifecycleFallback(
+    (resolvedApiKey) => evolutionApi(resolvedApiKey).post(`/webhook/set/${encodeURIComponent(instanceName)}`, payload),
+    apiKey,
+    'set_webhook'
+  );
   return data;
 }
 
 async function getEvolutionWebhook(instanceName, apiKey) {
-  const api = evolutionApi(apiKey);
-  const { data } = await api.get(`/webhook/find/${encodeURIComponent(instanceName)}`);
+  const { data } = await withEvolutionLifecycleFallback(
+    (resolvedApiKey) => evolutionApi(resolvedApiKey).get(`/webhook/find/${encodeURIComponent(instanceName)}`),
+    apiKey,
+    'find_webhook'
+  );
   return data;
 }
 
@@ -522,8 +574,11 @@ async function ensureEvolutionWebhook(instanceName, apiKey) {
 }
 
 async function connectEvolutionInstance(instanceName, apiKey) {
-  const api = evolutionApi(apiKey);
-  const { data } = await api.get(`/instance/connect/${encodeURIComponent(instanceName)}`);
+  const { data } = await withEvolutionLifecycleFallback(
+    (resolvedApiKey) => evolutionApi(resolvedApiKey).get(`/instance/connect/${encodeURIComponent(instanceName)}`),
+    apiKey,
+    'connect_instance'
+  );
   return data;
 }
 
