@@ -1,5 +1,6 @@
 import fetch from "node-fetch";
 import { supabase } from "./supabase.js";
+import { buildEvolutionTextPayload } from "../utils/evolution.js";
 
 const EVOLUTION_BASE_URL = (process.env.EVOLUTION_API_URL || "").replace(/\/$/, "");
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY;
@@ -111,12 +112,7 @@ async function sendEvolution({ instanceName, apiKey, phone, message }) {
       apikey: apiKey || EVOLUTION_API_KEY,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      number: toEvolutionNumber(phone),
-      textMessage: {
-        text: String(message),
-      },
-    }),
+    body: JSON.stringify(buildEvolutionTextPayload(toEvolutionNumber(phone), message)),
   });
 
   const rawText = await response.text();

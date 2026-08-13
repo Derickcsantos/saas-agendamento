@@ -2,10 +2,21 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildEvolutionWebhookPayload,
+  buildEvolutionTextPayload,
   dedupeRecordsByKeys,
   extractEvolutionConnectionState,
   extractEvolutionWebhookConfig,
 } from "../utils/evolution.js";
+
+test("builds the sendText payload with text at the top level", () => {
+  const payload = buildEvolutionTextPayload("5511986261007", "Mensagem de confirmacao");
+
+  assert.deepEqual(payload, {
+    number: "5511986261007",
+    text: "Mensagem de confirmacao",
+  });
+  assert.equal("textMessage" in payload, false);
+});
 
 test("builds the webhook payload using Evolution camelCase fields", () => {
   const payload = buildEvolutionWebhookPayload("https://api.marcafy.com.br/whatsapp/evolution/webhook");

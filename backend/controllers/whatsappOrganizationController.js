@@ -4,6 +4,7 @@ import { redis } from '../lib/redis.js';
 import crypto from 'crypto';
 import {
   buildEvolutionWebhookPayload,
+  buildEvolutionTextPayload,
   dedupeRecordsByKeys,
   extractEvolutionConnectionState,
   extractEvolutionWebhookConfig,
@@ -601,12 +602,10 @@ async function connectEvolutionInstance(instanceName, apiKey, phoneNumber = null
 
 async function sendEvolutionText(instanceName, apiKey, number, message) {
   const api = evolutionApi(apiKey);
-  const { data } = await api.post(`/message/sendText/${encodeURIComponent(instanceName)}`, {
-    number: normalizeEvolutionSendNumber(number),
-    textMessage: {
-      text: String(message),
-    },
-  });
+  const { data } = await api.post(
+    `/message/sendText/${encodeURIComponent(instanceName)}`,
+    buildEvolutionTextPayload(normalizeEvolutionSendNumber(number), message)
+  );
   if (data?.success === false) {
     throw new Error(extractProviderMessage(data) || 'Evolution recusou o envio da mensagem');
   }
