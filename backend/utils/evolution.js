@@ -24,6 +24,13 @@ export function buildEvolutionWebhookPayload(webhookUrl) {
   };
 }
 
+export function buildEvolutionTextPayload(number, message) {
+  return {
+    number,
+    text: String(message),
+  };
+}
+
 export function extractEvolutionWebhookConfig(payload) {
   if (!payload || typeof payload !== "object") return null;
 
