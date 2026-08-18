@@ -62,6 +62,9 @@ export default function AppointmentPage({ slug }) {
   const [checkingPaymentStatus, setCheckingPaymentStatus] = useState(false);
   const longPressTimersRef = useRef({});
   const pressIdCounterRef = useRef(0);
+  // O state de loading só é atualizado no próximo render. Esta ref bloqueia
+  // imediatamente cliques consecutivos no mesmo botão.
+  const isConfirmingAppointmentRef = useRef(false);
   const [isDesktop, setIsDesktop] = useState(true);
 
   useEffect(() => {
@@ -504,6 +507,10 @@ const sendWhatsappConfirmation = async () => {
   };
 
   const handleConfirmAppointment = async (clientData) => {
+    if (isConfirmingAppointmentRef.current) {
+      return;
+    }
+
     if (!selected.service || !selected.employee || !selected.time || !selected.date) {
       toast.info("Preencha todos os dados do agendamento antes de confirmar.");
       return;
@@ -518,6 +525,7 @@ const sendWhatsappConfirmation = async () => {
     }
 
     try {
+      isConfirmingAppointmentRef.current = true;
       setLoading(true);
 
       const coupon = selected.coupon;
@@ -653,6 +661,7 @@ const sendWhatsappConfirmation = async () => {
       console.error("Erro ao confirmar agendamento:", err);
       toast.error("Erro interno. Tente novamente mais tarde.");
     } finally {
+      isConfirmingAppointmentRef.current = false;
       setLoading(false);
     }
   };
@@ -1645,6 +1654,7 @@ const sendWhatsappConfirmation = async () => {
                 </div>
 
                 <button
+                  type="button"
                   onClick={() =>
                     handleConfirmAppointment({
                       name: selected.clientName || user?.username,
