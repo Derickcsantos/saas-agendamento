@@ -2,6 +2,9 @@ import { supabase } from "../lib/supabase.js";
 
 const trial_days = 7
 const ms_in_days = 1000 * 60 * 60 * 24
+const prepaidOrganizationIds = new Set([
+    "a4f6c591-03de-4668-a887-ea7fc8eb13af",
+])
 
 export default async function requireActiveSubscription(req, res, next) {
     try {
@@ -29,6 +32,7 @@ export default async function requireActiveSubscription(req, res, next) {
         const diffDays = Math.floor((now - createdAt) / ms_in_days)
 
         const hasActivePlan = organization.is_active === true
+        const hasPrepaidAccess = prepaidOrganizationIds.has(organization.id)
 
         const { data: latestSubscription, error: subscriptionError } = await supabase
             .from("subscriptions")
@@ -44,7 +48,7 @@ export default async function requireActiveSubscription(req, res, next) {
 
         const hasPixBilling = latestSubscription?.billing_type === "pix";
 
-        if (!hasActivePlan && diffDays >= trial_days && !hasPixBilling) {
+        if (!hasActivePlan && !hasPrepaidAccess && diffDays >= trial_days && !hasPixBilling) {
             return res.status(402).json({
                 code: "TRIAL_EXPIRED",
                 message: "Seu período de teste expirou"
