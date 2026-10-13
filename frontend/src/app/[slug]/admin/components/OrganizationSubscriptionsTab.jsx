@@ -60,7 +60,7 @@ export default function OrganizationSubscriptionsTab({ org, user }) {
         const plansData = await plansRes.json();
         const subscriptionData = await subscriptionRes.json();
 
-        setPlans(plansData.data || []);
+        setPlans((plansData.data || []).filter((plan) => !["Sinal Escala", "Sinal Essencial"].includes(String(plan.productName || "").trim())));
         setActiveSubscription(subscriptionData.data || null);
       } catch (error) {
         console.error("Erro ao carregar dados:", error);

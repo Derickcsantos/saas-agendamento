@@ -98,15 +98,7 @@ export default function AppointmentsPage({ slug }) {
     return "Nao compareceu";
   };
 
-  const canCancel = (appointment) => {
-    if (!["confirmed", "pending"].includes(appointment.status)) return false;
-
-    const startsAt = new Date(
-      `${appointment.date}T${String(appointment.start_time || "00:00:00").slice(0, 8)}-03:00`
-    );
-
-    return Number.isFinite(startsAt.getTime()) && startsAt > new Date();
-  };
+  const canCancel = (appointment) => appointment.can_cancel === true;
 
   const statusBadgeClass = (status) => {
     if (status === "pending") return "bg-amber-500 text-white";
@@ -169,7 +161,14 @@ export default function AppointmentsPage({ slug }) {
 
   const CancelButton = ({ appointment, compact = false }) => {
     if (!canCancel(appointment)) {
-      return compact ? <span className="text-sm text-gray-400">-</span> : null;
+      if (compact) {
+        return <span className="text-sm text-gray-400" title={appointment.cancellation_reason || "Cancelamento indisponível"}>-</span>;
+      }
+      return ["confirmed", "pending"].includes(appointment.status) && appointment.cancellation_reason ? (
+        <p className="rounded-xl bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-500 dark:bg-gray-900 dark:text-gray-400">
+          {appointment.cancellation_reason}
+        </p>
+      ) : null;
     }
 
     return (

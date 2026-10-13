@@ -8,6 +8,8 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [additionalServices, setAdditionalServices] = useState([]);
+  const [selectedAdditionalIds, setSelectedAdditionalIds] = useState([]);
   const [slots, setSlots] = useState([]);
   const [clients, setClients] = useState([]);
   const [filteredClients, setFilteredClients] = useState([]);
@@ -78,7 +80,7 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
         { credentials: "include" }
       );
 
-      if (res.status === 402) {
+      if (usersRes.status === 402) {
         setShowPaywall(true);
         return;
       }
@@ -92,7 +94,7 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
         { credentials: "include" }
       );
 
-      if (res.status === 402) {
+      if (appointmentsRes.status === 402) {
         setShowPaywall(true);
         return;
       }
@@ -195,6 +197,29 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
     setEmployees(await res.json());
   }
 
+  async function loadAdditionalServices(serviceId, employeeId) {
+    if (!serviceId || !employeeId) {
+      setAdditionalServices([]);
+      return;
+    }
+
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/additional-services/${serviceId}/${employeeId}/${org.slug_organization}`,
+      { credentials: "include" }
+    );
+    setAdditionalServices(res.ok ? await res.json() : []);
+  }
+
+  const selectedAdditionalTotal = selectedAdditionalIds.reduce((total, additionalId) => {
+    const item = additionalServices.find((additional) => additional.additional_id === Number(additionalId));
+    return total + Number(item?.subservice?.price || 0);
+  }, 0);
+
+  const selectedDuration = Number(selectedService?.duration || 0) + selectedAdditionalIds.reduce((total, additionalId) => {
+    const item = additionalServices.find((additional) => additional.additional_id === Number(additionalId));
+    return total + Number(item?.subservice?.duration || 0);
+  }, 0);
+
   // 👉 AGORA RECEBE employeeId, date e duration
   async function loadSlots(employeeId, date, duration) {
     if (!employeeId || !date || !duration) return;
@@ -218,6 +243,8 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
     });
     setServices([]);
     setEmployees([]);
+    setAdditionalServices([]);
+    setSelectedAdditionalIds([]);
     setSlots([]);
 
     if (val) loadServices(val);
@@ -237,6 +264,8 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
     });
 
     setEmployees([]);
+    setAdditionalServices([]);
+    setSelectedAdditionalIds([]);
     setSlots([]);
 
     if (id) loadEmployees(id);
@@ -246,7 +275,12 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
     const nextForm = { ...form, employee_id: id, time_slot: "" };
     setForm(nextForm);
     setSlots([]);
+    setSelectedAdditionalIds([]);
+    setAdditionalServices([]);
 
+    if (id) {
+      loadAdditionalServices(form.service_id, id);
+    }
     if (id && nextForm.date && selectedService?.duration) {
       loadSlots(id, nextForm.date, selectedService.duration);
     }
@@ -257,8 +291,31 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
     setForm(nextForm);
     setSlots([]);
 
-    if (date && nextForm.employee_id && selectedService?.duration) {
-      loadSlots(nextForm.employee_id, date, selectedService.duration);
+    if (date && nextForm.employee_id && selectedDuration) {
+      loadSlots(nextForm.employee_id, date, selectedDuration);
+    }
+  };
+
+  const handleAdditionalServicesChange = (event) => {
+    const nextIds = Array.from(event.target.selectedOptions, (option) => Number(option.value));
+    const nextTotal = nextIds.reduce((total, additionalId) => {
+      const item = additionalServices.find((additional) => additional.additional_id === additionalId);
+      return total + Number(item?.subservice?.price || 0);
+    }, 0);
+    const nextDuration = Number(selectedService?.duration || 0) + nextIds.reduce((total, additionalId) => {
+      const item = additionalServices.find((additional) => additional.additional_id === additionalId);
+      return total + Number(item?.subservice?.duration || 0);
+    }, 0);
+
+    setSelectedAdditionalIds(nextIds);
+    setForm((current) => ({
+      ...current,
+      time_slot: "",
+      final_price: Number(selectedService?.price || 0) + nextTotal,
+    }));
+    setSlots([]);
+    if (form.employee_id && form.date && nextDuration) {
+      loadSlots(form.employee_id, form.date, nextDuration);
     }
   };
 
@@ -299,7 +356,8 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
       start_time,
       end_time,
       final_price: Number(form.final_price),
-      original_price: Number(selectedService?.price || 0),
+      original_price: Number(selectedService?.price || 0) + selectedAdditionalTotal,
+      additional_service_ids: selectedAdditionalIds,
       coupon_code: null,
       admin_override: manualTimeMode, // só permite bypass em modo manual
     };
@@ -337,6 +395,8 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
 
     setServices([]);
     setEmployees([]);
+    setAdditionalServices([]);
+    setSelectedAdditionalIds([]);
     setSlots([]);
     setSelectedService(null);
     setManualTimeMode(false);
@@ -484,6 +544,32 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
             ))}
           </select>
         </div>
+
+        {additionalServices.length > 0 && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div className="mb-2 flex items-baseline justify-between gap-3">
+              <label htmlFor="quick-schedule-additionals" className="font-medium text-gray-700">Serviços adicionais</label>
+              <span className="text-xs text-gray-500">Selecione quantos desejar</span>
+            </div>
+            <select
+              id="quick-schedule-additionals"
+              multiple
+              value={selectedAdditionalIds.map(String)}
+              onChange={handleAdditionalServicesChange}
+              className="min-h-28 w-full rounded-md border bg-white p-2 text-sm"
+              aria-describedby="quick-schedule-additionals-help"
+            >
+              {additionalServices.map((additional) => (
+                <option key={additional.additional_id} value={additional.additional_id}>
+                  {additional.subservice?.name} — R$ {Number(additional.subservice?.price || 0).toFixed(2)}
+                </option>
+              ))}
+            </select>
+            <p id="quick-schedule-additionals-help" className="mt-2 text-xs text-gray-500">
+              {selectedAdditionalIds.length ? `${selectedAdditionalIds.length} adicional(is) selecionado(s). O preço sugerido foi atualizado.` : "Nenhum adicional selecionado."}
+            </p>
+          </div>
+        )}
 
         <div className="grid md:grid-cols-3 gap-4">
           <input

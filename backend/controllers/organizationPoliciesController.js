@@ -30,6 +30,8 @@ export const getOrganizationPolicies = async (req, res) => {
         min_hours_before_booking: 0,
         sync_google_calendar: true,
         mandatory_email: true,
+        auto_cancellation_enabled: false,
+        cancellation_notice_days: 0,
         client_review: false,
         review_coupon_id: null,
       });
@@ -45,7 +47,7 @@ export const getOrganizationPolicies = async (req, res) => {
 export const updateOrganizationPolicies = async (req, res) => {
   try {
     const { slug } = req.params;
-    const { max_schedule_days, allow_same_day, min_hours_before_booking, sync_google_calendar, mandatory_email, client_review, review_coupon_id, secret_code, current_secret_code } =
+    const { max_schedule_days, allow_same_day, min_hours_before_booking, sync_google_calendar, mandatory_email, client_review, review_coupon_id, auto_cancellation_enabled, cancellation_notice_days, secret_code, current_secret_code } =
       req.body;
 
     const { data: org, error: orgError } = await supabase
@@ -58,17 +60,25 @@ export const updateOrganizationPolicies = async (req, res) => {
       return res.status(404).json({ message: "Organização não encontrada" });
     }
 
-    const updateData = {
-      organization_id: org.id,
-      max_schedule_days,
-      min_hours_before_booking,
-      sync_google_calendar: Boolean(sync_google_calendar),
-    };
+    const updateData = { organization_id: org.id };
+    if (max_schedule_days !== undefined) updateData.max_schedule_days = max_schedule_days;
+    if (min_hours_before_booking !== undefined) updateData.min_hours_before_booking = min_hours_before_booking;
+    if (sync_google_calendar !== undefined) updateData.sync_google_calendar = Boolean(sync_google_calendar);
 
     if (mandatory_email !== undefined) {
       updateData.mandatory_email = Boolean(mandatory_email);
     }
     if (client_review !== undefined) updateData.client_review = Boolean(client_review);
+    if (auto_cancellation_enabled !== undefined) {
+      updateData.auto_cancellation_enabled = Boolean(auto_cancellation_enabled);
+    }
+    if (cancellation_notice_days !== undefined) {
+      const noticeDays = Number(cancellation_notice_days);
+      if (!Number.isInteger(noticeDays) || noticeDays < 0) {
+        return res.status(400).json({ error: "O período para cancelamento deve ser um número inteiro não negativo" });
+      }
+      updateData.cancellation_notice_days = noticeDays;
+    }
     if (review_coupon_id !== undefined) {
       if (review_coupon_id === null || review_coupon_id === "") {
         updateData.review_coupon_id = null;

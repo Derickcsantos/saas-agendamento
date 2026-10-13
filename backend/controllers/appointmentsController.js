@@ -976,8 +976,8 @@ Seu agendamento foi realizado com sucesso em *${orgData?.name}*.
 ${additionalSummary.items.length ? `➕ Adicionais: ${additionalSummary.items.map((item) => item.name).join(", ")}` : ""}
 🧑‍💼 Profissional: ${employeeInfo?.name || "-"}
 📅 Data: ${formattedDate}
-⏰ Horário de início: ${start_time}
-⏰ Previsão de término: ${end_time}
+⏰ Horário de início do serviço: ${start_time} 
+⏰ Previsão de término do serviço: ${end_time}
 💰 Valor: ${formattedFinalPrice}
 
 ${

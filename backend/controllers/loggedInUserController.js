@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase.js";
 import { sendWhatsAppMessage } from "../lib/whatsapp.js";
 import createOAuthClient from "../utils/createOAuthClient.js";
 import findCalendarIdByEventId from "../utils/findCalendarByEventId.js";
+import { getCancellationEligibility } from "../utils/cancellationEligibility.js";
 
 export const getLoggedInUserAppointments = async (req, res) => {
   try {
@@ -16,6 +17,14 @@ export const getLoggedInUserAppointments = async (req, res) => {
     if (!organizationId) {
       return res.status(401).json({ error: "Organizacao nao identificada" });
     }
+
+    const { data: policy, error: policyError } = await supabase
+      .from("organization_policies")
+      .select("auto_cancellation_enabled, cancellation_notice_days")
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+
+    if (policyError) throw policyError;
 
     const { data, error } = await supabase
       .from("appointments")
@@ -40,7 +49,9 @@ export const getLoggedInUserAppointments = async (req, res) => {
 
     if (error) throw error;
 
-    const formattedData = (data || []).map((item) => ({
+    const formattedData = (data || []).map((item) => {
+      const cancellation = getCancellationEligibility(item, policy);
+      return {
       id: item.id,
       date: item.appointment_date,
       start_time: item.start_time,
@@ -52,7 +63,10 @@ export const getLoggedInUserAppointments = async (req, res) => {
       client_name: item.client_name,
       client_email: item.client_email,
       client_phone: item.client_phone,
-    }));
+        can_cancel: cancellation.canCancel,
+        cancellation_reason: cancellation.reason,
+      };
+    });
 
     return res.json(formattedData);
   } catch (error) {
@@ -72,15 +86,6 @@ function formatCurrencyBRL(value) {
     style: "currency",
     currency: "BRL",
   });
-}
-
-function isAppointmentStarted(appointment) {
-  const date = appointment?.appointment_date;
-  const time = appointment?.start_time;
-  if (!date || !time) return false;
-
-  const startsAt = new Date(`${date}T${String(time).slice(0, 8)}-03:00`);
-  return Number.isFinite(startsAt.getTime()) && startsAt <= new Date();
 }
 
 async function deleteGoogleCalendarEventIfNeeded({ orgId, appointment }) {
@@ -203,7 +208,7 @@ export const cancelLoggedInUserAppointment = async (req, res) => {
         employee_id,
         google_event_id,
         services:service_id (name),
-        employees:employee_id (name)
+        employees:employee_id (name, phone)
       `)
       .eq("id", appointmentId)
       .eq("organization_id", org.id)
@@ -215,20 +220,25 @@ export const cancelLoggedInUserAppointment = async (req, res) => {
     }
 
     if (appointment.status === "canceled") {
-      return res.status(409).json({ error: "Este agendamento ja foi cancelado" });
+      return res.json({
+        success: true,
+        already_canceled: true,
+        message: "Este agendamento já estava cancelado",
+        appointment: { id: appointment.id, status: appointment.status },
+        whatsapp_sent: false,
+        whatsapp: { professional: false, organization: false },
+      });
     }
 
-    if (appointment.status === "completed") {
-      return res.status(400).json({ error: "Agendamentos concluidos nao podem ser cancelados" });
-    }
+    const { data: policy, error: policyError } = await supabase
+      .from("organization_policies")
+      .select("auto_cancellation_enabled, cancellation_notice_days")
+      .eq("organization_id", org.id)
+      .maybeSingle();
+    if (policyError) throw policyError;
 
-    if (appointment.status === "no_show") {
-      return res.status(400).json({ error: "Este agendamento nao pode ser cancelado" });
-    }
-
-    if (isAppointmentStarted(appointment)) {
-      return res.status(400).json({ error: "Nao e possivel cancelar um agendamento que ja comecou" });
-    }
+    const cancellation = getCancellationEligibility(appointment, policy);
+    if (!cancellation.canCancel) return res.status(409).json({ error: cancellation.reason });
 
     const { data: canceled, error: updateError } = await supabase
       .from("appointments")
@@ -253,12 +263,7 @@ export const cancelLoggedInUserAppointment = async (req, res) => {
       );
     }
 
-    let whatsappSent = false;
-    try {
-      const representativePhone = await getRepresentativePhone(org.id);
-
-      if (representativePhone) {
-        const message = `
+    const message = `
 Agendamento cancelado pelo cliente
 
 Organizacao: ${org.name || "-"}
@@ -273,23 +278,28 @@ Horario: ${String(appointment.start_time || "").slice(0, 5)} - ${String(appointm
 Valor: ${formatCurrencyBRL(appointment.final_price)}
 
 ID do agendamento: ${appointment.id}
-        `.trim();
-
-        await sendWhatsAppMessage(representativePhone, message, org.id, true);
-        whatsappSent = true;
+    `.trim();
+    const whatsapp = { professional: false, organization: false };
+    const notifications = [
+      { key: "professional", phone: appointment.employees?.phone, useDefaultApiKey: false },
+      { key: "organization", phone: await getRepresentativePhone(org.id), useDefaultApiKey: true },
+    ];
+    await Promise.all(notifications.map(async ({ key, phone, useDefaultApiKey }) => {
+      if (!phone) return;
+      try {
+        await sendWhatsAppMessage(phone, message, org.id, useDefaultApiKey);
+        whatsapp[key] = true;
+      } catch (whatsappError) {
+        console.warn(`Não foi possível enviar WhatsApp ao ${key}:`, whatsappError?.message || whatsappError);
       }
-    } catch (whatsappError) {
-      console.warn(
-        "Nao foi possivel enviar WhatsApp ao representante:",
-        whatsappError?.message || whatsappError
-      );
-    }
+    }));
 
     return res.json({
       success: true,
       message: "Agendamento cancelado com sucesso",
       appointment: canceled,
-      whatsapp_sent: whatsappSent,
+      whatsapp_sent: whatsapp.professional || whatsapp.organization,
+      whatsapp,
     });
   } catch (error) {
     console.error("Erro ao cancelar agendamento do cliente:", error);
