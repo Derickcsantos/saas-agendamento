@@ -296,8 +296,11 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
     }
   };
 
-  const handleAdditionalServicesChange = (event) => {
-    const nextIds = Array.from(event.target.selectedOptions, (option) => Number(option.value));
+  const handleAdditionalServicesChange = (additionalId, checked) => {
+    const numericAdditionalId = Number(additionalId);
+    const nextIds = checked
+      ? [...new Set([...selectedAdditionalIds, numericAdditionalId])]
+      : selectedAdditionalIds.filter((id) => id !== numericAdditionalId);
     const nextTotal = nextIds.reduce((total, additionalId) => {
       const item = additionalServices.find((additional) => additional.additional_id === additionalId);
       return total + Number(item?.subservice?.price || 0);
@@ -431,7 +434,7 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
       )}
 
       <form onSubmit={submit} className="space-y-6">
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div className="relative">
             <input
               className="border p-2 rounded-md w-full"
@@ -507,7 +510,7 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
           />
         </div>
 
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <select
             className="border p-2 rounded-md"
             value={form.category_id}
@@ -533,7 +536,7 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
           </select>
 
           <select
-            className="border p-2 rounded-md"
+            className="border p-2 rounded-md md:col-span-2 xl:col-span-1"
             value={form.employee_id}
             onChange={(e) => handleEmployee(e.target.value)}
             required
@@ -546,32 +549,36 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
         </div>
 
         {additionalServices.length > 0 && (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <fieldset className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <legend className="px-1 font-medium text-gray-700">Serviços adicionais</legend>
             <div className="mb-2 flex items-baseline justify-between gap-3">
-              <label htmlFor="quick-schedule-additionals" className="font-medium text-gray-700">Serviços adicionais</label>
+              <span className="text-xs text-gray-500">Personalize este atendimento</span>
               <span className="text-xs text-gray-500">Selecione quantos desejar</span>
             </div>
-            <select
-              id="quick-schedule-additionals"
-              multiple
-              value={selectedAdditionalIds.map(String)}
-              onChange={handleAdditionalServicesChange}
-              className="min-h-28 w-full rounded-md border bg-white p-2 text-sm"
-              aria-describedby="quick-schedule-additionals-help"
-            >
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" aria-describedby="quick-schedule-additionals-help">
               {additionalServices.map((additional) => (
-                <option key={additional.additional_id} value={additional.additional_id}>
-                  {additional.subservice?.name} — R$ {Number(additional.subservice?.price || 0).toFixed(2)}
-                </option>
+                <label key={additional.additional_id} className="flex min-w-0 cursor-pointer items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2.5 transition hover:border-slate-300 has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
+                  <input
+                    type="checkbox"
+                    value={additional.additional_id}
+                    checked={selectedAdditionalIds.includes(additional.additional_id)}
+                    onChange={(event) => handleAdditionalServicesChange(additional.additional_id, event.target.checked)}
+                    className="h-4 w-4 shrink-0 rounded border-slate-300 text-green-600 focus:ring-green-500"
+                  />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-gray-800">{additional.subservice?.name}</span>
+                    <span className="block text-xs text-gray-500">R$ {Number(additional.subservice?.price || 0).toFixed(2)}</span>
+                  </span>
+                </label>
               ))}
-            </select>
+            </div>
             <p id="quick-schedule-additionals-help" className="mt-2 text-xs text-gray-500">
               {selectedAdditionalIds.length ? `${selectedAdditionalIds.length} adicional(is) selecionado(s). O preço sugerido foi atualizado.` : "Nenhum adicional selecionado."}
             </p>
-          </div>
+          </fieldset>
         )}
 
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <input
             type="date"
             className="border p-2 rounded-md"
@@ -636,7 +643,7 @@ export default function FasterScheduleTab({ org, setActiveTab }) {
 
           <input
             type="number"
-            className="border p-2 rounded-md"
+            className="border p-2 rounded-md md:col-span-2 xl:col-span-1"
             placeholder="Preço Final"
             value={form.final_price}
             onChange={(e) => setForm({ ...form, final_price: e.target.value })}
