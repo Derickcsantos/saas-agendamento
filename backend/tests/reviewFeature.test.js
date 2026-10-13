@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { hasValidReviewMediaSignature } from "../utils/reviewMedia.js";
 import { localAppointmentEnd } from "../utils/reviewSchedule.js";
+import { getCancellationEligibility } from "../utils/cancellationEligibility.js";
 
 test("calculates the appointment end in the organization timezone", () => {
   const end = localAppointmentEnd({ appointment_date: "2026-08-10", end_time: "11:00:00" }, "America/Sao_Paulo");
@@ -13,4 +14,13 @@ test("validates media by signature instead of trusting MIME alone", () => {
   const validPng = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.alloc(8)]);
   assert.equal(hasValidReviewMediaSignature({ mimetype: "image/png", buffer: validPng }), true);
   assert.equal(hasValidReviewMediaSignature({ mimetype: "image/png", buffer: Buffer.from("not an image") }), false);
+});
+
+test("enforces enabled cancellation policy and strict notice period", () => {
+  const now = new Date("2026-10-13T12:00:00-03:00");
+  const appointment = { status: "confirmed", appointment_date: "2026-10-15", start_time: "12:00:00" };
+
+  assert.equal(getCancellationEligibility(appointment, { auto_cancellation_enabled: false, cancellation_notice_days: 0 }, now).canCancel, false);
+  assert.equal(getCancellationEligibility(appointment, { auto_cancellation_enabled: true, cancellation_notice_days: 2 }, now).canCancel, false);
+  assert.equal(getCancellationEligibility(appointment, { auto_cancellation_enabled: true, cancellation_notice_days: 1 }, now).canCancel, true);
 });
